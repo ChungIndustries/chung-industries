@@ -1,16 +1,18 @@
 {
-  "name": "react-supabase-template",
+  "name": "chung-industries",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "lint:fix": "turbo lint:fix",
-    "typecheck": "turbo typecheck",
+    "dev": "nx run-many -t dev",
+    "build": "nx run-many -t build",
+    "lint": "nx run-many -t lint",
+    "lint:fix": "nx run-many -t lint:fix",
+    "typecheck": "nx run-many -t typecheck",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "test": "turbo test",
+    "test": "nx run-many -t test",
+    "graph": "nx graph",
+    "affected": "nx affected",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
@@ -22,10 +24,10 @@
     "@commitlint/config-conventional": "^20.5.0",
     "@workspace/lint-config": "workspace:*",
     "husky": "^9.1.7",
+    "nx": "^23.0.1",
     "oxfmt": "^0.44.0",
     "oxlint": "^1.59.0",
-    "oxlint-tsgolint": "^0.20.0",
-    "turbo": "^2.9.14"
+    "oxlint-tsgolint": "^0.20.0"
   },
   "engines": {
     "node": ">=24",
