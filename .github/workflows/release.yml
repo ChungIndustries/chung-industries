@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: nx release (independent, version plans)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Most pushes to main carry no version plans; only release when some are pending.
+      - name: Check for pending version plans
+        id: plans
+        run: |
+          if ls .nx/version-plans/*.md >/dev/null 2>&1; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No version plans found — skipping release."
+          fi
+
+      - name: Setup
+        if: steps.plans.outputs.present == 'true'
+        uses: ./.github/actions/setup
+
+      - name: Configure git
+        if: steps.plans.outputs.present == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Bumps each project independently from its version plan(s), writes per-project
+      # changelogs, commits, and tags ({projectName}@{version}). The release commit
+      # carries [skip ci] so it does not re-trigger this workflow.
+      - name: Release
+        if: steps.plans.outputs.present == 'true'
+        run: pnpm exec nx release --yes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push release commit and tags
+        if: steps.plans.outputs.present == 'true'
+        run: git push --follow-tags origin HEAD:main
