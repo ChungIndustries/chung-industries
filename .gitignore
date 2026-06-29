@@ -8,8 +8,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Turborepo
-.turbo/
+# Nx
+.nx/cache
+.nx/workspace-data
 
 # Vite
 .vite/
