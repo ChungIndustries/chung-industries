@@ -22,5 +22,5 @@ specification.addDescription(
   "API for the CPM Registry, used by the Chung Package Manager (cpm) to host and distribute ComputerCraft-focused Lua packages.",
 );
 
-const outputPath = process.env.API_SPEC_PATH ?? process.argv[2] ?? "openapi.yaml";
+const outputPath = process.argv[2] ?? process.env.API_SPEC_PATH ?? "openapi.yaml";
 fs.writeFileSync(outputPath, specification.getSpecAsYaml());
