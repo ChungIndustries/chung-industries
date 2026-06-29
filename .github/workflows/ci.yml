@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  affected:
+    name: Affected (typecheck / lint / test / build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Derive affected SHAs
+        uses: nrwl/nx-set-shas@v4
+
+      - name: Typecheck, test, build (affected)
+        run: pnpm exec nx affected -t typecheck test build
+
+      - name: Lint (affected)
+        run: pnpm exec nx affected -t lint -- --format=github
+
+  format:
+    name: Format (oxfmt)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Check formatting
+        run: pnpm format:check

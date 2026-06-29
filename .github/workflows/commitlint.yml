@@ -2,7 +2,7 @@ name: Commitlint
 
 on:
   pull_request:
-    branches: ["main", "master", "development", "develop"]
+    branches: [main]
 
 jobs:
   commitlint:
