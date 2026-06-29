@@ -13,6 +13,7 @@
     "test": "nx run-many -t test",
     "graph": "nx graph",
     "affected": "nx affected",
+    "release": "nx release",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
+    "@nx/js": "23.0.1",
     "@workspace/lint-config": "workspace:*",
     "husky": "^9.1.7",
     "nx": "^23.0.1",
