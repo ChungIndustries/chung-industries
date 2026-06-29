@@ -1,0 +1,11 @@
+# Environment-specific config (copy .env.schema to create these)
+.env.dev
+.env.test
+.env.prod
+.env*.local
+
+# Tarball + registry.json storage
+storage/
+
+# Generated OpenAPI spec
+openapi.yaml
