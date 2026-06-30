@@ -1,8 +1,6 @@
-# Environment-specific config (copy .env.schema to create these)
-.env.dev
-.env.test
-.env.prod
-.env*.local
+# Local env overrides & secrets (the .env cascade; root .gitignore also covers these)
+.env.local
+.env.*.local
 
 # Tarball + registry.json storage
 storage/

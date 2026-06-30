@@ -6,7 +6,7 @@ import type { UploadedFile } from "express-fileupload";
 import createHttpError from "http-errors";
 import { z } from "zod";
 
-import { env } from "../../config.js";
+import { env } from "../../env.js";
 import {
   packageSchema,
   type Package,
@@ -18,7 +18,7 @@ export class PackageService {
   private readonly storageRoot: string;
   private readonly indexPath: string;
 
-  constructor(storageRoot = env.storageDir) {
+  constructor(storageRoot = env.STORAGE_DIR) {
     this.storageRoot = storageRoot;
     this.indexPath = path.join(this.storageRoot, "registry.json");
   }
