@@ -7,12 +7,14 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 
 import { env } from "../../env.js";
+import { computeDigests } from "./integrity.js";
 import {
   packageSchema,
   type Package,
   type PackageVersion,
   type PackageVersionMetadata,
 } from "./schemas.js";
+import { pickLatest } from "./version.js";
 
 export class PackageService {
   private readonly storageRoot: string;
@@ -32,7 +34,7 @@ export class PackageService {
     const registry = await this.loadRegistry();
     const pkg = registry.get(name);
     if (!pkg) {
-      throw createHttpError(404, "Package not found.");
+      throw createHttpError(404, "Package not found");
     }
     return pkg;
   }
@@ -41,23 +43,39 @@ export class PackageService {
     const pkg = await this.get(name);
     const entry = pkg.versions[version];
     if (!entry) {
-      throw createHttpError(404, "Package version not found.");
+      throw createHttpError(404, "Package version not found");
     }
     return entry;
   }
 
-  async upsert(metadata: PackageVersionMetadata, tarball: UploadedFile): Promise<Package> {
+  async publish(metadata: PackageVersionMetadata, tarball: UploadedFile): Promise<Package> {
+    if (!tarball.data || tarball.data.length === 0) {
+      throw createHttpError(400, "Tarball data is missing");
+    }
+
+    const registry = await this.loadRegistry();
+    const existing = registry.get(metadata.name);
+
+    // Published versions are immutable: reject re-publishing an existing version
+    // before touching disk so the stored tarball is never clobbered.
+    if (existing?.versions[metadata.version]) {
+      throw createHttpError(
+        409,
+        `Version ${metadata.version} of "${metadata.name}" is already published and immutable`,
+      );
+    }
+
+    const { shasum, integrity } = computeDigests(tarball.data);
     await this.persistTarball(metadata, tarball);
 
     const metaEntry: PackageVersion = {
       ...metadata,
-      dist: { tarball: this.getTarballUrl(metadata.name, metadata.version) },
+      dist: { tarball: this.getTarballUrl(metadata.name, metadata.version), shasum, integrity },
     };
 
-    const registry = await this.loadRegistry();
-    const existing = registry.get(metadata.name);
     if (existing) {
       existing.versions[metadata.version] = metaEntry;
+      existing["dist-tags"].latest = pickLatest(Object.keys(existing.versions));
       await this.saveRegistry(registry);
       return existing;
     }
@@ -65,6 +83,7 @@ export class PackageService {
     const newPackage: Package = {
       name: metadata.name,
       author: metadata.author,
+      "dist-tags": { latest: metadata.version },
       versions: {
         [metadata.version]: metaEntry,
       },
@@ -74,16 +93,22 @@ export class PackageService {
     return newPackage;
   }
 
+  async readTarball(name: string, version: string): Promise<Buffer> {
+    // Validate the version exists (throws 404) before reaching for the file.
+    await this.getVersion(name, version);
+    const filePath = path.join(this.storageRoot, name, this.getTarballName(name, version));
+    try {
+      return await fs.readFile(filePath);
+    } catch {
+      throw createHttpError(404, "Tarball not found");
+    }
+  }
+
   private async persistTarball(metadata: PackageVersionMetadata, tarball: UploadedFile) {
     const filename = this.getTarballName(metadata.name, metadata.version);
     const packageDir = path.join(this.storageRoot, metadata.name);
     await fs.mkdir(packageDir, { recursive: true });
     const targetPath = path.join(packageDir, filename);
-
-    if (!tarball.data || tarball.data.length === 0) {
-      throw createHttpError(500, "Tarball data is missing");
-    }
-
     await fs.writeFile(targetPath, tarball.data);
   }
 

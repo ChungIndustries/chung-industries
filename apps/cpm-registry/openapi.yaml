@@ -40,11 +40,28 @@ paths:
                               examples:
                                 - chungindustries
                               type: string
+                            dist-tags:
+                              type: object
+                              properties:
+                                latest:
+                                  type: string
+                                  examples:
+                                    - 1.0.0
+                                  description: Semantic version string
+                              required:
+                                - latest
+                              additionalProperties:
+                                type: string
+                                examples:
+                                  - 1.0.0
+                                description: Semantic version string
+                              examples:
+                                - latest: 1.0.0
+                              description: Distribution tags mapping tag names to versions (npm-compatible)
                             versions:
                               type: object
                               propertyNames:
                                 type: string
-                                pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                                 examples:
                                   - 1.0.0
                                 description: Semantic version string
@@ -58,7 +75,6 @@ paths:
                                       - example
                                   version:
                                     type: string
-                                    pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                                     examples:
                                       - 1.0.0
                                     description: Semantic version string
@@ -79,7 +95,6 @@ paths:
                                       description: Dependency name
                                     additionalProperties:
                                       type: string
-                                      pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                                       examples:
                                         - ^1.2.0
                                       description: Semantic version range string
@@ -91,8 +106,22 @@ paths:
                                         examples:
                                           - /packages/example/1.0.0/dist/tarball
                                         description: Tarball path
+                                      shasum:
+                                        type: string
+                                        pattern: ^[a-f0-9]{40}$
+                                        examples:
+                                          - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                        description: SHA-1 hex digest of the tarball (npm-compatible)
+                                      integrity:
+                                        type: string
+                                        pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
+                                        examples:
+                                          - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                                        description: Subresource Integrity (SRI) sha512 digest of the tarball
                                     required:
                                       - tarball
+                                      - shasum
+                                      - integrity
                                     additionalProperties: false
                                     description: Distribution info
                                 required:
@@ -108,6 +137,8 @@ paths:
                                       cc-http: ^1.2.0
                                     dist:
                                       tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                                      shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                      integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                               examples:
                                 - 1.0.0:
                                     name: example
@@ -117,8 +148,11 @@ paths:
                                       cc-http: ^1.2.0
                                     dist:
                                       tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                                      shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                      integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                           required:
                             - name
+                            - dist-tags
                             - versions
                           additionalProperties: false
                     required:
@@ -158,10 +192,11 @@ paths:
           description: HEAD /packages Negative response
     post:
       operationId: PostPackages
-      summary: Publish or update package
-      description: Creates a package if missing, or adds/replaces a version. Send
-        metadata JSON as `meta` plus the tarball file as `tarball` in
-        multipart/form-data.
+      summary: Publish package version
+      description: "Creates a package if missing, or adds a new version to an existing
+        one. Published versions are immutable: re-publishing an existing version
+        returns 409. Send metadata JSON as `meta` plus the tarball file as
+        `tarball` in multipart/form-data."
       tags:
         - Packages
       requestBody:
@@ -180,7 +215,6 @@ paths:
                         - example
                     version:
                       type: string
-                      pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                       examples:
                         - 1.0.0
                       description: Semantic version string
@@ -201,7 +235,6 @@ paths:
                         description: Dependency name
                       additionalProperties:
                         type: string
-                        pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                         examples:
                           - ^1.2.0
                         description: Semantic version range string
@@ -240,11 +273,28 @@ paths:
                         examples:
                           - chungindustries
                         type: string
+                      dist-tags:
+                        type: object
+                        properties:
+                          latest:
+                            type: string
+                            examples:
+                              - 1.0.0
+                            description: Semantic version string
+                        required:
+                          - latest
+                        additionalProperties:
+                          type: string
+                          examples:
+                            - 1.0.0
+                          description: Semantic version string
+                        examples:
+                          - latest: 1.0.0
+                        description: Distribution tags mapping tag names to versions (npm-compatible)
                       versions:
                         type: object
                         propertyNames:
                           type: string
-                          pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                           examples:
                             - 1.0.0
                           description: Semantic version string
@@ -258,7 +308,6 @@ paths:
                                 - example
                             version:
                               type: string
-                              pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                               examples:
                                 - 1.0.0
                               description: Semantic version string
@@ -279,7 +328,6 @@ paths:
                                 description: Dependency name
                               additionalProperties:
                                 type: string
-                                pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                                 examples:
                                   - ^1.2.0
                                 description: Semantic version range string
@@ -291,8 +339,22 @@ paths:
                                   examples:
                                     - /packages/example/1.0.0/dist/tarball
                                   description: Tarball path
+                                shasum:
+                                  type: string
+                                  pattern: ^[a-f0-9]{40}$
+                                  examples:
+                                    - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                  description: SHA-1 hex digest of the tarball (npm-compatible)
+                                integrity:
+                                  type: string
+                                  pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
+                                  examples:
+                                    - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                                  description: Subresource Integrity (SRI) sha512 digest of the tarball
                               required:
                                 - tarball
+                                - shasum
+                                - integrity
                               additionalProperties: false
                               description: Distribution info
                           required:
@@ -308,6 +370,8 @@ paths:
                                 cc-http: ^1.2.0
                               dist:
                                 tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                         examples:
                           - 1.0.0:
                               name: example
@@ -317,13 +381,18 @@ paths:
                                 cc-http: ^1.2.0
                               dist:
                                 tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                     required:
                       - name
+                      - dist-tags
                       - versions
                     additionalProperties: false
                     examples:
                       - name: example
                         author: chungindustries
+                        dist-tags:
+                          latest: 1.0.0
                         versions:
                           1.0.0:
                             name: example
@@ -333,12 +402,37 @@ paths:
                               cc-http: ^1.2.0
                             dist:
                               tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                              shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                              integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                 required:
                   - status
                   - data
                 additionalProperties: false
         "400":
           description: POST /packages Negative response 400
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    const: fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                    additionalProperties: false
+                required:
+                  - status
+                  - data
+                additionalProperties: false
+        "409":
+          description: POST /packages Negative response 409
           content:
             application/json:
               schema:
@@ -415,11 +509,28 @@ paths:
                         examples:
                           - chungindustries
                         type: string
+                      dist-tags:
+                        type: object
+                        properties:
+                          latest:
+                            type: string
+                            examples:
+                              - 1.0.0
+                            description: Semantic version string
+                        required:
+                          - latest
+                        additionalProperties:
+                          type: string
+                          examples:
+                            - 1.0.0
+                          description: Semantic version string
+                        examples:
+                          - latest: 1.0.0
+                        description: Distribution tags mapping tag names to versions (npm-compatible)
                       versions:
                         type: object
                         propertyNames:
                           type: string
-                          pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                           examples:
                             - 1.0.0
                           description: Semantic version string
@@ -433,7 +544,6 @@ paths:
                                 - example
                             version:
                               type: string
-                              pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                               examples:
                                 - 1.0.0
                               description: Semantic version string
@@ -454,7 +564,6 @@ paths:
                                 description: Dependency name
                               additionalProperties:
                                 type: string
-                                pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                                 examples:
                                   - ^1.2.0
                                 description: Semantic version range string
@@ -466,8 +575,22 @@ paths:
                                   examples:
                                     - /packages/example/1.0.0/dist/tarball
                                   description: Tarball path
+                                shasum:
+                                  type: string
+                                  pattern: ^[a-f0-9]{40}$
+                                  examples:
+                                    - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                  description: SHA-1 hex digest of the tarball (npm-compatible)
+                                integrity:
+                                  type: string
+                                  pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
+                                  examples:
+                                    - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                                  description: Subresource Integrity (SRI) sha512 digest of the tarball
                               required:
                                 - tarball
+                                - shasum
+                                - integrity
                               additionalProperties: false
                               description: Distribution info
                           required:
@@ -483,6 +606,8 @@ paths:
                                 cc-http: ^1.2.0
                               dist:
                                 tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                         examples:
                           - 1.0.0:
                               name: example
@@ -492,13 +617,18 @@ paths:
                                 cc-http: ^1.2.0
                               dist:
                                 tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                     required:
                       - name
+                      - dist-tags
                       - versions
                     additionalProperties: false
                     examples:
                       - name: example
                         author: chungindustries
+                        dist-tags:
+                          latest: 1.0.0
                         versions:
                           1.0.0:
                             name: example
@@ -508,6 +638,8 @@ paths:
                               cc-http: ^1.2.0
                             dist:
                               tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                              shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                              integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                 required:
                   - status
                   - data
@@ -622,7 +754,6 @@ paths:
           description: Semantic version string
           schema:
             type: string
-            pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
             examples:
               - 1.0.0
             description: Semantic version string
@@ -650,7 +781,6 @@ paths:
                           - example
                       version:
                         type: string
-                        pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                         examples:
                           - 1.0.0
                         description: Semantic version string
@@ -671,7 +801,6 @@ paths:
                           description: Dependency name
                         additionalProperties:
                           type: string
-                          pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
                           examples:
                             - ^1.2.0
                           description: Semantic version range string
@@ -683,8 +812,22 @@ paths:
                             examples:
                               - /packages/example/1.0.0/dist/tarball
                             description: Tarball path
+                          shasum:
+                            type: string
+                            pattern: ^[a-f0-9]{40}$
+                            examples:
+                              - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                            description: SHA-1 hex digest of the tarball (npm-compatible)
+                          integrity:
+                            type: string
+                            pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
+                            examples:
+                              - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                            description: Subresource Integrity (SRI) sha512 digest of the tarball
                         required:
                           - tarball
+                          - shasum
+                          - integrity
                         additionalProperties: false
                         description: Distribution info
                     required:
@@ -700,6 +843,8 @@ paths:
                           cc-http: ^1.2.0
                         dist:
                           tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                          shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                          integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
                 required:
                   - status
                   - data
@@ -790,7 +935,6 @@ paths:
           description: Semantic version string
           schema:
             type: string
-            pattern: ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$
             examples:
               - 1.0.0
             description: Semantic version string
@@ -806,6 +950,140 @@ paths:
           description: HEAD /packages/:name/:version Negative response 404
         "500":
           description: HEAD /packages/:name/:version Negative response 500
+  /packages/{name}/{version}/dist/tarball:
+    get:
+      operationId: GetPackagesNameVersionDistTarball
+      summary: Download tarball
+      description: Returns the gzipped tarball bytes for a specific package version.
+      tags:
+        - Packages
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: GET /packages/:name/:version/dist/tarball Parameter
+          schema:
+            type: string
+            minLength: 1
+        - name: version
+          in: path
+          required: true
+          description: Semantic version string
+          schema:
+            type: string
+            examples:
+              - 1.0.0
+            description: Semantic version string
+          examples:
+            example1:
+              value: 1.0.0
+      responses:
+        "200":
+          description: GET /packages/:name/:version/dist/tarball Positive response
+          content:
+            application/gzip:
+              schema:
+                externalDocs:
+                  description: raw binary data
+                  url: https://swagger.io/specification/#working-with-binary-data
+        "400":
+          description: GET /packages/:name/:version/dist/tarball Negative response 400
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    const: fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                    additionalProperties: false
+                required:
+                  - status
+                  - data
+                additionalProperties: false
+        "404":
+          description: GET /packages/:name/:version/dist/tarball Negative response 404
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    const: fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                    additionalProperties: false
+                required:
+                  - status
+                  - data
+                additionalProperties: false
+        "500":
+          description: GET /packages/:name/:version/dist/tarball Negative response 500
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    const: error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+                additionalProperties: false
+    head:
+      operationId: HeadPackagesNameVersionDistTarball
+      summary: Download tarball
+      description: Returns the gzipped tarball bytes for a specific package version.
+      tags:
+        - Packages
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: HEAD /packages/:name/:version/dist/tarball Parameter
+          schema:
+            type: string
+            minLength: 1
+        - name: version
+          in: path
+          required: true
+          description: Semantic version string
+          schema:
+            type: string
+            examples:
+              - 1.0.0
+            description: Semantic version string
+          examples:
+            example1:
+              value: 1.0.0
+      responses:
+        "200":
+          description: HEAD /packages/:name/:version/dist/tarball Positive response
+        "400":
+          description: HEAD /packages/:name/:version/dist/tarball Negative response 400
+        "404":
+          description: HEAD /packages/:name/:version/dist/tarball Negative response 404
+        "500":
+          description: HEAD /packages/:name/:version/dist/tarball Negative response 500
 components:
   schemas: {}
   responses: {}

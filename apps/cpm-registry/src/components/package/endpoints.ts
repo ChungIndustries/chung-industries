@@ -97,18 +97,19 @@ export const getPackageVersionEndpoint = getFactory.build({
   handler: async ({ input }) => service.getVersion(input.name, input.version),
 });
 
-const upsertFactory = makeFactory(
+const publishFactory = makeFactory(
   [
     { statusCode: 400, schema: failSchema },
+    { statusCode: 409, schema: failSchema },
     { statusCode: 500, schema: errorSchema },
   ],
   201,
 );
-export const upsertPackageEndpoint = upsertFactory.build({
+export const publishPackageEndpoint = publishFactory.build({
   tag: "Packages",
-  shortDescription: "Publish or update package",
+  shortDescription: "Publish package version",
   description:
-    "Creates a package if missing, or adds/replaces a version. Send metadata JSON as `meta` plus the tarball file as `tarball` in multipart/form-data.",
+    "Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send metadata JSON as `meta` plus the tarball file as `tarball` in multipart/form-data.",
   method: "post",
   input: z.object({
     meta: z.preprocess((value) => {
@@ -125,5 +126,43 @@ export const upsertPackageEndpoint = upsertFactory.build({
     tarball: ez.upload(),
   }),
   output: packageSchema,
-  handler: async ({ input }) => await service.upsert(input.meta, input.tarball),
+  handler: async ({ input }) => await service.publish(input.meta, input.tarball),
+});
+
+const downloadFactory = new EndpointsFactory(
+  new ResultHandler({
+    positive: { schema: ez.buffer(), mimeType: "application/gzip" },
+    negative: [
+      { statusCode: [400, 404], schema: failSchema },
+      { statusCode: 500, schema: errorSchema },
+    ],
+    handler: ({ error, output, response }) => {
+      if (error) {
+        const httpError = ensureHttpError(error);
+        const message = getMessageFromError(error);
+
+        if (400 <= httpError.statusCode && httpError.statusCode < 500) {
+          return void response
+            .status(httpError.statusCode)
+            .json({ status: "fail", data: { message } });
+        }
+
+        return void response.status(httpError.statusCode).json({ status: "error", message });
+      }
+
+      // `output` is loosely typed as FlatObject; the endpoint guarantees a Buffer
+      // here, which is what the branded buffer response schema expects.
+      const tarball = output.data as Parameters<typeof response.send>[0];
+      return void response.type("application/gzip").send(tarball);
+    },
+  }),
+);
+export const downloadTarballEndpoint = downloadFactory.build({
+  tag: "Packages",
+  shortDescription: "Download tarball",
+  description: "Returns the gzipped tarball bytes for a specific package version.",
+  method: "get",
+  input: z.object({ name: z.string().nonempty(), version: semverSchema }),
+  output: z.object({ data: ez.buffer() }),
+  handler: async ({ input }) => ({ data: await service.readTarball(input.name, input.version) }),
 });
