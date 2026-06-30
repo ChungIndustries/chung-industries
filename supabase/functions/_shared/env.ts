@@ -11,9 +11,7 @@ const EnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 });
 
-const raw = Object.fromEntries(
-  Object.keys(EnvSchema.shape).map((key) => [key, Deno.env.get(key)]),
-);
+const raw = Object.fromEntries(Object.keys(EnvSchema.shape).map((key) => [key, Deno.env.get(key)]));
 
 const parsed = EnvSchema.safeParse(raw);
 

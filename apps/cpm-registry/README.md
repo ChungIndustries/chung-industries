@@ -24,5 +24,6 @@ These docs are published to Scalar automatically by the Release workflow wheneve
    - `STORAGE_DIR` for tarballs and `registry.json` (default `storage`)
 
    The committed `.env` holds public defaults. Override per environment with `.env.<NODE_ENV>` (e.g. `.env.production`) and keep secrets in a gitignored `.env.local`. Files are loaded by `dotenv-flow` based on `NODE_ENV`; real process env always wins.
+
 3. Run: dev `pnpm dev`; build `pnpm build`; prod (after build) `pnpm start`
 4. Generate OpenAPI spec: `pnpm gen-docs` (writes `openapi.yaml` by default). The committed `openapi.yaml` is the source of truth for the hosted docs; CI fails if it drifts from the code, so regenerate and commit it whenever you change the API.
