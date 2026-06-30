@@ -105,6 +105,10 @@ export class PackageService {
   }
 
   private async persistTarball(metadata: PackageVersionMetadata, tarball: UploadedFile) {
+    if (!tarball.data || tarball.data.length === 0) {
+      throw createHttpError(500, "Cannot persist an empty tarball");
+    }
+
     const filename = this.getTarballName(metadata.name, metadata.version);
     const packageDir = path.join(this.storageRoot, metadata.name);
     await fs.mkdir(packageDir, { recursive: true });

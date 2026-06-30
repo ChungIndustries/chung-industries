@@ -91,6 +91,12 @@ describe("PackageService", () => {
     expect(stored.equals(original)).toBe(true);
   });
 
+  it("rejects publishing an empty tarball with 400", async () => {
+    await expect(service.publish(meta("1.0.0"), upload(Buffer.alloc(0)))).rejects.toMatchObject({
+      statusCode: 400,
+    });
+  });
+
   it("returns 404 for unknown packages, versions, and tarballs", async () => {
     await expect(service.get("missing")).rejects.toMatchObject({ statusCode: 404 });
 
