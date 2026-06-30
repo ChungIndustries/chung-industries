@@ -13,6 +13,8 @@ The official registry service for the Chung Package Manager (CPM), providing a h
 
 Full HTTP API docs (generated from this codebase) are available at https://chungindustries.apidocumentation.com/cpm-registry. Refer there for endpoints, request/response shapes, and examples. [Source](https://chungindustries.apidocumentation.com/cpm-registry)
 
+These docs are published to Scalar automatically by the Release workflow whenever a new `cpm-registry` version is released (via `scalar registry publish`, versioned by the release tag). The committed `openapi.yaml` is the spec that gets published.
+
 ## Getting started
 
 1. Install dependencies: `npm install`
