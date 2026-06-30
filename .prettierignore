@@ -1,0 +1,3 @@
+# Generated files. Their formatting is owned by the generator, not oxfmt.
+# Verified instead by the `generate-types` workflow (raw `supabase gen types` output).
+packages/supabase/src/types.gen.ts
