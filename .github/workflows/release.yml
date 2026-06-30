@@ -73,6 +73,7 @@ jobs:
             exit 0
           fi
           echo "Publishing cpm-registry@$version docs to Scalar."
-          npm install -g @scalar/cli
-          scalar auth login
-          scalar registry publish apps/cpm-registry/openapi.yaml --version "$version"
+          # Pinned for reproducibility — bump deliberately after checking the CLI changelog.
+          npm install -g @scalar/cli@2.0.0
+          scalar auth login --token "$SCALAR_API_KEY"
+          scalar registry publish apps/cpm-registry/openapi.yaml --slug cpm-registry --version "$version"
