@@ -20,7 +20,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Derive affected SHAs
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@v5
 
       - name: Typecheck, test, build (affected)
         run: pnpm exec nx affected -t typecheck test build
