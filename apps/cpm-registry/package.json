@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "cross-env": "^10.1.0",
-    "dotenv-extended": "^2.9.0",
-    "dotenv-parse-variables": "^2.0.0",
+    "dotenv-flow": "^4.1.0",
     "express": "^5.2.1",
     "express-fileupload": "^1.5.2",
     "express-zod-api": "^26.0.0",
@@ -26,7 +25,6 @@
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "^1.0.4",
-    "@types/dotenv-parse-variables": "^2.0.3",
     "@types/express": "^5.0.6",
     "@types/express-fileupload": "^1.5.1",
     "@types/http-errors": "^2.0.5",

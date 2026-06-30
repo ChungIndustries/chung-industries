@@ -18,6 +18,12 @@ NX + pnpm monorepo.
 - Group feature code by domain (vertical slices), not by technology.
 - Projects are NX projects via their `package.json` (targets inferred from scripts).
 
+## Environment & secrets
+
+- Each deployable validates its env once in an `env.ts` (zod handles defaults, coercion, validation) and exports a typed `env`. Nothing else reads `process.env` / `Deno.env` / `import.meta.env`.
+- Multiple environments use the standard `.env` cascade (`.env` committed defaults → `.env.<mode>` → `.env.local` gitignored secrets); real process env wins. Loaded by Vite (web), `dotenv-flow` (cpm-registry), and the edge runtime (supabase functions).
+- Supabase `config.toml` secrets use `env(VAR)`; mirror them as `secrets.*` in `deploy-supabase.yml`.
+
 ## Branching & releases
 
 - `main` + short-lived feature branches. PRs target `main`.

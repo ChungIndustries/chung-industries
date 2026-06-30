@@ -17,10 +17,12 @@ These docs are published to Scalar automatically by the Release workflow wheneve
 
 ## Getting started
 
-1. Install dependencies: `npm install`
-2. Configure environment (selected via `NODE_ENV`: `.env.dev`, `.env.test`, `.env.prod`):
-   - `HOSTNAME` (e.g. `0.0.0.0`)
-   - `PORT` (e.g. `3000`)
-   - `STORAGE_DIR` for tarballs and `registry.json`
-3. Run: dev `npm run dev`; build `npm run build`; prod (after build) `npm start`
+1. Install dependencies: `pnpm install`
+2. Configure environment. Vars are declared, defaulted, and validated in [`src/env.ts`](src/env.ts):
+   - `HOST` (default `0.0.0.0`)
+   - `PORT` (default `3000`)
+   - `STORAGE_DIR` for tarballs and `registry.json` (default `storage`)
+
+   The committed `.env` holds public defaults. Override per environment with `.env.<NODE_ENV>` (e.g. `.env.production`) and keep secrets in a gitignored `.env.local`. Files are loaded by `dotenv-flow` based on `NODE_ENV`; real process env always wins.
+3. Run: dev `pnpm dev`; build `pnpm build`; prod (after build) `pnpm start`
 4. Generate OpenAPI spec: `pnpm gen-docs` (writes `openapi.yaml` by default). The committed `openapi.yaml` is the source of truth for the hosted docs; CI fails if it drifts from the code, so regenerate and commit it whenever you change the API.
