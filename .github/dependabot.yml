@@ -13,3 +13,12 @@ updates:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+      - "/.github/actions/*"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
