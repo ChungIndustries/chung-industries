@@ -21,4 +21,4 @@ Full HTTP API docs (generated from this codebase) are available at https://chung
    - `PORT` (e.g. `3000`)
    - `STORAGE_DIR` for tarballs and `registry.json`
 3. Run: dev `npm run dev`; build `npm run build`; prod (after build) `npm start`
-4. Generate OpenAPI spec: `npm run gen-docs` (writes `openapi.yaml` by default).
+4. Generate OpenAPI spec: `pnpm gen-docs` (writes `openapi.yaml` by default). The committed `openapi.yaml` is the source of truth for the hosted docs; CI fails if it drifts from the code, so regenerate and commit it whenever you change the API.

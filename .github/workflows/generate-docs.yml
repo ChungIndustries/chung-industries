@@ -1,0 +1,26 @@
+name: Generate API Docs
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/cpm-registry/**"
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Verify generated OpenAPI spec matches the API code
+        run: |
+          pnpm --filter cpm-registry gen-docs
+          if ! git diff --ignore-space-at-eol --exit-code --quiet apps/cpm-registry/openapi.yaml; then
+            echo "Detected uncommitted changes after generating the OpenAPI spec. Run 'pnpm --filter cpm-registry gen-docs' and commit apps/cpm-registry/openapi.yaml. See diff below:"
+            git diff apps/cpm-registry/openapi.yaml
+            exit 1
+          fi
