@@ -54,3 +54,26 @@ jobs:
       - name: Push release commit and tags
         if: steps.plans.outputs.present == 'true'
         run: git push --follow-tags origin HEAD:main
+
+      # Publishes the committed (CI-verified) OpenAPI spec to the Scalar registry,
+      # but only when cpm-registry was part of this release — detected via the
+      # cpm-registry@{version} tag nx just created. Versioned by that tag.
+      - name: Publish CPM Registry docs to Scalar
+        if: steps.plans.outputs.present == 'true'
+        env:
+          SCALAR_API_KEY: ${{ secrets.SCALAR_API_KEY }}
+        run: |
+          version="$(git tag --points-at HEAD | sed -n 's/^cpm-registry@//p' | head -n1)"
+          if [ -z "$version" ]; then
+            echo "cpm-registry was not released in this run — skipping Scalar publish."
+            exit 0
+          fi
+          if [ -z "$SCALAR_API_KEY" ]; then
+            echo "::warning::SCALAR_API_KEY is not set — skipping Scalar publish for cpm-registry@$version."
+            exit 0
+          fi
+          echo "Publishing cpm-registry@$version docs to Scalar."
+          # Pinned for reproducibility — bump deliberately after checking the CLI changelog.
+          npm install -g @scalar/cli@2.0.0
+          scalar auth login --token "$SCALAR_API_KEY"
+          scalar registry publish apps/cpm-registry/openapi.yaml --slug cpm-registry --version "$version"
