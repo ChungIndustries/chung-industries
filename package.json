@@ -27,7 +27,7 @@
     "@workspace/lint-config": "workspace:*",
     "husky": "^9.1.7",
     "nx": "^23.0.1",
-    "oxfmt": "^0.44.0",
+    "oxfmt": "^0.57.0",
     "oxlint": "^1.59.0",
     "oxlint-tsgolint": "^0.20.0"
   },
