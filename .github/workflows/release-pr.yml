@@ -51,15 +51,16 @@ jobs:
       # Applies every pending plan to the working tree: version bumps, per-project
       # changelogs, and deletion of the consumed plans. Leaves the changes uncommitted
       # and never tags; tagging happens on merge (release.yml).
+      # --pr-body renders the PR description (intro + each project's changelog inline)
+      # to a file OUTSIDE the workspace, so create-pull-request does not commit it.
       - name: Assemble release changes
         if: steps.plans.outputs.present == 'true'
-        run: node tools/release.mjs prepare
+        run: node tools/release.mjs prepare --pr-body "$RUNNER_TEMP/release-pr-body.md"
 
-      # Commits the working-tree changes onto release/next and opens (or refreshes)
-      # a single release PR. Rebuilt from main each run, so the PR always reflects the
-      # currently pending plans. No-ops when the plans resolve to no change. The PR is
-      # created with GITHUB_TOKEN, so it does not itself trigger CI/commitlint; a human
-      # merges it, which fires release.yml.
+      # Commits the working-tree changes onto release/next and opens (or refreshes) a
+      # single release PR whose body shows exactly what will be released. Rebuilt from
+      # main each run, so the PR always reflects the currently pending plans. No-ops
+      # when the plans resolve to no change. A human merges it, which fires release.yml.
       - name: Create or update the release PR
         if: steps.plans.outputs.present == 'true'
         uses: peter-evans/create-pull-request@v8
@@ -69,8 +70,4 @@ jobs:
           title: "chore(release): publish"
           commit-message: "chore(release): publish"
           delete-branch: true
-          body: |
-            Automated release PR, do not edit. Merging it versions, changelogs, and
-            tags every project with a pending version plan, then publishes. It
-            refreshes automatically as more plans land on main. Close it to defer the
-            release.
+          body-path: ${{ runner.temp }}/release-pr-body.md
