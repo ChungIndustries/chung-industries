@@ -5,12 +5,14 @@
 //
 // Commands:
 //
-//   prepare [--dry-run] [--verbose]
+//   prepare [--dry-run] [--verbose] [--pr-body <path>]
 //     Apply all pending version plans to the working tree: version bumps,
 //     per-project changelogs, and deletion of the consumed plans. Leaves the
 //     changes uncommitted for release-pr.yml's create-pull-request step to commit
-//     and open the PR; never tags. `pnpm release` runs it with --dry-run to preview
-//     the next release locally.
+//     and open the PR; never tags. With --pr-body, also writes the release PR body
+//     (intro + each project's changelog inline) to <path>, which must sit OUTSIDE
+//     the repo so create-pull-request does not commit it. `pnpm release` runs it
+//     with --dry-run to preview the next release locally.
 //
 //   tag [--dry-run] [--verbose]
 //     Run on main right after the release PR merges (release.yml). Detects the
@@ -21,7 +23,7 @@
 //     without installing dependencies.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 const { positionals, values } = parseArgs({
@@ -29,6 +31,7 @@ const { positionals, values } = parseArgs({
   options: {
     "dry-run": { type: "boolean", default: false },
     verbose: { type: "boolean", default: false },
+    "pr-body": { type: "string" },
   },
 });
 
@@ -65,7 +68,7 @@ async function prepare() {
     return;
   }
 
-  await releaseChangelog({
+  const changelog = await releaseChangelog({
     releaseGraph,
     versionData: projectsVersionData,
     version: workspaceVersion,
@@ -78,10 +81,37 @@ async function prepare() {
     verbose,
   });
 
+  const bodyPath = values["pr-body"];
+  if (bodyPath) {
+    writeFileSync(bodyPath, renderPrBody(changelog));
+  }
+
   console.log(dryRun ? "Would release:" : "Assembled release changes for:");
   for (const [project, data] of released) {
     console.log(`  ${project}: ${data.currentVersion} -> ${data.newVersion}`);
   }
+}
+
+// Build the release PR body: an intro plus every released project's changelog
+// rendered inline, so a reviewer sees exactly what will be released without opening
+// the diff. nx hands back the rendered entry per project in `contents`.
+function renderPrBody(changelog) {
+  const intro =
+    "Automated release PR, do not edit. Merging it versions, changelogs, and tags " +
+    "every project with a pending version plan, then publishes. It refreshes " +
+    "automatically as more plans land on `main`. Close it to defer the release.";
+  const projectChangelogs = changelog?.projectChangelogs ?? {};
+  const sections = Object.values(projectChangelogs).map(({ releaseVersion, contents }) => {
+    const tag = releaseVersion.gitTag ?? releaseVersion.rawVersion;
+    const entry = contents.trim();
+    // nx renders each entry starting with "## <version> (<date>)". Relabel that
+    // heading with the full tag (e.g. "## cpm-registry@0.0.1 (<date>)") so each
+    // section names its project; fall back to prefixing if the shape is unexpected.
+    return /^## \S+/.test(entry)
+      ? entry.replace(/^## \S+/, () => `## ${tag}`)
+      : `## ${tag}\n\n${entry}`;
+  });
+  return sections.length > 0 ? `${intro}\n\n---\n\n${sections.join("\n\n")}\n` : `${intro}\n`;
 }
 
 function showJson(ref, path) {
