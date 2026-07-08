@@ -40,9 +40,6 @@
     },
     "releaseTag": {
       "pattern": "{projectName}@{version}"
-    },
-    "git": {
-      "commitMessage": "chore(release): publish [skip ci]"
     }
   }
 }

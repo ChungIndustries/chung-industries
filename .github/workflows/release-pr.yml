@@ -1,0 +1,73 @@
+name: Prepare release PR
+
+# Changesets-style release flow, part 1 of 2.
+#
+# Feature PRs land a version plan (.nx/version-plans/*.md) but DO NOT release. This
+# workflow assembles every pending plan into a single "release PR" against main. The
+# release only happens when a human merges that PR (see release.yml for part 2).
+#
+# tools/release.mjs (the nx release programmatic API) produces the version bumps and
+# changelogs; create-pull-request owns the commit, branch, and PR.
+on:
+  push:
+    branches: [main]
+
+# Latest push wins: if several feature PRs land in quick succession, only the most
+# recent assembly matters, since it already reflects every pending plan.
+concurrency:
+  group: release-pr
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    name: Assemble pending version plans into a release PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Most pushes carry no plans; merging the release PR also consumes them. Either
+      # way, no plans means there is nothing to assemble.
+      - name: Check for pending version plans
+        id: plans
+        run: |
+          if ls .nx/version-plans/*.md >/dev/null 2>&1; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No version plans found, nothing to release."
+          fi
+
+      - name: Setup
+        if: steps.plans.outputs.present == 'true'
+        uses: ./.github/actions/setup
+
+      # Applies every pending plan to the working tree: version bumps, per-project
+      # changelogs, and deletion of the consumed plans. Leaves the changes uncommitted
+      # and never tags; tagging happens on merge (release.yml).
+      # --pr-body renders the PR description (intro + each project's changelog inline)
+      # to a file OUTSIDE the workspace, so create-pull-request does not commit it.
+      - name: Assemble release changes
+        if: steps.plans.outputs.present == 'true'
+        run: node tools/release.mjs prepare --pr-body "$RUNNER_TEMP/release-pr-body.md"
+
+      # Commits the working-tree changes onto release/next and opens (or refreshes) a
+      # single release PR whose body shows exactly what will be released. Rebuilt from
+      # main each run, so the PR always reflects the currently pending plans. No-ops
+      # when the plans resolve to no change. A human merges it, which fires release.yml.
+      - name: Create or update the release PR
+        if: steps.plans.outputs.present == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: release/next
+          base: main
+          title: "chore(release): publish"
+          commit-message: "chore(release): publish"
+          delete-branch: true
+          body-path: ${{ runner.temp }}/release-pr-body.md
