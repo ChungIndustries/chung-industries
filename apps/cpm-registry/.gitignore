@@ -1,6 +1,10 @@
-# Local env overrides & secrets (the .env cascade; root .gitignore also covers these)
+# Wrangler local state (miniflare D1/R2 data, build cache)
+.wrangler/
+
+# Local dev secrets for `wrangler dev`
+.dev.vars
+.dev.vars.*
+
+# Local env overrides & secrets
 .env.local
 .env.*.local
-
-# Tarball + registry.json storage
-storage/

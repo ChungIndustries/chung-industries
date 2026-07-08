@@ -1,12 +1,7 @@
-import {
-  EndpointsFactory,
-  ez,
-  ResultHandler,
-  ensureHttpError,
-  getMessageFromError,
-} from "express-zod-api";
-import { z } from "zod";
+import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
+import type { Bindings } from "../../bindings.js";
+import { BadRequestError } from "../../errors.js";
 import {
   packageSchema,
   packageVersionMetadataSchema,
@@ -14,155 +9,222 @@ import {
   semverSchema,
 } from "./schemas.js";
 import { PackageService } from "./service.js";
+import { D1RegistryStore } from "./store/d1.js";
+import { R2TarballStore } from "./store/r2.js";
 
+type App = OpenAPIHono<{ Bindings: Bindings }>;
+
+function serviceFor(env: Bindings): PackageService {
+  return new PackageService(new D1RegistryStore(env.DB), new R2TarballStore(env.BUCKET));
+}
+
+// Immutable versions can be cached forever. Repeat downloads are served from the
+// Cloudflare edge cache, so the Worker and R2 are only touched on a cache miss.
+const CACHE_CONTROL = "public, max-age=31536000, immutable";
+function edgeCache(): Cache | undefined {
+  return (globalThis as { caches?: CacheStorage }).caches?.default;
+}
+
+// JSend envelopes, matching the pre-Hono contract.
+function success<T extends z.ZodTypeAny>(data: T) {
+  return z.object({ status: z.literal("success"), data });
+}
 const failSchema = z.object({
   status: z.literal("fail"),
-  data: z.object({ message: z.string().nonempty() }),
+  data: z.object({ message: z.string().min(1) }),
 });
-const errorSchema = z.object({ status: z.literal("error"), message: z.string().nonempty() });
+const errorSchema = z.object({ status: z.literal("error"), message: z.string().min(1) });
+const jsonFail = (description: string) => ({
+  content: { "application/json": { schema: failSchema } },
+  description,
+});
+const serverError = {
+  content: { "application/json": { schema: errorSchema } },
+  description: "Unexpected error",
+};
 
-function makeFactory(
-  negative: { statusCode: number | [number, ...number[]]; schema: z.ZodTypeAny }[],
-  successStatus: number = 200,
-) {
-  return new EndpointsFactory(
-    new ResultHandler({
-      positive: (data) => ({
-        schema: z.object({ status: z.literal("success"), data }),
-      }),
-      negative,
-      handler: ({ error, output, response }) => {
-        if (error) {
-          const httpError = ensureHttpError(error);
-          const message = getMessageFromError(error);
+const nameParam = z
+  .string()
+  .min(1)
+  .openapi({ param: { name: "name", in: "path" }, example: "example" });
+const versionParam = semverSchema.openapi({ param: { name: "version", in: "path" } });
 
-          if (400 <= httpError.statusCode && httpError.statusCode < 500) {
-            return void response
-              .status(httpError.statusCode)
-              .json({ status: "fail", data: { message } });
-          }
-
-          return void response.status(httpError.statusCode).json({ status: "error", message });
-        }
-
-        return void response.status(successStatus).json({ status: "success", data: output });
+export function registerPackageRoutes(app: App): void {
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "get",
+      path: "/packages",
+      summary: "List packages",
+      description: "Returns all CPM packages in the registry.",
+      responses: {
+        200: {
+          content: {
+            "application/json": { schema: success(z.object({ packages: z.array(packageSchema) })) },
+          },
+          description: "All packages",
+        },
+        500: serverError,
       },
     }),
+    async (c) =>
+      c.json(
+        { status: "success" as const, data: { packages: await serviceFor(c.env).list() } },
+        200,
+      ),
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "get",
+      path: "/packages/{name}",
+      summary: "Get package",
+      description: "Returns the CPM package entry for the given package name.",
+      request: { params: z.object({ name: nameParam }) },
+      responses: {
+        200: {
+          content: { "application/json": { schema: success(packageSchema) } },
+          description: "The package",
+        },
+        404: jsonFail("Package not found"),
+        500: serverError,
+      },
+    }),
+    async (c) =>
+      c.json(
+        {
+          status: "success" as const,
+          data: await serviceFor(c.env).get(c.req.valid("param").name),
+        },
+        200,
+      ),
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "get",
+      path: "/packages/{name}/{version}",
+      summary: "Get package version",
+      description: "Returns the specific version entry for the given package.",
+      request: { params: z.object({ name: nameParam, version: versionParam }) },
+      responses: {
+        200: {
+          content: { "application/json": { schema: success(packageVersionSchema) } },
+          description: "The version",
+        },
+        400: jsonFail("Invalid version"),
+        404: jsonFail("Package or version not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, version } = c.req.valid("param");
+      return c.json(
+        { status: "success" as const, data: await serviceFor(c.env).getVersion(name, version) },
+        200,
+      );
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "post",
+      path: "/packages",
+      summary: "Publish package version",
+      description:
+        "Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send metadata JSON as `meta` plus the tarball file as `tarball` in multipart/form-data.",
+      request: {
+        body: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: z.object({
+                meta: z.string().openapi({
+                  description: "Package version metadata as a JSON string",
+                  example: '{"name":"example","version":"1.0.0"}',
+                }),
+                tarball: z.any().openapi({
+                  type: "string",
+                  format: "binary",
+                  description: "gzipped tarball bytes",
+                }),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        201: {
+          content: { "application/json": { schema: success(packageSchema) } },
+          description: "Published",
+        },
+        400: jsonFail("Invalid request"),
+        409: jsonFail("Version already published"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const form = c.req.valid("form");
+      const meta = packageVersionMetadataSchema.parse(parseJson(form.meta));
+      const file = form.tarball;
+      if (!(file instanceof File)) {
+        throw new BadRequestError("Tarball file is missing");
+      }
+      const data = new Uint8Array(await file.arrayBuffer());
+      const pkg = await serviceFor(c.env).publish(meta, data);
+      return c.json({ status: "success" as const, data: pkg }, 201);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "get",
+      path: "/packages/{name}/{version}/dist/tarball",
+      summary: "Download tarball",
+      description: "Returns the gzipped tarball bytes for a specific package version.",
+      request: { params: z.object({ name: nameParam, version: versionParam }) },
+      responses: {
+        200: {
+          content: {
+            "application/gzip": {
+              schema: z.string().openapi({ type: "string", format: "binary" }),
+            },
+          },
+          description: "Tarball bytes",
+        },
+        400: jsonFail("Invalid version"),
+        404: jsonFail("Not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, version } = c.req.valid("param");
+      const cache = edgeCache();
+      const cacheKey = new Request(c.req.url);
+      const hit = cache ? await cache.match(cacheKey) : undefined;
+      const data = hit
+        ? new Uint8Array(await hit.arrayBuffer())
+        : await serviceFor(c.env).readTarball(name, version);
+      // These bytes are always backed by a plain ArrayBuffer (from arrayBuffer()
+      // or an in-memory copy), which is what c.body's typed overload expects.
+      const res = c.body(data as Uint8Array<ArrayBuffer>, 200, {
+        "Content-Type": "application/gzip",
+        "Cache-Control": CACHE_CONTROL,
+      });
+      if (cache && !hit) c.executionCtx.waitUntil(cache.put(cacheKey, res.clone()));
+      return res;
+    },
   );
 }
 
-const service = new PackageService();
-
-const listFactory = makeFactory([{ statusCode: 500, schema: errorSchema }]);
-export const listPackagesEndpoint = listFactory.build({
-  tag: "Packages",
-  shortDescription: "List packages",
-  description: "Returns all CPM packages in the registry.",
-  method: "get",
-  input: z.object({}),
-  output: z.object({ packages: z.array(packageSchema) }),
-  handler: async () => ({ packages: await service.list() }),
-});
-
-const getFactory = makeFactory([
-  { statusCode: [400], schema: failSchema },
-  {
-    statusCode: 404,
-    schema: z.object({
-      status: z.literal("fail"),
-      data: z.object({
-        message: z.union([z.literal("Package not found"), z.literal("Package version not found")]),
-      }),
-    }),
-  },
-  { statusCode: 500, schema: errorSchema },
-]);
-export const getPackageEndpoint = getFactory.build({
-  tag: "Packages",
-  shortDescription: "Get package",
-  description: "Returns the CPM package entry for the given package name.",
-  method: "get",
-  input: z.object({ name: z.string().nonempty() }),
-  output: packageSchema,
-  handler: async ({ input }) => service.get(input.name),
-});
-
-export const getPackageVersionEndpoint = getFactory.build({
-  tag: "Packages",
-  shortDescription: "Get package version",
-  description: "Returns the specific version entry for the given package.",
-  method: "get",
-  input: z.object({ name: z.string().nonempty(), version: semverSchema }),
-  output: packageVersionSchema,
-  handler: async ({ input }) => service.getVersion(input.name, input.version),
-});
-
-const publishFactory = makeFactory(
-  [
-    { statusCode: 400, schema: failSchema },
-    { statusCode: 409, schema: failSchema },
-    { statusCode: 500, schema: errorSchema },
-  ],
-  201,
-);
-export const publishPackageEndpoint = publishFactory.build({
-  tag: "Packages",
-  shortDescription: "Publish package version",
-  description:
-    "Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send metadata JSON as `meta` plus the tarball file as `tarball` in multipart/form-data.",
-  method: "post",
-  input: z.object({
-    meta: z.preprocess((value) => {
-      if (typeof value === "string") {
-        try {
-          return JSON.parse(value);
-        } catch {
-          return value;
-        }
-      }
-
-      return value;
-    }, packageVersionMetadataSchema),
-    tarball: ez.upload(),
-  }),
-  output: packageSchema,
-  handler: async ({ input }) => await service.publish(input.meta, input.tarball),
-});
-
-const downloadFactory = new EndpointsFactory(
-  new ResultHandler({
-    positive: { schema: ez.buffer(), mimeType: "application/gzip" },
-    negative: [
-      { statusCode: [400, 404], schema: failSchema },
-      { statusCode: 500, schema: errorSchema },
-    ],
-    handler: ({ error, output, response }) => {
-      if (error) {
-        const httpError = ensureHttpError(error);
-        const message = getMessageFromError(error);
-
-        if (400 <= httpError.statusCode && httpError.statusCode < 500) {
-          return void response
-            .status(httpError.statusCode)
-            .json({ status: "fail", data: { message } });
-        }
-
-        return void response.status(httpError.statusCode).json({ status: "error", message });
-      }
-
-      // `output` is loosely typed as FlatObject; the endpoint guarantees a Buffer
-      // here, which is what the branded buffer response schema expects.
-      const tarball = output.data as Parameters<typeof response.send>[0];
-      return void response.type("application/gzip").send(tarball);
-    },
-  }),
-);
-export const downloadTarballEndpoint = downloadFactory.build({
-  tag: "Packages",
-  shortDescription: "Download tarball",
-  description: "Returns the gzipped tarball bytes for a specific package version.",
-  method: "get",
-  input: z.object({ name: z.string().nonempty(), version: semverSchema }),
-  output: z.object({ data: ez.buffer() }),
-  handler: async ({ input }) => ({ data: await service.readTarball(input.name, input.version) }),
-});
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new BadRequestError("`meta` must be valid JSON");
+  }
+}

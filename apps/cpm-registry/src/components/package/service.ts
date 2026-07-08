@@ -1,151 +1,84 @@
-import fsSync from "node:fs";
-import { promises as fs } from "node:fs";
-import path from "node:path";
-
-import type { UploadedFile } from "express-fileupload";
-import createHttpError from "http-errors";
-import { z } from "zod";
-
-import { env } from "../../env.js";
+import { BadRequestError, ConflictError, NotFoundError } from "../../errors.js";
 import { computeDigests } from "./integrity.js";
-import {
-  packageSchema,
-  type Package,
-  type PackageVersion,
-  type PackageVersionMetadata,
-} from "./schemas.js";
+import type { Package, PackageVersion, PackageVersionMetadata } from "./schemas.js";
+import { type RegistryStore, type TarballStore, tarballKey, tarballPath } from "./store/types.js";
 import { pickLatest } from "./version.js";
 
+/**
+ * Registry business logic, independent of both the HTTP framework and the
+ * storage backend: it talks to a {@link RegistryStore} (the index) and a
+ * {@link TarballStore} (blob bytes). Production wires these to D1 and R2; tests
+ * wire them to in-memory fakes.
+ */
 export class PackageService {
-  private readonly storageRoot: string;
-  private readonly indexPath: string;
+  constructor(
+    private readonly registry: RegistryStore,
+    private readonly tarballs: TarballStore,
+  ) {}
 
-  constructor(storageRoot = env.STORAGE_DIR) {
-    this.storageRoot = storageRoot;
-    this.indexPath = path.join(this.storageRoot, "registry.json");
-  }
-
-  async list(): Promise<Package[]> {
-    const registry = await this.loadRegistry();
-    return Array.from(registry.values());
+  list(): Promise<Package[]> {
+    return this.registry.list();
   }
 
   async get(name: string): Promise<Package> {
-    const registry = await this.loadRegistry();
-    const pkg = registry.get(name);
-    if (!pkg) {
-      throw createHttpError(404, "Package not found");
-    }
+    const pkg = await this.registry.get(name);
+    if (!pkg) throw new NotFoundError("Package not found");
     return pkg;
   }
 
   async getVersion(name: string, version: string): Promise<PackageVersion> {
     const pkg = await this.get(name);
     const entry = pkg.versions[version];
-    if (!entry) {
-      throw createHttpError(404, "Package version not found");
-    }
+    if (!entry) throw new NotFoundError("Package version not found");
     return entry;
   }
 
-  async publish(metadata: PackageVersionMetadata, tarball: UploadedFile): Promise<Package> {
-    if (!tarball.data || tarball.data.length === 0) {
-      throw createHttpError(400, "Tarball data is missing");
+  async publish(metadata: PackageVersionMetadata, data: Uint8Array): Promise<Package> {
+    if (data.byteLength === 0) {
+      throw new BadRequestError("Tarball data is missing");
     }
 
-    const registry = await this.loadRegistry();
-    const existing = registry.get(metadata.name);
-
-    // Published versions are immutable: reject re-publishing an existing version
-    // before touching disk so the stored tarball is never clobbered.
+    const existing = await this.registry.get(metadata.name);
+    // Published versions are immutable. Reject before any write so the stored
+    // tarball is never clobbered; the store's primary key is the atomic backstop
+    // for a concurrent publish that slips past this check.
     if (existing?.versions[metadata.version]) {
-      throw createHttpError(
-        409,
+      throw new ConflictError(
         `Version ${metadata.version} of "${metadata.name}" is already published and immutable`,
       );
     }
 
-    const { shasum, integrity } = computeDigests(tarball.data);
-    await this.persistTarball(metadata, tarball);
-
-    const metaEntry: PackageVersion = {
+    const { shasum, integrity } = computeDigests(data);
+    const key = tarballKey(metadata.name, shasum);
+    const entry: PackageVersion = {
       ...metadata,
-      dist: { tarball: this.getTarballUrl(metadata.name, metadata.version), shasum, integrity },
+      dist: { tarball: tarballPath(metadata.name, metadata.version), shasum, integrity },
     };
 
-    if (existing) {
-      existing.versions[metadata.version] = metaEntry;
-      existing["dist-tags"].latest = pickLatest(Object.keys(existing.versions));
-      await this.saveRegistry(registry);
-      return existing;
-    }
+    const versions = existing
+      ? [...Object.keys(existing.versions), metadata.version]
+      : [metadata.version];
+    const latest = pickLatest(versions);
 
-    const newPackage: Package = {
+    // The key is content-addressed, so writing bytes before the index commit is
+    // safe: a losing racer writes to a different key (different content) or the
+    // identical key with identical bytes, never corrupting the winner.
+    await this.tarballs.put(key, data);
+
+    return this.registry.addVersion({
       name: metadata.name,
       author: metadata.author,
-      "dist-tags": { latest: metadata.version },
-      versions: {
-        [metadata.version]: metaEntry,
-      },
-    };
-    registry.set(metadata.name, newPackage);
-    await this.saveRegistry(registry);
-    return newPackage;
+      entry,
+      tarballKey: key,
+      distTags: { ...existing?.["dist-tags"], latest },
+    });
   }
 
-  async readTarball(name: string, version: string): Promise<Buffer> {
-    // Validate the version exists (throws 404) before reaching for the file.
-    await this.getVersion(name, version);
-    const filePath = path.join(this.storageRoot, name, this.getTarballName(name, version));
-    try {
-      return await fs.readFile(filePath);
-    } catch {
-      throw createHttpError(404, "Tarball not found");
-    }
-  }
-
-  private async persistTarball(metadata: PackageVersionMetadata, tarball: UploadedFile) {
-    const filename = this.getTarballName(metadata.name, metadata.version);
-    const packageDir = path.join(this.storageRoot, metadata.name);
-    await fs.mkdir(packageDir, { recursive: true });
-    const targetPath = path.join(packageDir, filename);
-    await fs.writeFile(targetPath, tarball.data);
-  }
-
-  private getTarballName(name: string, version: string) {
-    return `${encodeURIComponent(name)}-${encodeURIComponent(version)}.tgz`;
-  }
-
-  private getTarballUrl(name: string, version: string) {
-    return `/packages/${encodeURIComponent(name)}/${encodeURIComponent(version)}/dist/tarball`;
-  }
-
-  private async loadRegistry() {
-    const registry = new Map<string, Package>();
-    try {
-      if (!fsSync.existsSync(this.indexPath)) return registry;
-      const data = await fs.readFile(this.indexPath, "utf8");
-      const parsed = JSON.parse(data);
-      const validated = z.array(packageSchema).safeParse(parsed);
-      if (!validated.success) {
-        console.error("Failed to load package index: validation error", validated.error.format());
-        return registry;
-      }
-      for (const pkg of validated.data) {
-        registry.set(pkg.name, pkg);
-      }
-    } catch (err) {
-      console.error("Failed to load package index", err);
-    }
-    return registry;
-  }
-
-  private async saveRegistry(registry: Map<string, Package>) {
-    const dir = path.dirname(this.indexPath);
-    await fs.mkdir(dir, { recursive: true });
-    const payload = JSON.stringify(Array.from(registry.values()), null, 2);
-    const tmpPath = `${this.indexPath}.tmp`;
-    await fs.writeFile(tmpPath, payload, "utf8");
-    await fs.rename(tmpPath, this.indexPath);
+  async readTarball(name: string, version: string): Promise<Uint8Array> {
+    // Resolve the version first (throws 404), then reach for its bytes.
+    const entry = await this.getVersion(name, version);
+    const data = await this.tarballs.get(tarballKey(name, entry.dist.shasum));
+    if (!data) throw new NotFoundError("Tarball not found");
+    return data;
   }
 }
