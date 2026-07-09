@@ -1,6 +1,6 @@
 {
   "name": "cpm-registry",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Cloudflare Workers API for the official CPM registry, hosting Lua-based cpm packages.",
   "author": "chrille0313",
