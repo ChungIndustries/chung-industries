@@ -26,7 +26,7 @@ These docs are published to Scalar automatically by the Release workflow wheneve
 ## Getting started
 
 1. Install dependencies: `pnpm install`
-2. Configuration lives in [`wrangler.toml`](wrangler.toml). The runtime bindings (`DB`, `BUCKET`) are declared there; there are no `.env` files. `wrangler dev` provisions local miniflare D1/R2 automatically.
+2. Configuration lives in [`wrangler.toml`](wrangler.toml). The runtime bindings (`DB`, `BUCKET`) are declared there; there are no `.env` files. `wrangler dev` provisions local miniflare D1/R2 automatically. The `Env` type the code uses is generated from `wrangler.toml` into `worker-configuration.d.ts` by `pnpm gen-types`; rerun it (and commit the result) whenever bindings change.
 3. Apply the D1 schema locally: `pnpm db:migrate` (adds migrations under [`migrations/`](migrations)).
 4. Run locally: `pnpm dev` (`wrangler dev`, local D1 + R2).
 5. Check the Worker bundles: `pnpm build` (`wrangler deploy --dry-run`).

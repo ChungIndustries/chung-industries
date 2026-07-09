@@ -1,6 +1,5 @@
 import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import type { Bindings } from "@/bindings";
 import {
   packageSchema,
   packageVersionMetadataSchema,
@@ -14,9 +13,9 @@ import { R2TarballStore } from "@/components/package/store/r2";
 import { BadRequestError } from "@/errors";
 import { jsonFail, jsonSuccess, serverError } from "@/jsend";
 
-type App = OpenAPIHono<{ Bindings: Bindings }>;
+type App = OpenAPIHono<{ Bindings: Env }>;
 
-function serviceFor(env: Bindings): PackageService {
+function serviceFor(env: Env): PackageService {
   return new PackageService(new D1RegistryStore(env.DB), new R2TarballStore(env.BUCKET));
 }
 

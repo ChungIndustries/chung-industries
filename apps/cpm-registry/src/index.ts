@@ -1,7 +1,6 @@
 import { OpenAPIHono, z } from "@hono/zod-openapi";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-import type { Bindings } from "@/bindings";
 import { registerPackageRoutes } from "@/components/package/routes";
 import { RegistryError } from "@/errors";
 
@@ -18,7 +17,9 @@ export const openApiBase = {
   tags: [{ name: "Packages", description: "Endpoints for browsing and retrieving cpm packages." }],
 };
 
-export const app = new OpenAPIHono<{ Bindings: Bindings }>({
+// `Env` is generated from wrangler.toml by `pnpm gen-types` (worker-configuration.d.ts),
+// so the bindings the code sees cannot drift from the ones the runtime injects.
+export const app = new OpenAPIHono<{ Bindings: Env }>({
   // Input (params/query/body) validation failures become JSend `fail`.
   defaultHook: (result, c) => {
     if (!result.success) {

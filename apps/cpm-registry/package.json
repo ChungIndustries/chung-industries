@@ -12,6 +12,7 @@
     "db:migrate": "wrangler d1 migrations apply cpm-registry --local",
     "db:migrate:remote": "wrangler d1 migrations apply cpm-registry --remote",
     "gen-docs": "tsx src/gen-docs.ts",
+    "gen-types": "wrangler types --include-runtime=false",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
