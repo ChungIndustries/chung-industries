@@ -16,7 +16,7 @@ enabled = true
 binding = "DB"
 database_name = "cpm-registry"
 # Fill this in with the id printed by `wrangler d1 create cpm-registry`.
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "3c5a91ac-0d83-4e27-9949-1161f15a313c"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
