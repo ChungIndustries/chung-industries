@@ -50,12 +50,15 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       # The prepare phase deliberately did not tag. Detect the released projects
-      # from the merge commit, tag each as {projectName}@{version}, and push the
-      # tags. The tag command uses only git and node builtins, so no dependency
-      # install is needed here (add the setup action if that ever changes).
+      # from the merge commit, tag each as {projectName}@{version}, push the
+      # tags, and create a GitHub Release per tag with the changelog section as
+      # notes. Uses only git, node builtins, and the preinstalled gh CLI, so no
+      # dependency install is needed here (add the setup action if that changes).
       # On a recovery dispatch, HEAD is not necessarily a release commit; skip.
-      - name: Tag released projects
+      - name: Tag released projects and create GitHub Releases
         if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: node tools/release.mjs tag
 
       # Whether cpm-registry was part of this release, detected via the

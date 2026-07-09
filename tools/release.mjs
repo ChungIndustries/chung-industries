@@ -19,11 +19,14 @@
 //     released projects by diffing package.json versions between HEAD^1 and
 //     HEAD (the release PR is force-rebuilt from main and always merges as
 //     exactly one commit), creates the {projectName}@{version} tag for each,
-//     and pushes the tags. Uses only git and node builtins so CI can run it
+//     pushes the tags, and creates a GitHub Release per tag with that version's
+//     CHANGELOG.md section as the notes. Uses only git, node builtins, and the
+//     gh CLI (preinstalled on runners; needs GH_TOKEN), so CI can run it
 //     without installing dependencies.
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
 const { positionals, values } = parseArgs({
@@ -156,7 +159,7 @@ function tagReleasedProjects() {
       console.log(`Tag ${tag} already exists, skipping.`);
       continue;
     }
-    tags.push(tag);
+    tags.push({ tag, dir: file === "package.json" ? "." : dirname(file), version: current.version });
   }
 
   if (tags.length === 0) {
@@ -164,7 +167,7 @@ function tagReleasedProjects() {
     return;
   }
 
-  for (const tag of tags) {
+  for (const { tag } of tags) {
     if (dryRun) {
       console.log(`Would create tag ${tag}`);
     } else {
@@ -175,9 +178,44 @@ function tagReleasedProjects() {
   if (dryRun) {
     console.log("Would push tags to origin.");
   } else {
-    git("push", "origin", ...tags.map((tag) => `refs/tags/${tag}`));
+    git("push", "origin", ...tags.map(({ tag }) => `refs/tags/${tag}`));
     console.log("Pushed tags to origin.");
   }
+
+  // A GitHub Release per tag, with that version's changelog section as notes.
+  // Piggybacks on the tag-exists skip above, so re-running a completed release
+  // stays a no-op.
+  for (const { tag, dir, version } of tags) {
+    const notes = changelogSection(dir, version) ?? `See ${dir}/CHANGELOG.md.`;
+    if (dryRun) {
+      console.log(`Would create GitHub release ${tag}`);
+      continue;
+    }
+    execFileSync("gh", ["release", "create", tag, "--verify-tag", "--title", tag, "--notes", notes], {
+      stdio: "inherit",
+    });
+    console.log(`Created GitHub release ${tag}`);
+  }
+}
+
+// The section for one version in a project's CHANGELOG.md: from its "## <version>"
+// heading (nx renders "## <version> (<date>)") up to the next release heading.
+function changelogSection(projectDir, version) {
+  let changelog;
+  try {
+    changelog = readFileSync(join(projectDir, "CHANGELOG.md"), "utf8");
+  } catch {
+    return null;
+  }
+  const lines = changelog.split("\n");
+  const start = lines.findIndex(
+    (line) => line === `## ${version}` || line.startsWith(`## ${version} `),
+  );
+  if (start === -1) return null;
+  const rest = lines.slice(start + 1);
+  const next = rest.findIndex((line) => line.startsWith("## "));
+  const body = (next === -1 ? rest : rest.slice(0, next)).join("\n").trim();
+  return body || null;
 }
 
 const [command] = positionals;
