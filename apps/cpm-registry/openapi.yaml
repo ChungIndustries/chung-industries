@@ -1,20 +1,136 @@
-openapi: 3.1.0
+openapi: 3.0.0
 info:
   title: CPM Registry
   version: 0.0.0-development
   description: API for the CPM Registry, used by the Chung Package Manager (cpm)
     to host and distribute ComputerCraft-focused Lua packages.
+servers:
+  - url: https://registry.cpm.chungindustries.com
+tags:
+  - name: Packages
+    description: Endpoints for browsing and retrieving cpm packages.
+components:
+  schemas:
+    Package:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: ^[a-zA-Z0-9._-]+$
+          example: example
+        author:
+          type: string
+          example: chungindustries
+        dist-tags:
+          $ref: "#/components/schemas/DistTags"
+        versions:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/PackageVersion"
+          example:
+            1.0.0:
+              name: example
+              author: chungindustries
+              version: 1.0.0
+              dependencies:
+                cc-http: ^1.2.0
+              dist:
+                tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+      required:
+        - name
+        - dist-tags
+        - versions
+      additionalProperties: false
+    DistTags:
+      type: object
+      properties:
+        latest:
+          type: string
+          example: 1.0.0
+          description: Semantic version string
+      required:
+        - latest
+      additionalProperties:
+        type: string
+        example: 1.0.0
+        description: Semantic version string
+      example:
+        latest: 1.0.0
+      description: Distribution tags mapping tag names to versions (npm-compatible)
+    PackageVersion:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: ^[a-zA-Z0-9._-]+$
+          example: example
+        version:
+          type: string
+          example: 1.0.0
+          description: Semantic version string
+        author:
+          type: string
+          example: chungindustries
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+            example: ^1.2.0
+            description: Semantic version range string
+          example:
+            cc-http: ^1.2.0
+          description: Dependency map of package name to semver range
+        dist:
+          type: object
+          properties:
+            tarball:
+              type: string
+              example: /packages/example/1.0.0/dist/tarball
+              description: Tarball path
+            shasum:
+              type: string
+              pattern: ^[a-f0-9]{40}$
+              example: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+              description: SHA-1 hex digest of the tarball (npm-compatible)
+            integrity:
+              type: string
+              pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
+              example: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+              description: Subresource Integrity (SRI) sha512 digest of the tarball
+          required:
+            - tarball
+            - shasum
+            - integrity
+          additionalProperties: false
+          description: Distribution info
+      required:
+        - name
+        - version
+        - dist
+      additionalProperties: false
+      example:
+        name: example
+        author: chungindustries
+        version: 1.0.0
+        dependencies:
+          cc-http: ^1.2.0
+        dist:
+          tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
+          shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+          integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+  parameters: {}
 paths:
   /packages:
     get:
-      operationId: GetPackages
-      summary: List packages
-      description: Returns all CPM packages in the registry.
       tags:
         - Packages
+      summary: List packages
+      description: Returns all CPM packages in the registry.
       responses:
         "200":
-          description: GET /packages Positive response
+          description: All packages
           content:
             application/json:
               schema:
@@ -22,148 +138,22 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: success
+                    enum:
+                      - success
                   data:
                     type: object
                     properties:
                       packages:
                         type: array
                         items:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                              pattern: ^[a-z0-9._-]+$
-                              examples:
-                                - example
-                            author:
-                              examples:
-                                - chungindustries
-                              type: string
-                            dist-tags:
-                              type: object
-                              properties:
-                                latest:
-                                  type: string
-                                  examples:
-                                    - 1.0.0
-                                  description: Semantic version string
-                              required:
-                                - latest
-                              additionalProperties:
-                                type: string
-                                examples:
-                                  - 1.0.0
-                                description: Semantic version string
-                              examples:
-                                - latest: 1.0.0
-                              description: Distribution tags mapping tag names to versions (npm-compatible)
-                            versions:
-                              type: object
-                              propertyNames:
-                                type: string
-                                examples:
-                                  - 1.0.0
-                                description: Semantic version string
-                              additionalProperties:
-                                type: object
-                                properties:
-                                  name:
-                                    type: string
-                                    pattern: ^[a-z0-9._-]+$
-                                    examples:
-                                      - example
-                                  version:
-                                    type: string
-                                    examples:
-                                      - 1.0.0
-                                    description: Semantic version string
-                                  author:
-                                    examples:
-                                      - chungindustries
-                                    type: string
-                                  dependencies:
-                                    examples:
-                                      - cc-http: ^1.2.0
-                                    description: Dependency map of package name to semver range
-                                    type: object
-                                    propertyNames:
-                                      type: string
-                                      pattern: ^[a-z0-9._-]+$
-                                      examples:
-                                        - example
-                                      description: Dependency name
-                                    additionalProperties:
-                                      type: string
-                                      examples:
-                                        - ^1.2.0
-                                      description: Semantic version range string
-                                  dist:
-                                    type: object
-                                    properties:
-                                      tarball:
-                                        type: string
-                                        examples:
-                                          - /packages/example/1.0.0/dist/tarball
-                                        description: Tarball path
-                                      shasum:
-                                        type: string
-                                        pattern: ^[a-f0-9]{40}$
-                                        examples:
-                                          - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                        description: SHA-1 hex digest of the tarball (npm-compatible)
-                                      integrity:
-                                        type: string
-                                        pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
-                                        examples:
-                                          - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                                        description: Subresource Integrity (SRI) sha512 digest of the tarball
-                                    required:
-                                      - tarball
-                                      - shasum
-                                      - integrity
-                                    additionalProperties: false
-                                    description: Distribution info
-                                required:
-                                  - name
-                                  - version
-                                  - dist
-                                additionalProperties: false
-                                examples:
-                                  - name: example
-                                    author: chungindustries
-                                    version: 1.0.0
-                                    dependencies:
-                                      cc-http: ^1.2.0
-                                    dist:
-                                      tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                                      shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                      integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                              examples:
-                                - 1.0.0:
-                                    name: example
-                                    author: chungindustries
-                                    version: 1.0.0
-                                    dependencies:
-                                      cc-http: ^1.2.0
-                                    dist:
-                                      tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                                      shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                      integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                          required:
-                            - name
-                            - dist-tags
-                            - versions
-                          additionalProperties: false
+                          $ref: "#/components/schemas/Package"
                     required:
                       - packages
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
         "500":
-          description: GET /packages Negative response
+          description: Unexpected error
           content:
             application/json:
               schema:
@@ -171,88 +161,42 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: error
+                    enum:
+                      - error
                   message:
                     type: string
                     minLength: 1
                 required:
                   - status
                   - message
-                additionalProperties: false
-    head:
-      operationId: HeadPackages
-      summary: List packages
-      description: Returns all CPM packages in the registry.
+    post:
       tags:
         - Packages
-      responses:
-        "200":
-          description: HEAD /packages Positive response
-        "500":
-          description: HEAD /packages Negative response
-    post:
-      operationId: PostPackages
       summary: Publish package version
       description: "Creates a package if missing, or adds a new version to an existing
         one. Published versions are immutable: re-publishing an existing version
         returns 409. Send metadata JSON as `meta` plus the tarball file as
         `tarball` in multipart/form-data."
-      tags:
-        - Packages
       requestBody:
-        description: POST /packages Request body
+        required: true
         content:
           multipart/form-data:
             schema:
               type: object
               properties:
                 meta:
-                  properties:
-                    name:
-                      type: string
-                      pattern: ^[a-z0-9._-]+$
-                      examples:
-                        - example
-                    version:
-                      type: string
-                      examples:
-                        - 1.0.0
-                      description: Semantic version string
-                    author:
-                      examples:
-                        - chungindustries
-                      type: string
-                    dependencies:
-                      examples:
-                        - cc-http: ^1.2.0
-                      description: Dependency map of package name to semver range
-                      type: object
-                      propertyNames:
-                        type: string
-                        pattern: ^[a-z0-9._-]+$
-                        examples:
-                          - example
-                        description: Dependency name
-                      additionalProperties:
-                        type: string
-                        examples:
-                          - ^1.2.0
-                        description: Semantic version range string
-                  required:
-                    - name
-                    - version
-                  additionalProperties: false
-                  format: object (preprocessed)
+                  type: string
+                  description: Package version metadata as a JSON string
+                  example: '{"name":"example","version":"1.0.0"}'
                 tarball:
                   type: string
                   format: binary
+                  description: gzipped tarball bytes
               required:
                 - meta
-                - tarball
-        required: true
       responses:
-        "200":
-          description: POST /packages Positive response
+        "201":
+          description: Published
           content:
             application/json:
               schema:
@@ -260,156 +204,15 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: success
+                    enum:
+                      - success
                   data:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        pattern: ^[a-z0-9._-]+$
-                        examples:
-                          - example
-                      author:
-                        examples:
-                          - chungindustries
-                        type: string
-                      dist-tags:
-                        type: object
-                        properties:
-                          latest:
-                            type: string
-                            examples:
-                              - 1.0.0
-                            description: Semantic version string
-                        required:
-                          - latest
-                        additionalProperties:
-                          type: string
-                          examples:
-                            - 1.0.0
-                          description: Semantic version string
-                        examples:
-                          - latest: 1.0.0
-                        description: Distribution tags mapping tag names to versions (npm-compatible)
-                      versions:
-                        type: object
-                        propertyNames:
-                          type: string
-                          examples:
-                            - 1.0.0
-                          description: Semantic version string
-                        additionalProperties:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                              pattern: ^[a-z0-9._-]+$
-                              examples:
-                                - example
-                            version:
-                              type: string
-                              examples:
-                                - 1.0.0
-                              description: Semantic version string
-                            author:
-                              examples:
-                                - chungindustries
-                              type: string
-                            dependencies:
-                              examples:
-                                - cc-http: ^1.2.0
-                              description: Dependency map of package name to semver range
-                              type: object
-                              propertyNames:
-                                type: string
-                                pattern: ^[a-z0-9._-]+$
-                                examples:
-                                  - example
-                                description: Dependency name
-                              additionalProperties:
-                                type: string
-                                examples:
-                                  - ^1.2.0
-                                description: Semantic version range string
-                            dist:
-                              type: object
-                              properties:
-                                tarball:
-                                  type: string
-                                  examples:
-                                    - /packages/example/1.0.0/dist/tarball
-                                  description: Tarball path
-                                shasum:
-                                  type: string
-                                  pattern: ^[a-f0-9]{40}$
-                                  examples:
-                                    - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                  description: SHA-1 hex digest of the tarball (npm-compatible)
-                                integrity:
-                                  type: string
-                                  pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
-                                  examples:
-                                    - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                                  description: Subresource Integrity (SRI) sha512 digest of the tarball
-                              required:
-                                - tarball
-                                - shasum
-                                - integrity
-                              additionalProperties: false
-                              description: Distribution info
-                          required:
-                            - name
-                            - version
-                            - dist
-                          additionalProperties: false
-                          examples:
-                            - name: example
-                              author: chungindustries
-                              version: 1.0.0
-                              dependencies:
-                                cc-http: ^1.2.0
-                              dist:
-                                tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                        examples:
-                          - 1.0.0:
-                              name: example
-                              author: chungindustries
-                              version: 1.0.0
-                              dependencies:
-                                cc-http: ^1.2.0
-                              dist:
-                                tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                    required:
-                      - name
-                      - dist-tags
-                      - versions
-                    additionalProperties: false
-                    examples:
-                      - name: example
-                        author: chungindustries
-                        dist-tags:
-                          latest: 1.0.0
-                        versions:
-                          1.0.0:
-                            name: example
-                            author: chungindustries
-                            version: 1.0.0
-                            dependencies:
-                              cc-http: ^1.2.0
-                            dist:
-                              tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                              shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                              integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                    $ref: "#/components/schemas/Package"
                 required:
                   - status
                   - data
-                additionalProperties: false
         "400":
-          description: POST /packages Negative response 400
+          description: Invalid request
           content:
             application/json:
               schema:
@@ -417,7 +220,8 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: fail
+                    enum:
+                      - fail
                   data:
                     type: object
                     properties:
@@ -426,13 +230,11 @@ paths:
                         minLength: 1
                     required:
                       - message
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
         "409":
-          description: POST /packages Negative response 409
+          description: Version already published
           content:
             application/json:
               schema:
@@ -440,7 +242,8 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: fail
+                    enum:
+                      - fail
                   data:
                     type: object
                     properties:
@@ -449,13 +252,11 @@ paths:
                         minLength: 1
                     required:
                       - message
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
         "500":
-          description: POST /packages Negative response 500
+          description: Unexpected error
           content:
             application/json:
               schema:
@@ -463,32 +264,31 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: error
+                    enum:
+                      - error
                   message:
                     type: string
                     minLength: 1
                 required:
                   - status
                   - message
-                additionalProperties: false
   /packages/{name}:
     get:
-      operationId: GetPackagesName
-      summary: Get package
-      description: Returns the CPM package entry for the given package name.
       tags:
         - Packages
+      summary: Get package
+      description: Returns the CPM package entry for the given package name.
       parameters:
-        - name: name
-          in: path
-          required: true
-          description: GET /packages/:name Parameter
-          schema:
+        - schema:
             type: string
             minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
       responses:
         "200":
-          description: GET /packages/:name Positive response
+          description: The package
           content:
             application/json:
               schema:
@@ -496,156 +296,15 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: success
+                    enum:
+                      - success
                   data:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        pattern: ^[a-z0-9._-]+$
-                        examples:
-                          - example
-                      author:
-                        examples:
-                          - chungindustries
-                        type: string
-                      dist-tags:
-                        type: object
-                        properties:
-                          latest:
-                            type: string
-                            examples:
-                              - 1.0.0
-                            description: Semantic version string
-                        required:
-                          - latest
-                        additionalProperties:
-                          type: string
-                          examples:
-                            - 1.0.0
-                          description: Semantic version string
-                        examples:
-                          - latest: 1.0.0
-                        description: Distribution tags mapping tag names to versions (npm-compatible)
-                      versions:
-                        type: object
-                        propertyNames:
-                          type: string
-                          examples:
-                            - 1.0.0
-                          description: Semantic version string
-                        additionalProperties:
-                          type: object
-                          properties:
-                            name:
-                              type: string
-                              pattern: ^[a-z0-9._-]+$
-                              examples:
-                                - example
-                            version:
-                              type: string
-                              examples:
-                                - 1.0.0
-                              description: Semantic version string
-                            author:
-                              examples:
-                                - chungindustries
-                              type: string
-                            dependencies:
-                              examples:
-                                - cc-http: ^1.2.0
-                              description: Dependency map of package name to semver range
-                              type: object
-                              propertyNames:
-                                type: string
-                                pattern: ^[a-z0-9._-]+$
-                                examples:
-                                  - example
-                                description: Dependency name
-                              additionalProperties:
-                                type: string
-                                examples:
-                                  - ^1.2.0
-                                description: Semantic version range string
-                            dist:
-                              type: object
-                              properties:
-                                tarball:
-                                  type: string
-                                  examples:
-                                    - /packages/example/1.0.0/dist/tarball
-                                  description: Tarball path
-                                shasum:
-                                  type: string
-                                  pattern: ^[a-f0-9]{40}$
-                                  examples:
-                                    - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                  description: SHA-1 hex digest of the tarball (npm-compatible)
-                                integrity:
-                                  type: string
-                                  pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
-                                  examples:
-                                    - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                                  description: Subresource Integrity (SRI) sha512 digest of the tarball
-                              required:
-                                - tarball
-                                - shasum
-                                - integrity
-                              additionalProperties: false
-                              description: Distribution info
-                          required:
-                            - name
-                            - version
-                            - dist
-                          additionalProperties: false
-                          examples:
-                            - name: example
-                              author: chungindustries
-                              version: 1.0.0
-                              dependencies:
-                                cc-http: ^1.2.0
-                              dist:
-                                tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                        examples:
-                          - 1.0.0:
-                              name: example
-                              author: chungindustries
-                              version: 1.0.0
-                              dependencies:
-                                cc-http: ^1.2.0
-                              dist:
-                                tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                    required:
-                      - name
-                      - dist-tags
-                      - versions
-                    additionalProperties: false
-                    examples:
-                      - name: example
-                        author: chungindustries
-                        dist-tags:
-                          latest: 1.0.0
-                        versions:
-                          1.0.0:
-                            name: example
-                            author: chungindustries
-                            version: 1.0.0
-                            dependencies:
-                              cc-http: ^1.2.0
-                            dist:
-                              tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                              shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                              integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                    $ref: "#/components/schemas/Package"
                 required:
                   - status
                   - data
-                additionalProperties: false
-        "400":
-          description: GET /packages/:name Negative response 400
+        "404":
+          description: Package not found
           content:
             application/json:
               schema:
@@ -653,7 +312,8 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: fail
+                    enum:
+                      - fail
                   data:
                     type: object
                     properties:
@@ -662,39 +322,11 @@ paths:
                         minLength: 1
                     required:
                       - message
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
-        "404":
-          description: GET /packages/:name Negative response 404
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    const: fail
-                  data:
-                    type: object
-                    properties:
-                      message:
-                        anyOf:
-                          - type: string
-                            const: Package not found
-                          - type: string
-                            const: Package version not found
-                    required:
-                      - message
-                    additionalProperties: false
-                required:
-                  - status
-                  - data
-                additionalProperties: false
         "500":
-          description: GET /packages/:name Negative response 500
+          description: Unexpected error
           content:
             application/json:
               schema:
@@ -702,67 +334,39 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: error
+                    enum:
+                      - error
                   message:
                     type: string
                     minLength: 1
                 required:
                   - status
                   - message
-                additionalProperties: false
-    head:
-      operationId: HeadPackagesName
-      summary: Get package
-      description: Returns the CPM package entry for the given package name.
-      tags:
-        - Packages
-      parameters:
-        - name: name
-          in: path
-          required: true
-          description: HEAD /packages/:name Parameter
-          schema:
-            type: string
-            minLength: 1
-      responses:
-        "200":
-          description: HEAD /packages/:name Positive response
-        "400":
-          description: HEAD /packages/:name Negative response 400
-        "404":
-          description: HEAD /packages/:name Negative response 404
-        "500":
-          description: HEAD /packages/:name Negative response 500
   /packages/{name}/{version}:
     get:
-      operationId: GetPackagesNameVersion
-      summary: Get package version
-      description: Returns the specific version entry for the given package.
       tags:
         - Packages
+      summary: Get package version
+      description: Returns the specific version entry for the given package.
       parameters:
-        - name: name
-          in: path
-          required: true
-          description: GET /packages/:name/:version Parameter
-          schema:
+        - schema:
             type: string
             minLength: 1
-        - name: version
+            example: example
+          required: true
+          name: name
           in: path
+        - schema:
+            type: string
+            example: 1.0.0
+            description: Semantic version string
           required: true
           description: Semantic version string
-          schema:
-            type: string
-            examples:
-              - 1.0.0
-            description: Semantic version string
-          examples:
-            example1:
-              value: 1.0.0
+          name: version
+          in: path
       responses:
         "200":
-          description: GET /packages/:name/:version Positive response
+          description: The version
           content:
             application/json:
               schema:
@@ -770,87 +374,15 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: success
+                    enum:
+                      - success
                   data:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        pattern: ^[a-z0-9._-]+$
-                        examples:
-                          - example
-                      version:
-                        type: string
-                        examples:
-                          - 1.0.0
-                        description: Semantic version string
-                      author:
-                        examples:
-                          - chungindustries
-                        type: string
-                      dependencies:
-                        examples:
-                          - cc-http: ^1.2.0
-                        description: Dependency map of package name to semver range
-                        type: object
-                        propertyNames:
-                          type: string
-                          pattern: ^[a-z0-9._-]+$
-                          examples:
-                            - example
-                          description: Dependency name
-                        additionalProperties:
-                          type: string
-                          examples:
-                            - ^1.2.0
-                          description: Semantic version range string
-                      dist:
-                        type: object
-                        properties:
-                          tarball:
-                            type: string
-                            examples:
-                              - /packages/example/1.0.0/dist/tarball
-                            description: Tarball path
-                          shasum:
-                            type: string
-                            pattern: ^[a-f0-9]{40}$
-                            examples:
-                              - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                            description: SHA-1 hex digest of the tarball (npm-compatible)
-                          integrity:
-                            type: string
-                            pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
-                            examples:
-                              - sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                            description: Subresource Integrity (SRI) sha512 digest of the tarball
-                        required:
-                          - tarball
-                          - shasum
-                          - integrity
-                        additionalProperties: false
-                        description: Distribution info
-                    required:
-                      - name
-                      - version
-                      - dist
-                    additionalProperties: false
-                    examples:
-                      - name: example
-                        author: chungindustries
-                        version: 1.0.0
-                        dependencies:
-                          cc-http: ^1.2.0
-                        dist:
-                          tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                          shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                          integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                    $ref: "#/components/schemas/PackageVersion"
                 required:
                   - status
                   - data
-                additionalProperties: false
         "400":
-          description: GET /packages/:name/:version Negative response 400
+          description: Invalid version
           content:
             application/json:
               schema:
@@ -858,7 +390,8 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: fail
+                    enum:
+                      - fail
                   data:
                     type: object
                     properties:
@@ -867,13 +400,11 @@ paths:
                         minLength: 1
                     required:
                       - message
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
         "404":
-          description: GET /packages/:name/:version Negative response 404
+          description: Package or version not found
           content:
             application/json:
               schema:
@@ -881,25 +412,21 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: fail
+                    enum:
+                      - fail
                   data:
                     type: object
                     properties:
                       message:
-                        anyOf:
-                          - type: string
-                            const: Package not found
-                          - type: string
-                            const: Package version not found
+                        type: string
+                        minLength: 1
                     required:
                       - message
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
         "500":
-          description: GET /packages/:name/:version Negative response 500
+          description: Unexpected error
           content:
             application/json:
               schema:
@@ -907,87 +434,46 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: error
+                    enum:
+                      - error
                   message:
                     type: string
                     minLength: 1
                 required:
                   - status
                   - message
-                additionalProperties: false
-    head:
-      operationId: HeadPackagesNameVersion
-      summary: Get package version
-      description: Returns the specific version entry for the given package.
-      tags:
-        - Packages
-      parameters:
-        - name: name
-          in: path
-          required: true
-          description: HEAD /packages/:name/:version Parameter
-          schema:
-            type: string
-            minLength: 1
-        - name: version
-          in: path
-          required: true
-          description: Semantic version string
-          schema:
-            type: string
-            examples:
-              - 1.0.0
-            description: Semantic version string
-          examples:
-            example1:
-              value: 1.0.0
-      responses:
-        "200":
-          description: HEAD /packages/:name/:version Positive response
-        "400":
-          description: HEAD /packages/:name/:version Negative response 400
-        "404":
-          description: HEAD /packages/:name/:version Negative response 404
-        "500":
-          description: HEAD /packages/:name/:version Negative response 500
   /packages/{name}/{version}/dist/tarball:
     get:
-      operationId: GetPackagesNameVersionDistTarball
-      summary: Download tarball
-      description: Returns the gzipped tarball bytes for a specific package version.
       tags:
         - Packages
+      summary: Download tarball
+      description: Returns the gzipped tarball bytes for a specific package version.
       parameters:
-        - name: name
-          in: path
-          required: true
-          description: GET /packages/:name/:version/dist/tarball Parameter
-          schema:
+        - schema:
             type: string
             minLength: 1
-        - name: version
+            example: example
+          required: true
+          name: name
           in: path
+        - schema:
+            type: string
+            example: 1.0.0
+            description: Semantic version string
           required: true
           description: Semantic version string
-          schema:
-            type: string
-            examples:
-              - 1.0.0
-            description: Semantic version string
-          examples:
-            example1:
-              value: 1.0.0
+          name: version
+          in: path
       responses:
         "200":
-          description: GET /packages/:name/:version/dist/tarball Positive response
+          description: Tarball bytes
           content:
             application/gzip:
               schema:
-                externalDocs:
-                  description: raw binary data
-                  url: https://swagger.io/specification/#working-with-binary-data
+                type: string
+                format: binary
         "400":
-          description: GET /packages/:name/:version/dist/tarball Negative response 400
+          description: Invalid version
           content:
             application/json:
               schema:
@@ -995,7 +481,8 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: fail
+                    enum:
+                      - fail
                   data:
                     type: object
                     properties:
@@ -1004,13 +491,11 @@ paths:
                         minLength: 1
                     required:
                       - message
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
         "404":
-          description: GET /packages/:name/:version/dist/tarball Negative response 404
+          description: Not found
           content:
             application/json:
               schema:
@@ -1018,7 +503,8 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: fail
+                    enum:
+                      - fail
                   data:
                     type: object
                     properties:
@@ -1027,13 +513,11 @@ paths:
                         minLength: 1
                     required:
                       - message
-                    additionalProperties: false
                 required:
                   - status
                   - data
-                additionalProperties: false
         "500":
-          description: GET /packages/:name/:version/dist/tarball Negative response 500
+          description: Unexpected error
           content:
             application/json:
               schema:
@@ -1041,61 +525,11 @@ paths:
                 properties:
                   status:
                     type: string
-                    const: error
+                    enum:
+                      - error
                   message:
                     type: string
                     minLength: 1
                 required:
                   - status
                   - message
-                additionalProperties: false
-    head:
-      operationId: HeadPackagesNameVersionDistTarball
-      summary: Download tarball
-      description: Returns the gzipped tarball bytes for a specific package version.
-      tags:
-        - Packages
-      parameters:
-        - name: name
-          in: path
-          required: true
-          description: HEAD /packages/:name/:version/dist/tarball Parameter
-          schema:
-            type: string
-            minLength: 1
-        - name: version
-          in: path
-          required: true
-          description: Semantic version string
-          schema:
-            type: string
-            examples:
-              - 1.0.0
-            description: Semantic version string
-          examples:
-            example1:
-              value: 1.0.0
-      responses:
-        "200":
-          description: HEAD /packages/:name/:version/dist/tarball Positive response
-        "400":
-          description: HEAD /packages/:name/:version/dist/tarball Negative response 400
-        "404":
-          description: HEAD /packages/:name/:version/dist/tarball Negative response 404
-        "500":
-          description: HEAD /packages/:name/:version/dist/tarball Negative response 500
-components:
-  schemas: {}
-  responses: {}
-  parameters: {}
-  examples: {}
-  requestBodies: {}
-  headers: {}
-  securitySchemes: {}
-  links: {}
-  callbacks: {}
-tags:
-  - name: Packages
-    description: Endpoints for browsing and retrieving cpm packages.
-servers:
-  - url: https://registry.cpm.chungindustries.com

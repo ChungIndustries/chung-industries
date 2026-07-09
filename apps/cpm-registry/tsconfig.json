@@ -1,8 +1,12 @@
 {
-  "extends": "@total-typescript/tsconfig/tsc/no-dom/app",
+  "extends": "@total-typescript/tsconfig/bundler/no-dom",
   "compilerOptions": {
-    "outDir": "dist"
+    "types": ["@cloudflare/workers-types", "node"],
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src", "tests"],
+  "include": ["src", "tests", "worker-configuration.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,26 +1,12 @@
-import fs from "node:fs";
+import { writeFileSync } from "node:fs";
+import process from "node:process";
 
-import { Documentation } from "express-zod-api";
+import { stringify } from "yaml";
 
-import config from "./config.js";
-import { routing } from "./routing.js";
+import { app, openApiBase } from "@/index";
 
-const specification = new Documentation({
-  routing,
-  config,
-  version: "0.0.0-development",
-  title: "CPM Registry",
-  serverUrl: "https://registry.cpm.chungindustries.com",
-  tags: {
-    Packages: {
-      description: "Endpoints for browsing and retrieving cpm packages.",
-    },
-  },
-});
-
-specification.addDescription(
-  "API for the CPM Registry, used by the Chung Package Manager (cpm) to host and distribute ComputerCraft-focused Lua packages.",
-);
-
+// The committed openapi.yaml is the source of truth for the hosted Scalar docs;
+// CI fails if it drifts from the code (see .github/workflows/generate-docs.yml).
+const document = app.getOpenAPIDocument(openApiBase);
 const outputPath = process.argv[2] ?? process.env.API_SPEC_PATH ?? "openapi.yaml";
-fs.writeFileSync(outputPath, specification.getSpecAsYaml());
+writeFileSync(outputPath, stringify(document));

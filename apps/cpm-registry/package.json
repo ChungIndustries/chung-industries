@@ -2,14 +2,17 @@
   "name": "cpm-registry",
   "version": "0.0.0",
   "private": true,
-  "description": "Express API for the official CPM registry, hosting Lua-based cpm packages.",
+  "description": "Cloudflare Workers API for the official CPM registry, hosting Lua-based cpm packages.",
   "author": "chrille0313",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
-    "start": "cross-env NODE_ENV=production node dist/index.js",
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply cpm-registry --local",
+    "db:migrate:remote": "wrangler d1 migrations apply cpm-registry --remote",
     "gen-docs": "tsx src/gen-docs.ts",
+    "gen-types": "wrangler types --include-runtime=false",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -17,25 +20,21 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "cross-env": "^10.1.0",
-    "dotenv-flow": "^4.1.0",
-    "express": "^5.2.1",
-    "express-fileupload": "^1.5.2",
-    "express-zod-api": "^26.0.0",
-    "http-errors": "^2.0.1",
+    "@hono/zod-openapi": "^1.4.0",
+    "hono": "^4.12.28",
     "semver": "^7.7.4",
     "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260707.1",
     "@total-typescript/tsconfig": "^1.0.4",
-    "@types/express": "^5.0.6",
-    "@types/express-fileupload": "^1.5.1",
-    "@types/http-errors": "^2.0.5",
     "@types/node": "^26.0.1",
     "@types/semver": "^7.7.1",
     "@workspace/lint-config": "workspace:*",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "wrangler": "^4.108.0",
+    "yaml": "^2.9.0"
   }
 }

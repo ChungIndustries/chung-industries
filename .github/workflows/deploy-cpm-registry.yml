@@ -1,0 +1,35 @@
+name: Deploy CPM Registry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/cpm-registry/**"
+
+concurrency:
+  group: deploy-cpm-registry
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      # Create a Cloudflare API token with Workers Scripts, D1, and R2 edit
+      # permissions and add these two repository secrets.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # Applies any pending D1 migrations to the remote database before the new
+      # Worker (which may depend on them) goes live.
+      - name: Apply D1 migrations
+        run: pnpm --filter cpm-registry db:migrate:remote
+
+      - name: Deploy Worker
+        run: pnpm --filter cpm-registry deploy

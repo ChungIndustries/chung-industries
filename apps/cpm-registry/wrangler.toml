@@ -1,0 +1,24 @@
+# Cloudflare Workers configuration for the CPM registry.
+#
+# The registry runs as a single Worker. Package metadata lives in D1 (the `DB`
+# binding) and tarball bytes live in R2 (the `BUCKET` binding); both are reached
+# via bindings, so there is no inter-service egress. `nodejs_compat` is enabled
+# for the `node:crypto` / `node:buffer` built-ins used when hashing tarballs.
+name = "cpm-registry"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cpm-registry"
+# Fill this in with the id printed by `wrangler d1 create cpm-registry`.
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "cpm-registry-tarballs"
