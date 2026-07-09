@@ -9,6 +9,10 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  # Recovery hatch: re-runs the publish/deploy half of a release that failed
+  # after tagging. Tagging is idempotent (existing tags are a no-op) and the
+  # publish/deploy steps fall back to the newest cpm-registry tag.
+  workflow_dispatch:
 
 concurrency:
   group: release
@@ -20,10 +24,12 @@ permissions:
 jobs:
   release:
     name: Tag and publish the merged release
-    # Only the merge (not a plain close) of the release branch, and only when merged.
+    # Only the merge (not a plain close) of the release branch, and only when
+    # merged - or a manual recovery dispatch.
     if: >
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.head.ref == 'release/next'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'release/next')
     runs-on: ubuntu-latest
     outputs:
       cpm-registry-version: ${{ steps.released.outputs.cpm-registry-version }}
@@ -47,18 +53,31 @@ jobs:
       # from the merge commit, tag each as {projectName}@{version}, and push the
       # tags. The tag command uses only git and node builtins, so no dependency
       # install is needed here (add the setup action if that ever changes).
+      # On a recovery dispatch, HEAD is not necessarily a release commit; skip.
       - name: Tag released projects
+        if: github.event_name == 'pull_request'
         run: node tools/release.mjs tag
 
       # Whether cpm-registry was part of this release, detected via the
       # cpm-registry@{version} tag just created. Gates the Scalar publish below
-      # and the deploy job.
+      # and the deploy job. A recovery dispatch falls back to the newest
+      # cpm-registry tag, re-publishing that release's artifacts from main.
       - name: Detect released cpm-registry version
         id: released
         run: |
           version="$(git tag --points-at HEAD | sed -n 's/^cpm-registry@//p' | head -n1)"
+          if [ -z "$version" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="$(git tag -l 'cpm-registry@*' --sort=-version:refname | head -n1 | sed 's/^cpm-registry@//')"
+          fi
           echo "cpm-registry-version=$version" >> "$GITHUB_OUTPUT"
           echo "cpm-registry release detected: '${version:-none}'"
+
+      # @scalar/cli requires Node >= 24; the runner default is older, and this
+      # job intentionally skips the full pnpm setup action.
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
 
       # Publishes the committed (CI-verified) OpenAPI spec to the Scalar registry,
       # versioned by the release tag.
@@ -84,6 +103,7 @@ jobs:
       # Tidy up so the next release starts from a fresh branch (best-effort; the repo
       # may already auto-delete merged branches). Uses the checkout-persisted token.
       - name: Delete release branch
+        if: github.event_name == 'pull_request'
         run: git push origin --delete release/next || true
 
   # Deploys ride the release train: only a release that includes cpm-registry
