@@ -1,8 +1,13 @@
-import { BadRequestError, ConflictError, NotFoundError } from "../../errors.js";
-import { computeDigests } from "./integrity.js";
-import type { Package, PackageVersion, PackageVersionMetadata } from "./schemas.js";
-import { type RegistryStore, type TarballStore, tarballKey, tarballPath } from "./store/types.js";
-import { pickLatest } from "./version.js";
+import { computeDigests } from "@/components/package/integrity";
+import type { Package, PackageVersion, PackageVersionMetadata } from "@/components/package/schemas";
+import {
+  type RegistryStore,
+  type TarballStore,
+  tarballKey,
+  tarballPath,
+} from "@/components/package/store/types";
+import { pickLatest } from "@/components/package/version";
+import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 
 /**
  * Registry business logic, independent of both the HTTP framework and the

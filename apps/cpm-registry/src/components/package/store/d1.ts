@@ -1,6 +1,10 @@
-import { ConflictError } from "../../../errors.js";
-import type { Package, PackageVersion } from "../schemas.js";
-import { type AddVersionInput, type RegistryStore, tarballPath } from "./types.js";
+import type { Package, PackageVersion } from "@/components/package/schemas";
+import {
+  type AddVersionInput,
+  type RegistryStore,
+  tarballPath,
+} from "@/components/package/store/types";
+import { ConflictError } from "@/errors";
 
 interface PackageRow {
   name: string;

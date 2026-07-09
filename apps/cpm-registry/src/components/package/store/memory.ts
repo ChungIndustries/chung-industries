@@ -1,6 +1,10 @@
-import { ConflictError } from "../../../errors.js";
-import type { Package } from "../schemas.js";
-import type { AddVersionInput, RegistryStore, TarballStore } from "./types.js";
+import type { Package } from "@/components/package/schemas";
+import type {
+  AddVersionInput,
+  RegistryStore,
+  TarballStore,
+} from "@/components/package/store/types";
+import { ConflictError } from "@/errors";
 
 /**
  * In-memory {@link RegistryStore} used by the service unit tests. It mirrors the

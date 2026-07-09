@@ -1,4 +1,4 @@
-import type { TarballStore } from "./types.js";
+import type { TarballStore } from "@/components/package/store/types";
 
 /** R2-backed tarball storage. */
 export class R2TarballStore implements TarballStore {

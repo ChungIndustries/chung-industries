@@ -2,12 +2,9 @@ import { createHash } from "node:crypto";
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { PackageVersionMetadata } from "../src/components/package/schemas.js";
-import { PackageService } from "../src/components/package/service.js";
-import {
-  InMemoryRegistryStore,
-  InMemoryTarballStore,
-} from "../src/components/package/store/memory.js";
+import type { PackageVersionMetadata } from "@/components/package/schemas";
+import { PackageService } from "@/components/package/service";
+import { InMemoryRegistryStore, InMemoryTarballStore } from "@/components/package/store/memory";
 
 const sha512 = (data: Uint8Array) => `sha512-${createHash("sha512").update(data).digest("base64")}`;
 const sha1 = (data: Uint8Array) => createHash("sha1").update(data).digest("hex");

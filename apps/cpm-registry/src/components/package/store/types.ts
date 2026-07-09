@@ -1,4 +1,4 @@
-import type { Package, PackageVersion } from "../schemas.js";
+import type { Package, PackageVersion } from "@/components/package/schemas";
 
 export interface AddVersionInput {
   name: string;

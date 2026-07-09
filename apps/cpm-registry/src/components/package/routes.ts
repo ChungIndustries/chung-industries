@@ -1,18 +1,18 @@
 import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import type { Bindings } from "../../bindings.js";
-import { BadRequestError } from "../../errors.js";
-import { jsonFail, jsonSuccess, serverError } from "../../jsend.js";
+import type { Bindings } from "@/bindings";
 import {
   packageSchema,
   packageVersionMetadataSchema,
   packageVersionSchema,
   semverSchema,
   type PackageVersionMetadata,
-} from "./schemas.js";
-import { PackageService } from "./service.js";
-import { D1RegistryStore } from "./store/d1.js";
-import { R2TarballStore } from "./store/r2.js";
+} from "@/components/package/schemas";
+import { PackageService } from "@/components/package/service";
+import { D1RegistryStore } from "@/components/package/store/d1";
+import { R2TarballStore } from "@/components/package/store/r2";
+import { BadRequestError } from "@/errors";
+import { jsonFail, jsonSuccess, serverError } from "@/jsend";
 
 type App = OpenAPIHono<{ Bindings: Bindings }>;
 

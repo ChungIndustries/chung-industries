@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pickLatest } from "../src/components/package/version.js";
+import { pickLatest } from "@/components/package/version";
 
 describe("pickLatest", () => {
   it("selects the highest stable release", () => {

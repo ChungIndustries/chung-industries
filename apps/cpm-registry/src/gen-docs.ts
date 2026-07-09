@@ -3,7 +3,7 @@ import process from "node:process";
 
 import { stringify } from "yaml";
 
-import { app, openApiBase } from "./index.js";
+import { app, openApiBase } from "@/index";
 
 // The committed openapi.yaml is the source of truth for the hosted Scalar docs;
 // CI fails if it drifts from the code (see .github/workflows/generate-docs.yml).
