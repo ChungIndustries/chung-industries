@@ -1,4 +1,4 @@
-name: Generate API Docs
+name: Generated Files (cpm-registry)
 
 on:
   pull_request:
@@ -22,5 +22,14 @@ jobs:
           if ! git diff --ignore-space-at-eol --exit-code --quiet apps/cpm-registry/openapi.yaml; then
             echo "Detected uncommitted changes after generating the OpenAPI spec. Run 'pnpm --filter cpm-registry gen-docs' and commit apps/cpm-registry/openapi.yaml. See diff below:"
             git diff apps/cpm-registry/openapi.yaml
+            exit 1
+          fi
+
+      - name: Verify generated Env types match wrangler.toml
+        run: |
+          pnpm --filter cpm-registry gen-types
+          if ! git diff --ignore-space-at-eol --exit-code --quiet apps/cpm-registry/worker-configuration.d.ts; then
+            echo "Detected uncommitted changes after generating Worker Env types. Run 'pnpm --filter cpm-registry gen-types' and commit apps/cpm-registry/worker-configuration.d.ts. See diff below:"
+            git diff apps/cpm-registry/worker-configuration.d.ts
             exit 1
           fi
