@@ -159,7 +159,11 @@ function tagReleasedProjects() {
       console.log(`Tag ${tag} already exists, skipping.`);
       continue;
     }
-    tags.push({ tag, dir: file === "package.json" ? "." : dirname(file), version: current.version });
+    tags.push({
+      tag,
+      dir: file === "package.json" ? "." : dirname(file),
+      version: current.version,
+    });
   }
 
   if (tags.length === 0) {
@@ -191,9 +195,13 @@ function tagReleasedProjects() {
       console.log(`Would create GitHub release ${tag}`);
       continue;
     }
-    execFileSync("gh", ["release", "create", tag, "--verify-tag", "--title", tag, "--notes", notes], {
-      stdio: "inherit",
-    });
+    execFileSync(
+      "gh",
+      ["release", "create", tag, "--verify-tag", "--title", tag, "--notes", notes],
+      {
+        stdio: "inherit",
+      },
+    );
     console.log(`Created GitHub release ${tag}`);
   }
 }
