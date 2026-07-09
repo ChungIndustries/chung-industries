@@ -1,19 +1,19 @@
 name: Deploy CPM Registry
 
+# Deploys are release-gated: release.yml calls this workflow after a release
+# that includes cpm-registry (detected via the cpm-registry@{version} tag).
+# workflow_dispatch remains for manual deploys/redeploys of current main.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/cpm-registry/**"
-
-concurrency:
-  group: deploy-cpm-registry
-  cancel-in-progress: false
+  workflow_call:
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: deploy-cpm-registry
+      cancel-in-progress: false
     env:
       # Create a Cloudflare API token with Workers Scripts, D1, and R2 edit
       # permissions and add these two repository secrets.
@@ -22,6 +22,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Always deploy main, regardless of the calling event's sha.
+          ref: main
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -31,5 +34,7 @@ jobs:
       - name: Apply D1 migrations
         run: pnpm --filter cpm-registry db:migrate:remote
 
+      # `run deploy`, not `deploy`: pnpm's built-in deploy command shadows the
+      # package script of the same name.
       - name: Deploy Worker
-        run: pnpm --filter cpm-registry deploy
+        run: pnpm --filter cpm-registry run deploy

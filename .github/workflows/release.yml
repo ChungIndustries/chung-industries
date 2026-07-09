@@ -25,6 +25,8 @@ jobs:
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref == 'release/next'
     runs-on: ubuntu-latest
+    outputs:
+      cpm-registry-version: ${{ steps.released.outputs.cpm-registry-version }}
     steps:
       - name: Checkout main (post-merge)
         uses: actions/checkout@v7
@@ -48,14 +50,23 @@ jobs:
       - name: Tag released projects
         run: node tools/release.mjs tag
 
-      # Publishes the committed (CI-verified) OpenAPI spec to the Scalar registry, but
-      # only when cpm-registry was part of this release, detected via the
-      # cpm-registry@{version} tag just created. Versioned by that tag.
+      # Whether cpm-registry was part of this release, detected via the
+      # cpm-registry@{version} tag just created. Gates the Scalar publish below
+      # and the deploy job.
+      - name: Detect released cpm-registry version
+        id: released
+        run: |
+          version="$(git tag --points-at HEAD | sed -n 's/^cpm-registry@//p' | head -n1)"
+          echo "cpm-registry-version=$version" >> "$GITHUB_OUTPUT"
+          echo "cpm-registry release detected: '${version:-none}'"
+
+      # Publishes the committed (CI-verified) OpenAPI spec to the Scalar registry,
+      # versioned by the release tag.
       - name: Publish CPM Registry docs to Scalar
         env:
           SCALAR_API_KEY: ${{ secrets.SCALAR_API_KEY }}
+          version: ${{ steps.released.outputs.cpm-registry-version }}
         run: |
-          version="$(git tag --points-at HEAD | sed -n 's/^cpm-registry@//p' | head -n1)"
           if [ -z "$version" ]; then
             echo "cpm-registry was not released in this run, skipping Scalar publish."
             exit 0
@@ -74,3 +85,13 @@ jobs:
       # may already auto-delete merged branches). Uses the checkout-persisted token.
       - name: Delete release branch
         run: git push origin --delete release/next || true
+
+  # Deploys ride the release train: only a release that includes cpm-registry
+  # ships the Worker. Manual deploys stay available via the called workflow's
+  # workflow_dispatch trigger.
+  deploy-cpm-registry:
+    name: Deploy CPM Registry
+    needs: release
+    if: needs.release.outputs.cpm-registry-version != ''
+    uses: ./.github/workflows/deploy-cpm-registry.yml
+    secrets: inherit

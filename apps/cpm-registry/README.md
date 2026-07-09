@@ -34,9 +34,11 @@ These docs are published to Scalar automatically by the Release workflow wheneve
 
 ## Deployment
 
-Deployment is automated by [`.github/workflows/deploy-cpm-registry.yml`](../../.github/workflows/deploy-cpm-registry.yml) on pushes to `main` that touch this project. It applies remote D1 migrations, then runs `wrangler deploy`. First-time setup (one-off, on your Cloudflare account):
+Deployment is release-gated: merging the release PR runs [`release.yml`](../../.github/workflows/release.yml), and when the release includes cpm-registry (a `cpm-registry@{version}` tag was created), it calls [`deploy-cpm-registry.yml`](../../.github/workflows/deploy-cpm-registry.yml) to apply remote D1 migrations and run `wrangler deploy`. Ordinary merges to `main` do not deploy. For a manual deploy or redeploy of current `main`, run the "Deploy CPM Registry" workflow from the Actions tab (`workflow_dispatch`).
+
+First-time setup (one-off, on your Cloudflare account):
 
 1. `wrangler d1 create cpm-registry` and paste the printed `database_id` into `wrangler.toml`.
 2. `wrangler r2 bucket create cpm-registry-tarballs`.
 3. Add repository secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts + D1 + R2 edit) and `CLOUDFLARE_ACCOUNT_ID`.
-4. Apply migrations and deploy once by hand if you like: `pnpm db:migrate:remote` then `pnpm deploy`.
+4. Apply migrations and deploy once by hand if you like: `pnpm db:migrate:remote` then `pnpm run deploy` (`run` is required; pnpm's built-in `deploy` command shadows the script).
