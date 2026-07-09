@@ -2,7 +2,7 @@ import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { Bindings } from "../../bindings.js";
 import { BadRequestError } from "../../errors.js";
-import { jsonFail, serverError, success } from "../../jsend.js";
+import { jsonFail, jsonSuccess, serverError } from "../../jsend.js";
 import {
   packageSchema,
   packageVersionMetadataSchema,
@@ -61,12 +61,7 @@ export function registerPackageRoutes(app: App): void {
       summary: "List packages",
       description: "Returns all CPM packages in the registry.",
       responses: {
-        200: {
-          content: {
-            "application/json": { schema: success(z.object({ packages: z.array(packageSchema) })) },
-          },
-          description: "All packages",
-        },
+        200: jsonSuccess(z.object({ packages: z.array(packageSchema) }), "All packages"),
         500: serverError,
       },
     }),
@@ -86,10 +81,7 @@ export function registerPackageRoutes(app: App): void {
       description: "Returns the CPM package entry for the given package name.",
       request: { params: z.object({ name: nameParam }) },
       responses: {
-        200: {
-          content: { "application/json": { schema: success(packageSchema) } },
-          description: "The package",
-        },
+        200: jsonSuccess(packageSchema, "The package"),
         404: jsonFail("Package not found"),
         500: serverError,
       },
@@ -113,10 +105,7 @@ export function registerPackageRoutes(app: App): void {
       description: "Returns the specific version entry for the given package.",
       request: { params: z.object({ name: nameParam, version: versionParam }) },
       responses: {
-        200: {
-          content: { "application/json": { schema: success(packageVersionSchema) } },
-          description: "The version",
-        },
+        200: jsonSuccess(packageVersionSchema, "The version"),
         400: jsonFail("Invalid version"),
         404: jsonFail("Package or version not found"),
         500: serverError,
@@ -160,10 +149,7 @@ export function registerPackageRoutes(app: App): void {
         },
       },
       responses: {
-        201: {
-          content: { "application/json": { schema: success(packageSchema) } },
-          description: "Published",
-        },
+        201: jsonSuccess(packageSchema, "Published"),
         400: jsonFail("Invalid request"),
         409: jsonFail("Version already published"),
         500: serverError,

@@ -16,6 +16,12 @@ export const failSchema = z.object({
 
 export const errorSchema = z.object({ status: z.literal("error"), message: z.string().min(1) });
 
+/** OpenAPI response entry for a JSend `success` (2xx) wrapping the given data schema. */
+export const jsonSuccess = <T extends z.ZodTypeAny>(data: T, description: string) => ({
+  content: { "application/json": { schema: success(data) } },
+  description,
+});
+
 /** OpenAPI response entry for a JSend `fail` (4xx). */
 export const jsonFail = (description: string) => ({
   content: { "application/json": { schema: failSchema } },

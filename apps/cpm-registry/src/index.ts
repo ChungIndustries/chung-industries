@@ -2,7 +2,7 @@ import { OpenAPIHono, z } from "@hono/zod-openapi";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import type { Bindings } from "./bindings.js";
-import { registerPackageRoutes } from "./components/package/endpoints.js";
+import { registerPackageRoutes } from "./components/package/routes.js";
 import { RegistryError } from "./errors.js";
 
 /** Static half of the OpenAPI document; the paths are filled in from the routes. */
