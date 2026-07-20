@@ -78,7 +78,7 @@ jobs:
       # @scalar/cli requires Node >= 24; the runner default is older, and this
       # job intentionally skips the full pnpm setup action.
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: package.json
 
