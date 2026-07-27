@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { PackageVersionMetadata } from "@/components/package/schemas";
 import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { InMemoryRegistryStore, InMemoryTarballStore } from "@/components/package/store/memory";
+import { tarballKey } from "@/components/package/store/types";
 
 const sha512 = (data: Uint8Array) => `sha512-${createHash("sha512").update(data).digest("base64")}`;
 const sha1 = (data: Uint8Array) => createHash("sha1").update(data).digest("hex");
@@ -17,9 +18,11 @@ function meta(version: string): PackageVersionMetadata {
 
 describe("PackageService", () => {
   let service: PackageService;
+  let tarballs: InMemoryTarballStore;
 
   beforeEach(() => {
-    service = new PackageService(new InMemoryRegistryStore(), new InMemoryTarballStore());
+    tarballs = new InMemoryTarballStore();
+    service = new PackageService(new InMemoryRegistryStore(), tarballs);
   });
 
   it("round-trips publish -> resolve latest -> download with a matching checksum", async () => {
@@ -82,6 +85,7 @@ describe("PackageService", () => {
 
     // The rejected publish never reached the index or the tarball store.
     await expect(service.get("example")).rejects.toMatchObject({ status: 404 });
+    expect(await tarballs.get(tarballKey("example", sha1(oversized)))).toBeNull();
   });
 
   it("accepts a tarball exactly at the size limit", async () => {
