@@ -5,7 +5,7 @@ The official registry service for the Chung Package Manager (CPM), providing a h
 ## What it does
 
 - Hosts CPM package metadata (in D1) and tarballs (in R2) for distribution.
-- Validates publish requests and enforces immutable, integrity-checked versions.
+- Validates publish requests and enforces immutable, integrity-checked versions, capped at 5 MB per tarball.
 - Generates an OpenAPI/Scalar documentation site for the HTTP API.
 
 ## Architecture

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { PackageVersionMetadata } from "@/components/package/schemas";
-import { PackageService } from "@/components/package/service";
+import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { InMemoryRegistryStore, InMemoryTarballStore } from "@/components/package/store/memory";
 
 const sha512 = (data: Uint8Array) => `sha512-${createHash("sha512").update(data).digest("base64")}`;
@@ -73,6 +73,23 @@ describe("PackageService", () => {
     await expect(service.publish(meta("1.0.0"), new Uint8Array())).rejects.toMatchObject({
       status: 400,
     });
+  });
+
+  it("rejects a tarball over the size limit and stores nothing", async () => {
+    const oversized = new Uint8Array(MAX_TARBALL_BYTES + 1);
+
+    await expect(service.publish(meta("1.0.0"), oversized)).rejects.toMatchObject({ status: 413 });
+
+    // The rejected publish never reached the index or the tarball store.
+    await expect(service.get("example")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("accepts a tarball exactly at the size limit", async () => {
+    const atLimit = new Uint8Array(MAX_TARBALL_BYTES);
+
+    const pkg = await service.publish(meta("1.0.0"), atLimit);
+
+    expect(pkg["dist-tags"].latest).toBe("1.0.0");
   });
 
   it("returns 404 for unknown packages, versions, and tarballs", async () => {
