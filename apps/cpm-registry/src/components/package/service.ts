@@ -10,8 +10,8 @@ import { pickLatest } from "@/components/package/version";
 import { BadRequestError, ConflictError, NotFoundError, PayloadTooLargeError } from "@/errors";
 
 /**
- * Upper bound on a published tarball. Real ComputerCraft Lua packages are
- * kilobytes, so this is generous while keeping an unauthenticated publish
+ * Upper bound on a published tarball, 5 MiB. Real ComputerCraft Lua packages
+ * are kilobytes, so this is generous while keeping an unauthenticated publish
  * endpoint from filling the bucket with large blobs.
  */
 export const MAX_TARBALL_BYTES = 5 * 1024 * 1024;
