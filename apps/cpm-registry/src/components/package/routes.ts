@@ -38,7 +38,9 @@ async function parsePublishForm(form: {
   // Short-circuit on the declared size so an oversized upload is not copied into
   // a Uint8Array just to be rejected. The service re-checks the actual bytes.
   if (form.tarball.size > MAX_TARBALL_BYTES) {
-    throw new PayloadTooLargeError(`Tarball exceeds the maximum size of ${MAX_TARBALL_BYTES} bytes`);
+    throw new PayloadTooLargeError(
+      `Tarball exceeds the maximum size of ${MAX_TARBALL_BYTES} bytes`,
+    );
   }
   return { meta, data: new Uint8Array(await form.tarball.arrayBuffer()) };
 }
