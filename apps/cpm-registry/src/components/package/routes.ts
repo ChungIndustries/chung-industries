@@ -7,10 +7,10 @@ import {
   semverSchema,
   type PackageVersionMetadata,
 } from "@/components/package/schemas";
-import { PackageService } from "@/components/package/service";
+import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { D1RegistryStore } from "@/components/package/store/d1";
 import { R2TarballStore } from "@/components/package/store/r2";
-import { BadRequestError } from "@/errors";
+import { BadRequestError, PayloadTooLargeError } from "@/errors";
 import { jsonFail, jsonSuccess, serverError } from "@/jsend";
 
 type App = OpenAPIHono<{ Bindings: Env }>;
@@ -34,6 +34,11 @@ async function parsePublishForm(form: {
 
   if (!(form.tarball instanceof File)) {
     throw new BadRequestError("Tarball file is missing");
+  }
+  // Short-circuit on the declared size so an oversized upload is not copied into
+  // a Uint8Array just to be rejected. The service re-checks the actual bytes.
+  if (form.tarball.size > MAX_TARBALL_BYTES) {
+    throw new PayloadTooLargeError(`Tarball exceeds the maximum size of ${MAX_TARBALL_BYTES} bytes`);
   }
   return { meta, data: new Uint8Array(await form.tarball.arrayBuffer()) };
 }
