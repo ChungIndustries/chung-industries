@@ -31,3 +31,9 @@ export class ConflictError extends RegistryError {
     super(409, message);
   }
 }
+
+export class PayloadTooLargeError extends RegistryError {
+  constructor(message: string) {
+    super(413, message);
+  }
+}

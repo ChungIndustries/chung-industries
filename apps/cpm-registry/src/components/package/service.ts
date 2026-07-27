@@ -7,7 +7,14 @@ import {
   tarballPath,
 } from "@/components/package/store/types";
 import { pickLatest } from "@/components/package/version";
-import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
+import { BadRequestError, ConflictError, NotFoundError, PayloadTooLargeError } from "@/errors";
+
+/**
+ * Upper bound on a published tarball, 5 MiB. Real ComputerCraft Lua packages
+ * are kilobytes, so this is generous while keeping an unauthenticated publish
+ * endpoint from filling the bucket with large blobs.
+ */
+export const MAX_TARBALL_BYTES = 5 * 1024 * 1024;
 
 /**
  * Registry business logic, independent of both the HTTP framework and the
@@ -41,6 +48,12 @@ export class PackageService {
   async publish(metadata: PackageVersionMetadata, data: Uint8Array): Promise<Package> {
     if (data.byteLength === 0) {
       throw new BadRequestError("Tarball data is missing");
+    }
+    // Enforced here rather than in the route so every transport is covered.
+    if (data.byteLength > MAX_TARBALL_BYTES) {
+      throw new PayloadTooLargeError(
+        `Tarball exceeds the maximum size of ${MAX_TARBALL_BYTES} bytes`,
+      );
     }
 
     const existing = await this.registry.get(metadata.name);
