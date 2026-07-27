@@ -132,8 +132,7 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description:
-        "Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Tarballs larger than 5 MiB (5242880 bytes) are rejected with 413. Send metadata JSON as `meta` plus the tarball file as `tarball` in multipart/form-data.",
+      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Tarballs larger than ${MAX_TARBALL_BYTES / 1024 / 1024} MiB (${MAX_TARBALL_BYTES} bytes) are rejected with 413. Send metadata JSON as \`meta\` plus the tarball file as \`tarball\` in multipart/form-data.`,
       request: {
         body: {
           required: true,
