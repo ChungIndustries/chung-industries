@@ -20,7 +20,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@hono/zod-openapi": "^1.4.0",
+    "@hono/zod-openapi": "^1.5.1",
     "hono": "^4.12.30",
     "semver": "^7.7.4",
     "zod": "^4.4.3"
