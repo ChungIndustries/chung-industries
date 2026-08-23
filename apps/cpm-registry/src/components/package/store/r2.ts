@@ -1,7 +1,7 @@
-import type { TarballStore } from "@/components/package/store/types";
+import type { BlobStore } from "@/components/package/store/types";
 
-/** R2-backed tarball storage. */
-export class R2TarballStore implements TarballStore {
+/** R2-backed blob storage for tarballs and bundles. */
+export class R2BlobStore implements BlobStore {
   constructor(private readonly bucket: R2Bucket) {}
 
   async put(key: string, data: Uint8Array): Promise<void> {

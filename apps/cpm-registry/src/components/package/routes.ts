@@ -1,22 +1,25 @@
 import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import type { Context } from "hono";
 
 import {
   packageSchema,
   packageVersionMetadataSchema,
   packageVersionSchema,
+  resolveRequestSchema,
   semverSchema,
   type PackageVersionMetadata,
 } from "@/components/package/schemas";
 import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { D1RegistryStore } from "@/components/package/store/d1";
-import { R2TarballStore } from "@/components/package/store/r2";
+import { R2BlobStore } from "@/components/package/store/r2";
 import { BadRequestError, PayloadTooLargeError } from "@/errors";
 import { jsonFail, jsonSuccess, serverError } from "@/jsend";
 
 type App = OpenAPIHono<{ Bindings: Env }>;
+type Ctx = Context<{ Bindings: Env }>;
 
 function serviceFor(env: Env): PackageService {
-  return new PackageService(new D1RegistryStore(env.DB), new R2TarballStore(env.BUCKET));
+  return new PackageService(new D1RegistryStore(env.DB), new R2BlobStore(env.BUCKET));
 }
 
 /** Validates the multipart publish form into metadata plus raw tarball bytes. */
@@ -47,9 +50,37 @@ async function parsePublishForm(form: {
 
 // Immutable versions can be cached forever. Repeat downloads are served from the
 // Cloudflare edge cache, so the Worker and R2 are only touched on a cache miss.
-const CACHE_CONTROL = "public, max-age=31536000, immutable";
+const IMMUTABLE = "public, max-age=31536000, immutable";
+// The installer follows cpm's `latest` tag, so it is only briefly cacheable.
+const INSTALLER_CACHE = "public, max-age=300";
+
 function edgeCache(): Cache | undefined {
   return (globalThis as { caches?: CacheStorage }).caches?.default;
+}
+
+/**
+ * Serves immutable artifact bytes through the edge cache. The cached copy is
+ * always the plain bytes with no transfer encoding; `headers` are applied to the
+ * outgoing response only, so the cache never has to reason about encodings.
+ */
+async function serveImmutable(
+  c: Ctx,
+  read: () => Promise<Uint8Array>,
+  headers: Record<string, string>,
+): Promise<Response> {
+  const cache = edgeCache();
+  const cacheKey = new Request(c.req.url);
+  const hit = cache ? await cache.match(cacheKey) : undefined;
+  const data = hit ? new Uint8Array(await hit.arrayBuffer()) : await read();
+  // These bytes are always backed by a plain ArrayBuffer (from arrayBuffer() or
+  // an in-memory copy), which is what c.body's typed overload expects.
+  const bytes = data as Uint8Array<ArrayBuffer>;
+  if (cache && !hit) {
+    c.executionCtx.waitUntil(
+      cache.put(cacheKey, new Response(bytes, { headers: { "Cache-Control": IMMUTABLE } })),
+    );
+  }
+  return c.body(bytes, 200, { ...headers, "Cache-Control": IMMUTABLE });
 }
 
 const nameParam = z
@@ -57,6 +88,7 @@ const nameParam = z
   .min(1)
   .openapi({ param: { name: "name", in: "path" }, example: "example" });
 const versionParam = semverSchema.openapi({ param: { name: "version", in: "path" } });
+const versionParams = z.object({ name: nameParam, version: versionParam });
 
 export function registerPackageRoutes(app: App): void {
   app.openapi(
@@ -109,7 +141,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/packages/{name}/{version}",
       summary: "Get package version",
       description: "Returns the specific version entry for the given package.",
-      request: { params: z.object({ name: nameParam, version: versionParam }) },
+      request: { params: versionParams },
       responses: {
         200: jsonSuccess(packageVersionSchema, "The version"),
         400: jsonFail("Invalid version"),
@@ -132,7 +164,7 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Tarballs larger than ${MAX_TARBALL_BYTES / 1024 / 1024} MiB (${MAX_TARBALL_BYTES} bytes) are rejected with 413. Send metadata JSON as \`meta\` plus the tarball file as \`tarball\` in multipart/form-data.`,
+      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send metadata JSON as \`meta\` plus the tarball file as \`tarball\` in multipart/form-data. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
       request: {
         body: {
           required: true,
@@ -175,7 +207,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/packages/{name}/{version}/dist/tarball",
       summary: "Download tarball",
       description: "Returns the gzipped tarball bytes for a specific package version.",
-      request: { params: z.object({ name: nameParam, version: versionParam }) },
+      request: { params: versionParams },
       responses: {
         200: {
           content: {
@@ -192,20 +224,98 @@ export function registerPackageRoutes(app: App): void {
     }),
     async (c) => {
       const { name, version } = c.req.valid("param");
-      const cache = edgeCache();
-      const cacheKey = new Request(c.req.url);
-      const hit = cache ? await cache.match(cacheKey) : undefined;
-      const data = hit
-        ? new Uint8Array(await hit.arrayBuffer())
-        : await serviceFor(c.env).readTarball(name, version);
-      // These bytes are always backed by a plain ArrayBuffer (from arrayBuffer()
-      // or an in-memory copy), which is what c.body's typed overload expects.
-      const res = c.body(data as Uint8Array<ArrayBuffer>, 200, {
+      return serveImmutable(c, () => serviceFor(c.env).readTarball(name, version), {
         "Content-Type": "application/gzip",
-        "Cache-Control": CACHE_CONTROL,
       });
-      if (cache && !hit) c.executionCtx.waitUntil(cache.put(cacheKey, res.clone()));
-      return res;
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "get",
+      path: "/packages/{name}/{version}/dist/bundle",
+      summary: "Download bundle",
+      description:
+        "Returns the bundle for a specific package version: the artifact the in-game cpm client installs from. Format: `<manifest byte length>\\n<minified manifest JSON><raw concatenated file bytes>`, where the manifest is `{ name, version, files: [{ path, offset, length }] }` with offsets relative to the first byte after the manifest. Served gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`; `dist.bundle.sha256` is the SHA-256 of the decoded bytes.",
+      request: { params: versionParams },
+      responses: {
+        200: {
+          content: {
+            "application/octet-stream": {
+              schema: z.string().openapi({ type: "string", format: "binary" }),
+            },
+          },
+          description: "Bundle bytes",
+        },
+        400: jsonFail("Invalid version"),
+        404: jsonFail("Not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, version } = c.req.valid("param");
+      // Workers compress the body to match an explicit Content-Encoding (the
+      // default `encodeBody: "automatic"`), which is what gives the CC client
+      // Java-side decompression for free without any zone compression rules.
+      // Only opt in for clients that asked. In production the edge normalises
+      // Accept-Encoding to "br, gzip" and transcodes for the real client; locally
+      // wrangler does not transcode, so identity clients see gzip under dev only.
+      const acceptsGzip = /\bgzip\b/i.test(c.req.header("accept-encoding") ?? "");
+      return serveImmutable(c, () => serviceFor(c.env).readBundle(name, version), {
+        "Content-Type": "application/octet-stream",
+        ...(acceptsGzip ? { "Content-Encoding": "gzip" } : {}),
+      });
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "post",
+      path: "/resolve",
+      summary: "Resolve dependencies",
+      description:
+        "Pins one version per package for the given root dependencies and their transitive dependencies. Each spec may be a semver range, an exact version, or a dist-tag. Every requester of a package must agree on a single version (the client installs into a flat store): the highest version satisfying all requested ranges is chosen, and unsatisfiable combinations fail. Results are ordered dependencies-first.",
+      request: {
+        body: { required: true, content: { "application/json": { schema: resolveRequestSchema } } },
+      },
+      responses: {
+        200: jsonSuccess(z.object({ packages: z.array(packageVersionSchema) }), "Pinned packages"),
+        400: jsonFail("Invalid request or unsatisfiable dependencies"),
+        404: jsonFail("Package not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { dependencies } = c.req.valid("json");
+      const packages = await serviceFor(c.env).resolve(dependencies);
+      return c.json({ status: "success" as const, data: { packages } }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Bootstrap"],
+      method: "get",
+      path: "/install",
+      summary: "Bootstrap installer",
+      description:
+        "Serves the cpm bootstrap installer as plain Lua, taken from the latest published `cpm` package. On a fresh CC:Tweaked computer run: `wget run https://registry.cpm.chungindustries.com/install`.",
+      responses: {
+        200: {
+          content: {
+            "text/plain": { schema: z.string().openapi({ example: "-- cpm installer" }) },
+          },
+          description: "Installer Lua source",
+        },
+        404: jsonFail("cpm has not been published"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const installer = new TextDecoder().decode(await serviceFor(c.env).readInstaller());
+      return c.text(installer, 200, { "Cache-Control": INSTALLER_CACHE });
     },
   );
 }

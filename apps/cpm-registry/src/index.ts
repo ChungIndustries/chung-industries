@@ -14,7 +14,10 @@ export const openApiBase = {
       "API for the CPM Registry, used by the Chung Package Manager (cpm) to host and distribute ComputerCraft-focused Lua packages.",
   },
   servers: [{ url: "https://registry.cpm.chungindustries.com" }],
-  tags: [{ name: "Packages", description: "Endpoints for browsing and retrieving cpm packages." }],
+  tags: [
+    { name: "Packages", description: "Endpoints for browsing and retrieving cpm packages." },
+    { name: "Bootstrap", description: "Getting cpm onto a fresh computer." },
+  ],
 };
 
 // `Env` is generated from wrangler.toml by `pnpm gen-types` (worker-configuration.d.ts),

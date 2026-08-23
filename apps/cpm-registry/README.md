@@ -5,7 +5,10 @@ The official registry service for the Chung Package Manager (CPM), providing a h
 ## What it does
 
 - Hosts CPM package metadata (in D1) and tarballs (in R2) for distribution.
-- Validates publish requests and enforces immutable, integrity-checked versions, capped at 5 MiB per tarball.
+- Validates publish requests and enforces immutable, integrity-checked versions, capped at 5 MiB per tarball (512 KiB extracted).
+- Derives a client-facing **bundle** from each published tarball (a length-prefixed JSON manifest plus raw file bytes, served gzip on the wire) so the in-game cpm client never has to gunzip or untar in Lua; see [docs/cpm-client-design.md](../../docs/cpm-client-design.md).
+- Resolves dependency ranges server-side (`POST /resolve`) with the canonical `semver` package, pinning one version per package for the client's flat install store.
+- Serves the cpm bootstrap installer (`GET /install`) straight out of the latest published `cpm` package: `wget run https://registry.cpm.chungindustries.com/install`.
 - Generates an OpenAPI/Scalar documentation site for the HTTP API.
 
 ## Architecture
@@ -13,9 +16,9 @@ The official registry service for the Chung Package Manager (CPM), providing a h
 The Worker holds no local state:
 
 - **Package index** lives in **D1** (`DB` binding). The `versions` table's composite primary key `(package_name, version)` enforces version immutability at the storage layer: a re-publish is a constraint violation, surfaced as HTTP 409.
-- **Tarball bytes** live in **R2** (`BUCKET` binding), keyed content-addressably by the tarball's SHA-1. Downloads are proxied through the Worker with immutable cache headers so the Cloudflare edge serves repeat requests. ([#39](https://github.com/ChungIndustries/chung-industries/issues/39) tracks moving `dist.tarball` to direct public R2 URLs so downloads bypass the Worker entirely.)
+- **Tarball and bundle bytes** live in **R2** (`BUCKET` binding), keyed content-addressably by the tarball's SHA-1 and the bundle's SHA-256 respectively. Downloads are proxied through the Worker with immutable cache headers so the Cloudflare edge serves repeat requests. ([#39](https://github.com/ChungIndustries/chung-industries/issues/39) tracks moving `dist.tarball` to direct public R2 URLs so downloads bypass the Worker entirely.)
 
-Business logic ([`src/components/package/service.ts`](src/components/package/service.ts)) depends on `RegistryStore` and `TarballStore` interfaces; production wires them to D1/R2 adapters, tests wire them to in-memory fakes.
+Business logic ([`src/components/package/service.ts`](src/components/package/service.ts)) depends on `RegistryStore` and `BlobStore` interfaces; production wires them to D1/R2 adapters, tests wire them to in-memory fakes.
 
 ## API documentation
 

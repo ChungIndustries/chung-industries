@@ -2,6 +2,7 @@ import type { Package, PackageVersion } from "@/components/package/schemas";
 import {
   type AddVersionInput,
   type RegistryStore,
+  bundlePath,
   tarballPath,
 } from "@/components/package/store/types";
 import { ConflictError } from "@/errors";
@@ -17,6 +18,8 @@ interface VersionRow {
   dependencies: string | null;
   shasum: string;
   integrity: string;
+  bundle_sha256: string;
+  bundle_size: number;
 }
 interface TagRow {
   package_name: string;
@@ -26,7 +29,7 @@ interface TagRow {
 
 const SELECT_PACKAGES = "SELECT name, author FROM packages";
 const SELECT_VERSIONS =
-  "SELECT package_name, version, author, dependencies, shasum, integrity FROM versions";
+  "SELECT package_name, version, author, dependencies, shasum, integrity, bundle_sha256, bundle_size FROM versions";
 const SELECT_TAGS = "SELECT package_name, tag, version FROM dist_tags";
 
 /** D1-backed package index. Metadata only; tarball bytes live in R2. */
@@ -72,6 +75,7 @@ export class D1RegistryStore implements RegistryStore {
     author,
     entry,
     tarballKey,
+    bundleKey,
     distTags,
   }: AddVersionInput): Promise<Package> {
     const now = Date.now();
@@ -86,16 +90,19 @@ export class D1RegistryStore implements RegistryStore {
       // key, which is exactly how immutability is enforced.
       this.db
         .prepare(
-          "INSERT INTO versions (package_name, version, author, dependencies, shasum, integrity, tarball_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO versions (package_name, version, author, dependencies, shasum, integrity, tarball_key, bundle_sha256, bundle_size, bundle_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(
           name,
           entry.version,
           entry.author ?? null,
           entry.dependencies ? JSON.stringify(entry.dependencies) : null,
-          entry.dist.shasum,
-          entry.dist.integrity,
+          entry.dist.tarball.shasum,
+          entry.dist.tarball.integrity,
           tarballKey,
+          entry.dist.bundle.sha256,
+          entry.dist.bundle.size,
+          bundleKey,
           now,
         ),
     ];
@@ -138,9 +145,16 @@ function assemble(pkg: PackageRow, versions: VersionRow[], tags: TagRow[]): Pack
         ? { dependencies: JSON.parse(v.dependencies) as Record<string, string> }
         : {}),
       dist: {
-        tarball: tarballPath(pkg.name, v.version),
-        shasum: v.shasum,
-        integrity: v.integrity,
+        tarball: {
+          url: tarballPath(pkg.name, v.version),
+          shasum: v.shasum,
+          integrity: v.integrity,
+        },
+        bundle: {
+          url: bundlePath(pkg.name, v.version),
+          sha256: v.bundle_sha256,
+          size: v.bundle_size,
+        },
       },
     };
   }
