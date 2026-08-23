@@ -21,6 +21,30 @@ function tgz(files: Record<string, string>): Uint8Array {
   return new Uint8Array(gzipSync(tar));
 }
 
+/**
+ * A raw 512-byte ustar header with an arbitrary typeflag; tar-writing libraries
+ * only emit regular files, so link entries have to be crafted by hand.
+ */
+function tarHeader(name: string, typeflag: string): Uint8Array {
+  const header = new Uint8Array(512);
+  const write = (offset: number, value: string) => {
+    for (let i = 0; i < value.length; i++) header[offset + i] = value.charCodeAt(i);
+  };
+  write(0, name);
+  write(100, "0000644\0");
+  write(108, "0000000\0");
+  write(116, "0000000\0");
+  write(124, "00000000000\0"); // size 0: link entries carry no data blocks
+  write(136, "00000000000\0");
+  write(148, "        "); // checksum counts as spaces while summing
+  write(156, typeflag);
+  write(257, "ustar\0");
+  write(263, "00");
+  const sum = header.reduce((a, b) => a + b, 0);
+  write(148, `${sum.toString(8).padStart(6, "0")}\0 `);
+  return header;
+}
+
 function meta(
   version: string,
   extra: Partial<PackageVersionMetadata> = {},
@@ -99,6 +123,17 @@ describe("PackageService", () => {
     const { manifest } = parseBundle(await service.readBundle("example", "1.0.0"));
     expect(manifest.files.map((f) => f.path)).toEqual(["etc/startup.lua", "ok.lua", "startup.lua"]);
     expect(pkg.versions["1.0.0"]?.dist.bundle.size).toBeGreaterThan(0);
+  });
+
+  it("rejects tarballs containing link entries instead of silently dropping them", async () => {
+    // A symlink header prepended to an otherwise valid archive.
+    const plain = createTar([{ name: "init.lua", data: "return {}" }]);
+    const tar = new Uint8Array(512 + plain.byteLength);
+    tar.set(tarHeader("link.lua", "2"), 0);
+    tar.set(plain, 512);
+    await expect(
+      service.publish(meta("1.0.0"), new Uint8Array(gzipSync(tar))),
+    ).rejects.toMatchObject({ status: 400 });
   });
 
   it("rejects tarballs with no files or invalid gzip", async () => {

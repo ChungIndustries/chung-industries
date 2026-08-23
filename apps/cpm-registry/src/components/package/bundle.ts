@@ -21,6 +21,20 @@ import { BadRequestError } from "@/errors";
  */
 export const MAX_EXTRACTED_BYTES = 512 * 1024;
 
+/**
+ * Entry kinds that have no representation on a CC computer's filesystem.
+ * Directory entries and pax/GNU metadata entries are fine to skip silently
+ * (paths imply directories, and nanotar folds metadata into its file entries),
+ * but a link or device entry means the package genuinely loses content.
+ */
+const UNSUPPORTED_ENTRY_TYPES = new Set([
+  "hardLink",
+  "symbolicLink",
+  "characterDevice",
+  "blockDevice",
+  "fifo",
+]);
+
 export interface BundleFile {
   path: string;
   offset: number;
@@ -92,6 +106,14 @@ export function buildBundle(meta: { name: string; version: string }, tar: Uint8A
 
   const files = new Map<string, Uint8Array>();
   for (const entry of entries) {
+    // Links and special files cannot exist on a CC filesystem; a package that
+    // ships one is broken, so fail the publish loudly instead of silently
+    // producing a bundle with the entry missing.
+    if (entry.type !== undefined && UNSUPPORTED_ENTRY_TYPES.has(entry.type)) {
+      throw new BadRequestError(
+        `Tarball entry "${entry.name}" is a ${entry.type}; only regular files and directories are supported`,
+      );
+    }
     // "\0" typeflags (pre-ustar archives) parse as an undefined type; treat those
     // as regular files unless the name marks a directory.
     const isFile =
