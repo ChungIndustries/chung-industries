@@ -1,24 +1,37 @@
-import { computeDigests } from "@/components/package/integrity";
+import {
+  MAX_EXTRACTED_BYTES,
+  buildBundle,
+  gunzipLimited,
+  readBundleFile,
+} from "@/components/package/bundle";
+import { computeDigests, sha256Hex } from "@/components/package/integrity";
+import { resolveDependencies } from "@/components/package/resolve";
 import type { Package, PackageVersion, PackageVersionMetadata } from "@/components/package/schemas";
 import {
+  type BlobStore,
   type RegistryStore,
-  type TarballStore,
+  bundleKey,
+  bundlePath,
   tarballKey,
   tarballPath,
 } from "@/components/package/store/types";
 import { pickLatest } from "@/components/package/version";
 import { BadRequestError, ConflictError, NotFoundError } from "@/errors";
 
+/** The package that is cpm itself; its bundle carries the bootstrap installer. */
+export const CPM_PACKAGE = "cpm";
+export const INSTALLER_FILE = "install.lua";
+
 /**
  * Registry business logic, independent of both the HTTP framework and the
  * storage backend: it talks to a {@link RegistryStore} (the index) and a
- * {@link TarballStore} (blob bytes). Production wires these to D1 and R2; tests
- * wire them to in-memory fakes.
+ * {@link BlobStore} (tarball and bundle bytes). Production wires these to D1
+ * and R2; tests wire them to in-memory fakes.
  */
 export class PackageService {
   constructor(
     private readonly registry: RegistryStore,
-    private readonly tarballs: TarballStore,
+    private readonly blobs: BlobStore,
   ) {}
 
   list(): Promise<Package[]> {
@@ -53,11 +66,25 @@ export class PackageService {
       );
     }
 
+    // Derive the client-facing bundle up front: an upload that is not a valid,
+    // reasonably sized tarball of clean paths is rejected before anything is stored.
+    const tar = await gunzipLimited(data, MAX_EXTRACTED_BYTES);
+    const bundle = buildBundle(metadata, tar);
+    const bundleSha256 = sha256Hex(bundle);
+
     const { shasum, integrity } = computeDigests(data);
-    const key = tarballKey(metadata.name, shasum);
+    const tarKey = tarballKey(metadata.name, shasum);
+    const bunKey = bundleKey(metadata.name, bundleSha256);
     const entry: PackageVersion = {
       ...metadata,
-      dist: { tarball: tarballPath(metadata.name, metadata.version), shasum, integrity },
+      dist: {
+        tarball: tarballPath(metadata.name, metadata.version),
+        shasum,
+        integrity,
+        bundle: bundlePath(metadata.name, metadata.version),
+        bundleSha256,
+        bundleSize: bundle.byteLength,
+      },
     };
 
     const versions = existing
@@ -65,16 +92,17 @@ export class PackageService {
       : [metadata.version];
     const latest = pickLatest(versions);
 
-    // The key is content-addressed, so writing bytes before the index commit is
+    // Keys are content-addressed, so writing bytes before the index commit is
     // safe: a losing racer writes to a different key (different content) or the
     // identical key with identical bytes, never corrupting the winner.
-    await this.tarballs.put(key, data);
+    await Promise.all([this.blobs.put(tarKey, data), this.blobs.put(bunKey, bundle)]);
 
     return this.registry.addVersion({
       name: metadata.name,
       author: metadata.author,
       entry,
-      tarballKey: key,
+      tarballKey: tarKey,
+      bundleKey: bunKey,
       distTags: { ...existing?.["dist-tags"], latest },
     });
   }
@@ -82,8 +110,33 @@ export class PackageService {
   async readTarball(name: string, version: string): Promise<Uint8Array> {
     // Resolve the version first (throws 404), then reach for its bytes.
     const entry = await this.getVersion(name, version);
-    const data = await this.tarballs.get(tarballKey(name, entry.dist.shasum));
+    const data = await this.blobs.get(tarballKey(name, entry.dist.shasum));
     if (!data) throw new NotFoundError("Tarball not found");
     return data;
+  }
+
+  async readBundle(name: string, version: string): Promise<Uint8Array> {
+    const entry = await this.getVersion(name, version);
+    const data = await this.blobs.get(bundleKey(name, entry.dist.bundleSha256));
+    if (!data) throw new NotFoundError("Bundle not found");
+    return data;
+  }
+
+  /** Pins one version per package for the given root dependencies (see `resolve.ts`). */
+  resolve(dependencies: Record<string, string>): Promise<PackageVersion[]> {
+    return resolveDependencies(dependencies, (name) => this.registry.get(name));
+  }
+
+  /**
+   * The bootstrap installer is just a file inside the latest `cpm` package, so
+   * publishing cpm is all it takes to update what `wget run .../install` serves.
+   */
+  async readInstaller(): Promise<Uint8Array> {
+    const pkg = await this.registry.get(CPM_PACKAGE);
+    if (!pkg) throw new NotFoundError("The cpm package has not been published yet");
+    const bundle = await this.readBundle(CPM_PACKAGE, pkg["dist-tags"].latest);
+    const installer = readBundleFile(bundle, INSTALLER_FILE);
+    if (!installer) throw new NotFoundError("The latest cpm package has no installer");
+    return installer;
   }
 }

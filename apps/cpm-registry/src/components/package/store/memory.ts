@@ -1,9 +1,5 @@
 import type { Package } from "@/components/package/schemas";
-import type {
-  AddVersionInput,
-  RegistryStore,
-  TarballStore,
-} from "@/components/package/store/types";
+import type { AddVersionInput, RegistryStore, BlobStore } from "@/components/package/store/types";
 import { ConflictError } from "@/errors";
 
 /**
@@ -45,8 +41,8 @@ export class InMemoryRegistryStore implements RegistryStore {
   }
 }
 
-/** In-memory {@link TarballStore} for tests. */
-export class InMemoryTarballStore implements TarballStore {
+/** In-memory {@link BlobStore} for tests. */
+export class InMemoryBlobStore implements BlobStore {
   private readonly blobs = new Map<string, Uint8Array>();
 
   async put(key: string, data: Uint8Array): Promise<void> {

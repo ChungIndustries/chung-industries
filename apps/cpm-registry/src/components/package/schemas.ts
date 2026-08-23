@@ -55,9 +55,51 @@ const integritySchema = z
     description: "Subresource Integrity (SRI) sha512 digest of the tarball",
   });
 
+const bundleSchema = z.string().openapi({
+  example: "/packages/example/1.0.0/dist/bundle",
+  description: "Bundle path: the artifact the in-game cpm client downloads",
+});
+
+const bundleSha256Schema = z
+  .string()
+  .regex(/^[a-f0-9]{64}$/)
+  .openapi({
+    example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+    description: "Hex SHA-256 digest of the bundle bytes",
+  });
+
+const bundleSizeSchema = z
+  .number()
+  .int()
+  .nonnegative()
+  .openapi({ example: 4096, description: "Bundle size in bytes (before wire compression)" });
+
 const distSchema = z
-  .strictObject({ tarball: tarballSchema, shasum: shasumSchema, integrity: integritySchema })
+  .strictObject({
+    tarball: tarballSchema,
+    shasum: shasumSchema,
+    integrity: integritySchema,
+    bundle: bundleSchema,
+    bundleSha256: bundleSha256Schema,
+    bundleSize: bundleSizeSchema,
+  })
   .openapi({ description: "Distribution info" });
+
+/** A dependency spec accepted by `/resolve`: a semver range, exact version, or dist-tag. */
+const dependencySpecSchema = z
+  .string()
+  .min(1)
+  .openapi({ example: "^1.2.0", description: "Semver range, exact version, or dist-tag" });
+
+export const resolveRequestSchema = z
+  .strictObject({
+    dependencies: z
+      .record(packageNameSchema, dependencySpecSchema)
+      .refine((deps) => Object.keys(deps).length > 0, "At least one dependency is required")
+      .openapi({ example: { example: "^1.2.0", "cc-http": "latest" } }),
+  })
+  .openapi("ResolveRequest");
+export type ResolveRequest = z.infer<typeof resolveRequestSchema>;
 
 export const packageVersionMetadataSchema = z.strictObject({
   name: packageNameSchema,

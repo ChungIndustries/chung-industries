@@ -9,6 +9,8 @@ servers:
 tags:
   - name: Packages
     description: Endpoints for browsing and retrieving cpm packages.
+  - name: Bootstrap
+    description: Getting cpm onto a fresh computer.
 components:
   schemas:
     Package:
@@ -99,10 +101,27 @@ components:
               pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
               example: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
               description: Subresource Integrity (SRI) sha512 digest of the tarball
+            bundle:
+              type: string
+              example: /packages/example/1.0.0/dist/bundle
+              description: "Bundle path: the artifact the in-game cpm client downloads"
+            bundleSha256:
+              type: string
+              pattern: ^[a-f0-9]{64}$
+              example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+              description: Hex SHA-256 digest of the bundle bytes
+            bundleSize:
+              type: integer
+              minimum: 0
+              example: 4096
+              description: Bundle size in bytes (before wire compression)
           required:
             - tarball
             - shasum
             - integrity
+            - bundle
+            - bundleSha256
+            - bundleSize
           additionalProperties: false
           description: Distribution info
       required:
@@ -120,6 +139,22 @@ components:
           tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
           shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
           integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+    ResolveRequest:
+      type: object
+      properties:
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+            minLength: 1
+            example: ^1.2.0
+            description: Semver range, exact version, or dist-tag
+          example:
+            example: ^1.2.0
+            cc-http: latest
+      required:
+        - dependencies
+      additionalProperties: false
   parameters: {}
 paths:
   /packages:
@@ -176,7 +211,10 @@ paths:
       description: "Creates a package if missing, or adds a new version to an existing
         one. Published versions are immutable: re-publishing an existing version
         returns 409. Send metadata JSON as `meta` plus the tarball file as
-        `tarball` in multipart/form-data."
+        `tarball` in multipart/form-data. The tarball must be a gzipped tar of
+        the package files at its root (no wrapping directory), with relative
+        forward-slash paths and at most 512 KiB extracted; the registry derives
+        the client-facing bundle from it."
       requestBody:
         required: true
         content:
@@ -496,6 +534,260 @@ paths:
                   - data
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /packages/{name}/{version}/dist/bundle:
+    get:
+      tags:
+        - Packages
+      summary: Download bundle
+      description: "Returns the bundle for a specific package version: the artifact
+        the in-game cpm client installs from. Format: `<manifest byte
+        length>\\n<minified manifest JSON><raw concatenated file bytes>`, where
+        the manifest is `{ name, version, files: [{ path, offset, length }] }`
+        with offsets relative to the first byte after the manifest. Served
+        gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`;
+        `dist.bundleSha256` is the SHA-256 of the decoded bytes."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+        - schema:
+            type: string
+            example: 1.0.0
+            description: Semantic version string
+          required: true
+          description: Semantic version string
+          name: version
+          in: path
+      responses:
+        "200":
+          description: Bundle bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /resolve:
+    post:
+      tags:
+        - Packages
+      summary: Resolve dependencies
+      description: "Pins one version per package for the given root dependencies and
+        their transitive dependencies. Each spec may be a semver range, an exact
+        version, or a dist-tag. Every requester of a package must agree on a
+        single version (the client installs into a flat store): the highest
+        version satisfying all requested ranges is chosen, and unsatisfiable
+        combinations fail. Results are ordered dependencies-first."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveRequest"
+      responses:
+        "200":
+          description: Pinned packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    type: object
+                    properties:
+                      packages:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/PackageVersion"
+                    required:
+                      - packages
+                required:
+                  - status
+                  - data
+        "400":
+          description: Invalid request or unsatisfiable dependencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /install:
+    get:
+      tags:
+        - Bootstrap
+      summary: Bootstrap installer
+      description: "Serves the cpm bootstrap installer as plain Lua, taken from the
+        latest published `cpm` package. On a fresh CC:Tweaked computer run:
+        `wget run https://registry.cpm.chungindustries.com/install`."
+      responses:
+        "200":
+          description: Installer Lua source
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: -- cpm installer
+        "404":
+          description: cpm has not been published
           content:
             application/json:
               schema:

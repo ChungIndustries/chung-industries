@@ -1,6 +1,6 @@
 # cpm Client Design
 
-Status: proposal (no implementation yet)
+Status: implemented (registry in `apps/cpm-registry`, client in `apps/cpm-cli`); kept as the design record
 Date: 2026-07-28
 Scope: the `cpm` Lua program that runs inside Minecraft on CC:Tweaked computers and installs packages from the CPM registry (`apps/cpm-registry`, contract in [openapi.yaml](../apps/cpm-registry/openapi.yaml)).
 
@@ -23,13 +23,13 @@ Facts verified against the official docs ([tweaked.cc](https://tweaked.cc)) and 
 
 Server admins configure HTTP access in `serverconfig/computercraft-server.toml`. Defaults ([AddressRuleConfig.java](https://github.com/cc-tweaked/CC-Tweaked/blob/mc-1.20.x/projects/common/src/main/java/dan200/computercraft/shared/config/AddressRuleConfig.java), [guide](https://tweaked.cc/guide/local_ips.html)):
 
-| Setting | Default |
-| --- | --- |
-| Allowlist | deny `$private` (LAN/localhost), then allow `*` (all public internet) |
-| `max_download` per response | 16 MiB |
-| `max_upload` per request body | 4 MiB |
-| `timeout` | 30 s |
-| `http.max_requests` (concurrent, per computer) | 16 |
+| Setting                                        | Default                                                               |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| Allowlist                                      | deny `$private` (LAN/localhost), then allow `*` (all public internet) |
+| `max_download` per response                    | 16 MiB                                                                |
+| `max_upload` per request body                  | 4 MiB                                                                 |
+| `timeout`                                      | 30 s                                                                  |
+| `http.max_requests` (concurrent, per computer) | 16                                                                    |
 
 Consequences:
 
@@ -149,6 +149,7 @@ Because `package.path` is per-program (1.3), that prepend line must run inside t
    ```
 
    `/cpm/bin` is on the shell path via the startup drop-in, so installed programs run by name.
+
 2. **Packages requiring their dependencies**: they execute under a shim (or under another package that did), so the path is already set; plain `require("dep")` works.
 3. **Ad-hoc user scripts** using cpm libraries: one documented boilerplate line at the top, `dofile("/cpm/boot.lua")`, where cpm installs a tiny helper that performs the same prepend into the caller's environment. This is the one wart forced by CC's per-program `package` state; see open questions for a possible upstream-setting escape hatch.
 
@@ -179,9 +180,22 @@ returning the fully pinned closure, JSend-wrapped, in install order:
   "status": "success",
   "data": {
     "packages": [
-      { "name": "dep", "version": "2.1.3", "dependencies": {},
-        "dist": { "bundle": "/packages/dep/2.1.3/dist/bundle", "bundleSha256": "…", "bundleSize": 4096 } },
-      { "name": "example", "version": "1.4.0", "dependencies": { "dep": "^2.0.0" }, "dist": { "…": "…" } }
+      {
+        "name": "dep",
+        "version": "2.1.3",
+        "dependencies": {},
+        "dist": {
+          "bundle": "/packages/dep/2.1.3/dist/bundle",
+          "bundleSha256": "…",
+          "bundleSize": 4096
+        }
+      },
+      {
+        "name": "example",
+        "version": "1.4.0",
+        "dependencies": { "dep": "^2.0.0" },
+        "dist": { "…": "…" }
+      }
     ]
   }
 }
@@ -283,17 +297,17 @@ Kept deliberately npm-shaped. `publish` is intentionally absent from the in-game
 
 ## 9. Decision summary
 
-| Topic | Decision |
-| --- | --- |
-| Download format | New derived "bundle" endpoint: length-prefixed JSON manifest + raw file blob; gzip on the wire only (`Accept-Encoding: gzip`); manifest parsed with built-in `textutils.unserialiseJSON`, files sliced by offset |
-| Gzip in Lua | Avoided entirely (Java-side wire decompression); LibDeflate not vendored |
-| Tar in Lua | Avoided (bundle replaces it); tarball endpoint remains for publish/tooling |
-| Integrity | SHA-256 hex over bundle bytes, vendored ccryptolib, yields while hashing, default on; SHA-512 rejected on 32-bit VM grounds |
-| Install layout | Global flat store `/cpm/packages/<name>/`, one version per package; shims in `/cpm/bin` + `/startup/50_cpm.lua`; `dofile("/cpm/boot.lua")` header for ad-hoc scripts |
-| Dependency resolution | Server-side `POST /resolve` using the canonical `semver` package; client has zero semver logic; highest-satisfying-intersection, hard fail on conflict |
-| Lockfile | No separate lockfile; `/cpm/state.json` records roots + pinned installed set |
-| Bootstrap | `wget run https://registry.cpm.chungindustries.com/install`; cpm is itself a package named `cpm`; self-update via `cpm update cpm` |
-| Repo | `apps/cpm-cli` NX project (Lua), resurrecting the parked snapshot branch; luacheck + stylua, CraftOS-PC headless e2e, Node build glue; releases via version plans |
+| Topic                 | Decision                                                                                                                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Download format       | New derived "bundle" endpoint: length-prefixed JSON manifest + raw file blob; gzip on the wire only (`Accept-Encoding: gzip`); manifest parsed with built-in `textutils.unserialiseJSON`, files sliced by offset |
+| Gzip in Lua           | Avoided entirely (Java-side wire decompression); LibDeflate not vendored                                                                                                                                         |
+| Tar in Lua            | Avoided (bundle replaces it); tarball endpoint remains for publish/tooling                                                                                                                                       |
+| Integrity             | SHA-256 hex over bundle bytes, vendored ccryptolib, yields while hashing, default on; SHA-512 rejected on 32-bit VM grounds                                                                                      |
+| Install layout        | Global flat store `/cpm/packages/<name>/`, one version per package; shims in `/cpm/bin` + `/startup/50_cpm.lua`; `dofile("/cpm/boot.lua")` header for ad-hoc scripts                                             |
+| Dependency resolution | Server-side `POST /resolve` using the canonical `semver` package; client has zero semver logic; highest-satisfying-intersection, hard fail on conflict                                                           |
+| Lockfile              | No separate lockfile; `/cpm/state.json` records roots + pinned installed set                                                                                                                                     |
+| Bootstrap             | `wget run https://registry.cpm.chungindustries.com/install`; cpm is itself a package named `cpm`; self-update via `cpm update cpm`                                                                               |
+| Repo                  | `apps/cpm-cli` NX project (Lua), resurrecting the parked snapshot branch; luacheck + stylua, CraftOS-PC headless e2e, Node build glue; releases via version plans                                                |
 
 ## 10. Registry follow-up work items
 
