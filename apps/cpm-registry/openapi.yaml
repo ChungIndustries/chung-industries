@@ -36,10 +36,15 @@ components:
               version: 1.0.0
               dependencies:
                 cc-http: ^1.2.0
-              dist:
-                tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-                shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+              dist: &a1
+                tarball:
+                  url: /packages/example/1.0.0/dist/tarball
+                  shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                  integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                bundle:
+                  url: /packages/example/1.0.0/dist/bundle
+                  sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+                  size: 4096
       required:
         - name
         - dist-tags
@@ -60,7 +65,7 @@ components:
         description: Semantic version string
       example:
         latest: 1.0.0
-      description: Distribution tags mapping tag names to versions (npm-compatible)
+      description: Distribution tags mapping tag names to versions
     PackageVersion:
       type: object
       properties:
@@ -88,42 +93,57 @@ components:
           type: object
           properties:
             tarball:
-              type: string
-              example: /packages/example/1.0.0/dist/tarball
-              description: Tarball path
-            shasum:
-              type: string
-              pattern: ^[a-f0-9]{40}$
-              example: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-              description: SHA-1 hex digest of the tarball (npm-compatible)
-            integrity:
-              type: string
-              pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
-              example: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-              description: Subresource Integrity (SRI) sha512 digest of the tarball
+              type: object
+              properties:
+                url:
+                  type: string
+                  example: /packages/example/1.0.0/dist/tarball
+                  description: Tarball path
+                shasum:
+                  type: string
+                  pattern: ^[a-f0-9]{40}$
+                  example: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                  description: SHA-1 hex digest of the tarball
+                integrity:
+                  type: string
+                  pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
+                  example: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                  description: Subresource Integrity (SRI) sha512 digest of the tarball
+              required:
+                - url
+                - shasum
+                - integrity
+              additionalProperties: false
+              description: "The publish artifact: a gzipped tar of the package files"
             bundle:
-              type: string
-              example: /packages/example/1.0.0/dist/bundle
-              description: "Bundle path: the artifact the in-game cpm client downloads"
-            bundleSha256:
-              type: string
-              pattern: ^[a-f0-9]{64}$
-              example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
-              description: Hex SHA-256 digest of the bundle bytes
-            bundleSize:
-              type: integer
-              minimum: 0
-              example: 4096
-              description: Bundle size in bytes (before wire compression)
+              type: object
+              properties:
+                url:
+                  type: string
+                  example: /packages/example/1.0.0/dist/bundle
+                  description: "Bundle path: the artifact the in-game cpm client downloads"
+                sha256:
+                  type: string
+                  pattern: ^[a-f0-9]{64}$
+                  example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+                  description: Hex SHA-256 digest of the bundle bytes
+                size:
+                  type: integer
+                  minimum: 0
+                  example: 4096
+                  description: Bundle size in bytes (before wire compression)
+              required:
+                - url
+                - sha256
+                - size
+              additionalProperties: false
+              description: "The derived install artifact: a length-prefixed JSON manifest plus
+                raw file bytes"
           required:
             - tarball
-            - shasum
-            - integrity
             - bundle
-            - bundleSha256
-            - bundleSize
           additionalProperties: false
-          description: Distribution info
+          description: Distribution artifacts, one entry per artifact kind
       required:
         - name
         - version
@@ -135,10 +155,7 @@ components:
         version: 1.0.0
         dependencies:
           cc-http: ^1.2.0
-        dist:
-          tarball: https://registry.cpm.chungindustries.com/packages/example/1.0.0/dist/tarball
-          shasum: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-          integrity: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+        dist: *a1
     ResolveRequest:
       type: object
       properties:
@@ -582,7 +599,7 @@ paths:
         the manifest is `{ name, version, files: [{ path, offset, length }] }`
         with offsets relative to the first byte after the manifest. Served
         gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`;
-        `dist.bundleSha256` is the SHA-256 of the decoded bytes."
+        `dist.bundle.sha256` is the SHA-256 of the decoded bytes."
       parameters:
         - schema:
             type: string

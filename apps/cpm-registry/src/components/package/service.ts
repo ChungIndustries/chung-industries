@@ -78,12 +78,12 @@ export class PackageService {
     const entry: PackageVersion = {
       ...metadata,
       dist: {
-        tarball: tarballPath(metadata.name, metadata.version),
-        shasum,
-        integrity,
-        bundle: bundlePath(metadata.name, metadata.version),
-        bundleSha256,
-        bundleSize: bundle.byteLength,
+        tarball: { url: tarballPath(metadata.name, metadata.version), shasum, integrity },
+        bundle: {
+          url: bundlePath(metadata.name, metadata.version),
+          sha256: bundleSha256,
+          size: bundle.byteLength,
+        },
       },
     };
 
@@ -110,14 +110,14 @@ export class PackageService {
   async readTarball(name: string, version: string): Promise<Uint8Array> {
     // Resolve the version first (throws 404), then reach for its bytes.
     const entry = await this.getVersion(name, version);
-    const data = await this.blobs.get(tarballKey(name, entry.dist.shasum));
+    const data = await this.blobs.get(tarballKey(name, entry.dist.tarball.shasum));
     if (!data) throw new NotFoundError("Tarball not found");
     return data;
   }
 
   async readBundle(name: string, version: string): Promise<Uint8Array> {
     const entry = await this.getVersion(name, version);
-    const data = await this.blobs.get(bundleKey(name, entry.dist.bundleSha256));
+    const data = await this.blobs.get(bundleKey(name, entry.dist.bundle.sha256));
     if (!data) throw new NotFoundError("Bundle not found");
     return data;
   }

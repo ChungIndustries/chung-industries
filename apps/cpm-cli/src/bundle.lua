@@ -77,7 +77,7 @@ end
 --- Compare the digest of the entire response body against the registry's recorded hex digest.
 function bundle.verify(bytes, expectedHex)
   if type(expectedHex) ~= "string" or not expectedHex:match("^%x+$") then
-    return false, "registry metadata has no usable bundleSha256"
+    return false, "registry metadata has no usable bundle sha256"
   end
   local actual = sha256.hex(bytes)
   if actual ~= expectedHex:lower() then

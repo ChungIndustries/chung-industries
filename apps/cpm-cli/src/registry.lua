@@ -77,7 +77,7 @@ function registry.post(path, body)
   return requestJson("POST", path, body)
 end
 
---- Download a bundle container by its `dist.bundle` path and return the raw bytes.
+--- Download a bundle container by its `dist.bundle.url` path and return the raw bytes.
 --- Gzip is requested explicitly because CC only decompresses what it negotiated for, and
 --- decompression happens in Java so the bytes seen here are the stored artifact.
 function registry.getBundle(path)

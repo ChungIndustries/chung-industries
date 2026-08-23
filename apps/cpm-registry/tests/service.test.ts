@@ -48,13 +48,13 @@ describe("PackageService", () => {
     const latestVersion = pkg["dist-tags"].latest;
     const dist = pkg.versions[latestVersion]?.dist;
     expect(dist).toBeDefined();
-    expect(dist?.integrity).toBe(sha512(v2));
-    expect(dist?.shasum).toBe(sha1(v2));
-    expect(dist?.tarball).toBe("/packages/example/1.2.0/dist/tarball");
+    expect(dist?.tarball.integrity).toBe(sha512(v2));
+    expect(dist?.tarball.shasum).toBe(sha1(v2));
+    expect(dist?.tarball.url).toBe("/packages/example/1.2.0/dist/tarball");
 
     // Downloading the resolved latest returns the exact bytes, checksum verified.
     const downloaded = await service.readTarball("example", latestVersion);
-    expect(sha512(downloaded)).toBe(dist?.integrity);
+    expect(sha512(downloaded)).toBe(dist?.tarball.integrity);
   });
 
   it("derives a bundle the client can slice files out of, with its digest recorded", async () => {
@@ -66,11 +66,11 @@ describe("PackageService", () => {
     };
     const pkg = await service.publish(meta("1.0.0"), tgz(files));
     const dist = pkg.versions["1.0.0"]!.dist;
-    expect(dist.bundle).toBe("/packages/example/1.0.0/dist/bundle");
+    expect(dist.bundle.url).toBe("/packages/example/1.0.0/dist/bundle");
 
     const bundle = await service.readBundle("example", "1.0.0");
-    expect(dist.bundleSha256).toBe(sha256(bundle));
-    expect(dist.bundleSize).toBe(bundle.byteLength);
+    expect(dist.bundle.sha256).toBe(sha256(bundle));
+    expect(dist.bundle.size).toBe(bundle.byteLength);
 
     const { manifest } = parseBundle(bundle);
     expect(manifest).toMatchObject({ name: "example", version: "1.0.0" });
@@ -95,7 +95,7 @@ describe("PackageService", () => {
     );
     const { manifest } = parseBundle(await service.readBundle("example", "1.0.0"));
     expect(manifest.files.map((f) => f.path)).toEqual(["etc/startup.lua", "ok.lua", "startup.lua"]);
-    expect(pkg.versions["1.0.0"]?.dist.bundleSize).toBeGreaterThan(0);
+    expect(pkg.versions["1.0.0"]?.dist.bundle.size).toBeGreaterThan(0);
   });
 
   it("rejects tarballs with no files or invalid gzip", async () => {

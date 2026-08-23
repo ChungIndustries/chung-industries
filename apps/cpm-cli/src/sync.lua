@@ -34,7 +34,7 @@ end
 local function checkFreeSpace(toInstall)
   local needed = 0
   for _, pkg in ipairs(toInstall) do
-    needed = needed + (pkg.dist.bundleSize or 0)
+    needed = needed + (pkg.dist.bundle.size or 0)
   end
   local free = fs.getFreeSpace("/")
   if needed > free then
@@ -51,7 +51,7 @@ local function downloadAll(toInstall)
 
   local function downloader(pkg)
     return function()
-      local bytes, err = registry.getBundle(pkg.dist.bundle)
+      local bytes, err = registry.getBundle(pkg.dist.bundle.url)
       if bytes then
         bytesByName[pkg.name] = bytes
       else
@@ -75,7 +75,7 @@ local function downloadAll(toInstall)
 end
 
 local function installPackage(pkg, bytes)
-  local ok, err = bundle.verify(bytes, pkg.dist.bundleSha256)
+  local ok, err = bundle.verify(bytes, pkg.dist.bundle.sha256)
   if not ok then
     error(string.format("%s@%s: %s", pkg.name, pkg.version, err), 0)
   end
@@ -125,7 +125,7 @@ function sync.apply(roots)
           "Downloading %s@%s (%s)",
           pkg.name,
           pkg.version,
-          formatSize(pkg.dist.bundleSize)
+          formatSize(pkg.dist.bundle.size)
         )
       )
     end

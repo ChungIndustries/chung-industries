@@ -228,7 +228,7 @@ A separate committed lockfile in the npm sense is **not warranted for v1**: the 
 
 1. `POST /resolve` with roots (existing plus new).
 2. Diff against `state.json`; compute download set.
-3. Check `fs.getFreeSpace` against summed `bundleSize`; abort early with a clear message if it does not fit.
+3. Check `fs.getFreeSpace` against summed `dist.bundle.size`; abort early with a clear message if it does not fit.
 4. Download bundles with `parallel.waitForAll`, capped at 4 concurrent (politeness; limit is 16), `Accept-Encoding: gzip`, `binary = true`, one retry on failure.
 5. Per bundle: sha256-verify bytes (yielding), parse the manifest, validate paths, slice and write files to a staging dir `/cpm/.staging/<name>/`, then atomically-ish swap into `/cpm/packages/<name>/` (delete old, move new) so a failed install never leaves a half-written package as live.
 6. Regenerate `/cpm/bin` shims and write `state.json` last.
@@ -313,9 +313,9 @@ Kept deliberately npm-shaped. `publish` is intentionally absent from the in-game
 
 Each of these is a registry change implied by this design, to be done as normal PRs with version plans:
 
-1. **Bundle derivation and endpoint**: at publish, gunzip + untar the uploaded tarball (Workers `DecompressionStream` with a streamed output cap against decompression bombs; canonical JS tar package), validate entry paths (relative, no `..`, no absolute), build the manifest + blob container (2.2), store it in R2 content-addressed, record `bundleSha256` (hex) and `bundleSize`. Serve `GET /packages/{name}/{version}/dist/bundle` with the same immutable edge-cache treatment as the tarball. Reject publishes whose tarball is not a valid gzipped tar or whose extracted size is unreasonable for CC disks (limit TBD, e.g. 512 KB extracted).
+1. **Bundle derivation and endpoint**: at publish, gunzip + untar the uploaded tarball (Workers `DecompressionStream` with a streamed output cap against decompression bombs; canonical JS tar package), validate entry paths (relative, no `..`, no absolute), build the manifest + blob container (2.2), store it in R2 content-addressed, record `dist.bundle.sha256` (hex) and `dist.bundle.size`. Serve `GET /packages/{name}/{version}/dist/bundle` with the same immutable edge-cache treatment as the tarball. Reject publishes whose tarball is not a valid gzipped tar or whose extracted size is unreasonable for CC disks (limit TBD, e.g. 512 KB extracted).
 2. **Bundle wire compression**: `application/octet-stream` is not auto-compressed by Cloudflare, so add a zone Compression Rule for the bundle route (or store the bundle pre-gzipped and serve `Content-Encoding: gzip` explicitly). Verify end to end from CC that the client actually receives gzip transfer encoding (and no brotli negotiation surprises) once the client exists.
-3. **Version metadata additions**: extend `dist` with `bundle` (path), `bundleSha256`, `bundleSize` (naming open; could be nested `dist.bundle = { url, sha256, size }`). Backfill or re-derive for any already-published versions.
+3. **Version metadata additions**: `dist` becomes one nested entry per artifact kind: `dist.tarball = { url, shasum, integrity }` and `dist.bundle = { url, sha256, size }`. Backfill or re-derive for any already-published versions.
 4. **`POST /resolve`**: pinned-closure resolution as specified in 5.1, using the existing `semver` dependency; JSend `fail` with named conflicts on unsatisfiable input; accepts dist-tags anywhere a range is accepted.
 5. **`GET /install`**: serve the built `install.lua` as `text/plain`. Mechanism for getting the artifact into the Worker (embedded at deploy vs fetched from R2) decided at implementation time.
 

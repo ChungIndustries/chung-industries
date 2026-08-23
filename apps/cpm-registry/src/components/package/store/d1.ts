@@ -97,11 +97,11 @@ export class D1RegistryStore implements RegistryStore {
           entry.version,
           entry.author ?? null,
           entry.dependencies ? JSON.stringify(entry.dependencies) : null,
-          entry.dist.shasum,
-          entry.dist.integrity,
+          entry.dist.tarball.shasum,
+          entry.dist.tarball.integrity,
           tarballKey,
-          entry.dist.bundleSha256,
-          entry.dist.bundleSize,
+          entry.dist.bundle.sha256,
+          entry.dist.bundle.size,
           bundleKey,
           now,
         ),
@@ -145,12 +145,16 @@ function assemble(pkg: PackageRow, versions: VersionRow[], tags: TagRow[]): Pack
         ? { dependencies: JSON.parse(v.dependencies) as Record<string, string> }
         : {}),
       dist: {
-        tarball: tarballPath(pkg.name, v.version),
-        shasum: v.shasum,
-        integrity: v.integrity,
-        bundle: bundlePath(pkg.name, v.version),
-        bundleSha256: v.bundle_sha256,
-        bundleSize: v.bundle_size,
+        tarball: {
+          url: tarballPath(pkg.name, v.version),
+          shasum: v.shasum,
+          integrity: v.integrity,
+        },
+        bundle: {
+          url: bundlePath(pkg.name, v.version),
+          sha256: v.bundle_sha256,
+          size: v.bundle_size,
+        },
       },
     };
   }

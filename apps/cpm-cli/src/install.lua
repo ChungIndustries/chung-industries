@@ -85,7 +85,7 @@ end
 
 print("Downloading cpm@" .. pkg.version .. "...")
 response, err, failed = http.get({
-  url = baseUrl .. pkg.dist.bundle,
+  url = baseUrl .. pkg.dist.bundle.url,
   binary = true,
   headers = { ["Accept-Encoding"] = "gzip" },
 })
