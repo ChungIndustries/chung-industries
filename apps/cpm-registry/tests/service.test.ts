@@ -6,8 +6,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { parseBundle, readBundleFile } from "@/components/package/bundle";
 import type { PackageVersionMetadata } from "@/components/package/schemas";
-import { PackageService } from "@/components/package/service";
+import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { InMemoryBlobStore, InMemoryRegistryStore } from "@/components/package/store/memory";
+import { tarballKey } from "@/components/package/store/types";
 
 const sha512 = (data: Uint8Array) => `sha512-${createHash("sha512").update(data).digest("base64")}`;
 const sha1 = (data: Uint8Array) => createHash("sha1").update(data).digest("hex");
@@ -29,9 +30,11 @@ function meta(
 
 describe("PackageService", () => {
   let service: PackageService;
+  let blobs: InMemoryBlobStore;
 
   beforeEach(() => {
-    service = new PackageService(new InMemoryRegistryStore(), new InMemoryBlobStore());
+    blobs = new InMemoryBlobStore();
+    service = new PackageService(new InMemoryRegistryStore(), blobs);
   });
 
   it("round-trips publish -> resolve latest -> download with a matching checksum", async () => {
@@ -137,6 +140,20 @@ describe("PackageService", () => {
     await expect(service.publish(meta("1.0.0"), new Uint8Array())).rejects.toMatchObject({
       status: 400,
     });
+  });
+
+  // The size check runs before gzip validation, so raw zero bytes exercise it.
+  // Main's companion "accepts exactly at the limit" test is gone on purpose: a
+  // valid publish now also has to be a real gzipped tar within the 512 KiB
+  // extracted cap, so a 5 MiB at-limit artifact cannot exist.
+  it("rejects a tarball over the size limit and stores nothing", async () => {
+    const oversized = new Uint8Array(MAX_TARBALL_BYTES + 1);
+
+    await expect(service.publish(meta("1.0.0"), oversized)).rejects.toMatchObject({ status: 413 });
+
+    // The rejected publish never reached the index or the tarball store.
+    await expect(service.get("example")).rejects.toMatchObject({ status: 404 });
+    expect(await blobs.get(tarballKey("example", sha1(oversized)))).toBeNull();
   });
 
   it("returns 404 for unknown packages, versions, and artifacts", async () => {

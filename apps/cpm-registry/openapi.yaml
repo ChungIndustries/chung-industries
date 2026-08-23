@@ -230,8 +230,9 @@ paths:
         returns 409. Send metadata JSON as `meta` plus the tarball file as
         `tarball` in multipart/form-data. The tarball must be a gzipped tar of
         the package files at its root (no wrapping directory), with relative
-        forward-slash paths and at most 512 KiB extracted; the registry derives
-        the client-facing bundle from it."
+        forward-slash paths, at most 5 MiB compressed (rejected with 413 above
+        that) and 512 KiB extracted; the registry derives the client-facing
+        bundle from it."
       requestBody:
         required: true
         content:
@@ -290,6 +291,28 @@ paths:
                   - data
         "409":
           description: Version already published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "413":
+          description: Tarball too large
           content:
             application/json:
               schema:

@@ -20,8 +20,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@hono/zod-openapi": "^1.4.0",
-    "hono": "^4.12.30",
+    "@hono/zod-openapi": "^1.5.1",
+    "hono": "^4.12.34",
     "nanotar": "^0.3.0",
     "semver": "^7.7.4",
     "zod": "^4.4.3"
@@ -34,8 +34,8 @@
     "@workspace/lint-config": "workspace:*",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7",
-    "wrangler": "^4.110.0",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.116.0",
     "yaml": "^2.9.0"
   }
 }

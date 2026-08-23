@@ -5,7 +5,7 @@ The official registry service for the Chung Package Manager (CPM), providing a h
 ## What it does
 
 - Hosts CPM package metadata (in D1) and tarballs (in R2) for distribution.
-- Validates publish requests and enforces immutable, integrity-checked versions.
+- Validates publish requests and enforces immutable, integrity-checked versions, capped at 5 MiB per tarball (512 KiB extracted).
 - Derives a client-facing **bundle** from each published tarball (a length-prefixed JSON manifest plus raw file bytes, served gzip on the wire) so the in-game cpm client never has to gunzip or untar in Lua; see [docs/cpm-client-design.md](../../docs/cpm-client-design.md).
 - Resolves dependency ranges server-side (`POST /resolve`) with the canonical `semver` package, pinning one version per package for the client's flat install store.
 - Serves the cpm bootstrap installer (`GET /install`) straight out of the latest published `cpm` package: `wget run https://registry.cpm.chungindustries.com/install`.

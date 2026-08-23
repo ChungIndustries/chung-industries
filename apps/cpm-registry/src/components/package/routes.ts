@@ -9,10 +9,10 @@ import {
   semverSchema,
   type PackageVersionMetadata,
 } from "@/components/package/schemas";
-import { PackageService } from "@/components/package/service";
+import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { D1RegistryStore } from "@/components/package/store/d1";
 import { R2BlobStore } from "@/components/package/store/r2";
-import { BadRequestError } from "@/errors";
+import { BadRequestError, PayloadTooLargeError } from "@/errors";
 import { jsonFail, jsonSuccess, serverError } from "@/jsend";
 
 type App = OpenAPIHono<{ Bindings: Env }>;
@@ -37,6 +37,13 @@ async function parsePublishForm(form: {
 
   if (!(form.tarball instanceof File)) {
     throw new BadRequestError("Tarball file is missing");
+  }
+  // Short-circuit on the declared size so an oversized upload is not copied into
+  // a Uint8Array just to be rejected. The service re-checks the actual bytes.
+  if (form.tarball.size > MAX_TARBALL_BYTES) {
+    throw new PayloadTooLargeError(
+      `Tarball exceeds the maximum size of ${MAX_TARBALL_BYTES} bytes`,
+    );
   }
   return { meta, data: new Uint8Array(await form.tarball.arrayBuffer()) };
 }
@@ -157,8 +164,7 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description:
-        "Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send metadata JSON as `meta` plus the tarball file as `tarball` in multipart/form-data. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths and at most 512 KiB extracted; the registry derives the client-facing bundle from it.",
+      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send metadata JSON as \`meta\` plus the tarball file as \`tarball\` in multipart/form-data. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
       request: {
         body: {
           required: true,
@@ -183,6 +189,7 @@ export function registerPackageRoutes(app: App): void {
         201: jsonSuccess(packageSchema, "Published"),
         400: jsonFail("Invalid request"),
         409: jsonFail("Version already published"),
+        413: jsonFail("Tarball too large"),
         500: serverError,
       },
     }),
