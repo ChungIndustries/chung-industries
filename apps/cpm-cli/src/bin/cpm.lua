@@ -10,6 +10,7 @@ local commands = {
   list = require("cpm.commands.list"),
   search = require("cpm.commands.search"),
 }
+local registry = require("cpm.registry")
 
 local function usage()
   print("Usage:")
@@ -19,7 +20,7 @@ local function usage()
   print("  cpm list")
   print("  cpm search [<query>]")
   print("")
-  print("Registry: " .. settings.get("cpm.registry", "https://registry.cpm.chungindustries.com"))
+  print("Registry: " .. registry.baseUrl())
 end
 
 local args = { ... }
