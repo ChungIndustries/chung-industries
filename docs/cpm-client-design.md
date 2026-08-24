@@ -120,6 +120,7 @@ The tarball endpoint stays as-is: it remains the publish format and the npm-comp
   bin/<program>.lua      generated shims for package programs
   state.json             install state (see section 5)
 /startup/50_cpm.lua      startup drop-in: shell.setPath(shell.path() .. ":/cpm/bin")
+/startup/60_cpm_<name>.lua  per-package startup hook, written for packages whose cpm.json declares `startup`
 /cpm.lua                 the cpm CLI entry itself (a normal cpm-managed package program shim can replace this later)
 ```
 
@@ -159,6 +160,7 @@ Because `package.path` is per-program (1.3), that prepend line must run inside t
 - `bin/*.lua`: each file becomes an invocable program (shim per file, named by basename).
 - Everything else: internal modules and assets, addressable as submodules or via `fs` relative to the package dir.
 - `cpm.json` at the package root is the manifest and authoring-side source of truth: { name, version, author?, dependencies? }. It ships in the tarball (and so in the bundle, making installed packages self-describing); the registry parses it at publish; the former multipart `meta` field is gone, the tarball is the whole publish request. Future fields (description, bin aliases, entry overrides) have a natural home here.
+- `startup` in `cpm.json` (optional): the path, relative to the package root, of a Lua file to run at computer startup. The registry rejects a publish whose declared startup file is not in the tarball. On install the client writes `/startup/60_cpm_<name>.lua`, which prepends the package path and runs the file; on remove (or when a new version drops the field) the hook is deleted. Hooks run after `50_cpm.lua`, so the shell path is already set. Startup files run sequentially, so a long-running daemon should put itself in the background (`multishell.launch` or `parallel` from its own code); cpm does not wrap it.
 - Package names must not contain dots: `require` maps dots to directory separators, so a dotted name would install at a path `require` never searches. Dots are reserved until namespaced installs (dot-to-slash install paths) are designed deliberately.
 
 ---

@@ -89,6 +89,12 @@ components:
           example:
             cc-http: ^1.2.0
           description: Dependency map of package name to semver range
+        startup:
+          type: string
+          minLength: 1
+          example: startup.lua
+          description: Path, relative to the package root, of a Lua file the client runs
+            at computer startup
         dist:
           type: object
           properties:
