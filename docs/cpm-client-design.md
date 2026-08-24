@@ -269,7 +269,7 @@ apps/cpm-cli/
       commands/          install.lua, remove.lua, update.lua, list.lua, ...
       registry.lua       HTTP client for the registry API (JSend unwrapping)
       bundle.lua         bundle fetch, verify, extract
-      store.lua          /cpm layout, staging swap, shim + boot generation
+      store.lua          /cpm layout, staging swap, shim + startup generation
       state.lua          state.json read/write, closure GC
   vendor/
     sha256.lua           ccryptolib sha256 (vendored, license header retained)
