@@ -1,0 +1,42 @@
+name: Lua
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ["apps/cpm-cli/**", ".github/workflows/lua.yml"]
+  push:
+    branches: [main]
+    paths: ["apps/cpm-cli/**", ".github/workflows/lua.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  lua:
+    name: Luacheck + StyLua
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Lua
+        uses: leafo/gh-actions-lua@35bcb06abec04ec87df82e08caa84d545348536e # v10
+        with:
+          luaVersion: "5.3"
+
+      - name: Setup LuaRocks
+        uses: leafo/gh-actions-luarocks@4c082a5fad45388feaeb0798dbd82dbd7dc65bca # v5
+
+      - name: Install Luacheck
+        run: luarocks install luacheck
+
+      - name: Luacheck
+        working-directory: apps/cpm-cli
+        run: luacheck src
+
+      - name: StyLua (check)
+        uses: JohnnyMorganz/stylua-action@479972f01e665acfcba96ada452c36608bdbbb5e # v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check apps/cpm-cli/src
