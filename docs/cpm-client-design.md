@@ -267,7 +267,8 @@ apps/cpm-cli/
     cpm.lua              CLI entry (arg parsing, command dispatch)
     cpm/
       commands/          install.lua, remove.lua, update.lua, list.lua, ...
-      registry.lua       HTTP client for the registry API (JSend unwrapping)
+      registry.lua       registry endpoints (base URL from settings) on top of net.lua
+      net.lua            HTTP helpers: JSend unwrapping, JSON requests, binary downloads
       bundle.lua         bundle fetch, verify, extract
       store.lua          /cpm layout, staging swap, shim + startup generation
       state.lua          state.json read/write, closure GC
