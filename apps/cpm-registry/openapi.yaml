@@ -228,9 +228,8 @@ paths:
       description: "Creates a package if missing, or adds a new version to an existing
         one. Published versions are immutable: re-publishing an existing version
         returns 409. Send the tarball file as `tarball` in multipart/form-data;
-        a `cpm.json` at the tarball root ({ name, version, author?,
-        dependencies? }) is the metadata source of truth, and the optional
-        `meta` field, when sent, must match it. The tarball must be a gzipped
+        the `cpm.json` at the tarball root ({ name, version, author?,
+        dependencies? }) is the package metadata. The tarball must be a gzipped
         tar of the package files at its root (no wrapping directory), with
         relative forward-slash paths, at most 5 MiB compressed (rejected with
         413 above that) and 512 KiB extracted; the registry derives the
@@ -242,11 +241,6 @@ paths:
             schema:
               type: object
               properties:
-                meta:
-                  type: string
-                  description: "Optional cross-check: package version metadata as a JSON string,
-                    must match the tarball's cpm.json"
-                  example: '{"name":"example","version":"1.0.0"}'
                 tarball:
                   type: string
                   format: binary
