@@ -49,7 +49,8 @@ src/
   bin/cpm.lua      CLI entry and dispatch
   commands/        one file per command
   sync.lua         resolve, diff, download, verify, swap, garbage-collect
-  registry.lua     HTTP client (JSend unwrapping, bundle download)
+  registry.lua     registry endpoints (base URL from settings) on top of net.lua
+  net.lua          HTTP helpers: JSend unwrapping, JSON requests, binary downloads
   bundle.lua       bundle container parsing, path validation, extraction
   store.lua        /cpm layout, shims, staging swap, boot and startup files
   state.lua        state.json read/write
