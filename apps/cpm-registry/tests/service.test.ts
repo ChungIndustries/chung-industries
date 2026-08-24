@@ -111,6 +111,21 @@ describe("PackageService", () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
+  it("carries a declared startup file through to the version entry", async () => {
+    const manifest = meta("1.0.0", { startup: "startup.lua" });
+    const pkg = await service.publish(
+      pack(manifest, { "init.lua": "return {}", "startup.lua": "print('boot')" }),
+    );
+    expect(pkg.versions["1.0.0"]?.startup).toBe("startup.lua");
+  });
+
+  it("rejects a manifest whose startup file is not in the tarball", async () => {
+    const manifest = meta("1.0.0", { startup: "startup.lua" });
+    await expect(service.publish(pack(manifest, { "init.lua": "x" }))).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+
   it("rejects dotted package names (reserved until namespaced installs exist)", async () => {
     const dotted: PackageVersionMetadata = { name: "chung.maps", version: "1.0.0" };
     await expect(service.publish(pack(dotted, { "init.lua": "x" }))).rejects.toMatchObject({

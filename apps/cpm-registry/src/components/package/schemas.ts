@@ -29,6 +29,13 @@ const packageNameSchema = z
 
 const authorSchema = z.string().optional().openapi({ example: "chungindustries" });
 
+// Existence of the referenced file inside the tarball is checked at publish.
+const startupSchema = z.string().min(1).optional().openapi({
+  example: "startup.lua",
+  description:
+    "Path, relative to the package root, of a Lua file the client runs at computer startup",
+});
+
 const dependenciesSchema = z
   .record(packageNameSchema, semverRangeSchema)
   .optional()
@@ -123,6 +130,7 @@ export const packageVersionMetadataSchema = z.strictObject({
   version: semverSchema,
   author: authorSchema,
   dependencies: dependenciesSchema,
+  startup: startupSchema,
 });
 export type PackageVersionMetadata = z.infer<typeof packageVersionMetadataSchema>;
 

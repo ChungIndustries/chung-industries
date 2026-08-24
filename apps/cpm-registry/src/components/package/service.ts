@@ -106,6 +106,13 @@ export class PackageService {
     const tar = await gunzipLimited(data, MAX_EXTRACTED_BYTES);
     const files = collectPackageFiles(tar);
     const metadata = parseManifest(files.get(MANIFEST_FILE));
+    // The client blindly writes a startup hook pointing at this file, so a
+    // dangling reference must fail the publish, not the computer's next boot.
+    if (metadata.startup !== undefined && !files.has(metadata.startup)) {
+      throw new BadRequestError(
+        `${MANIFEST_FILE} declares startup file "${metadata.startup}" but the tarball does not contain it`,
+      );
+    }
 
     const existing = await this.registry.get(metadata.name);
     // Published versions are immutable. Reject before any write so the stored
