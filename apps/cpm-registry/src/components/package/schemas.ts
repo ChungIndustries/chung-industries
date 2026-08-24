@@ -21,10 +21,20 @@ const packageNameSchema = z
   .string()
   // Explicit character class rather than the `i` flag: a case-insensitive regex
   // serializes into the OpenAPI `pattern` with a stray trailing `/i`.
-  .regex(/^[a-zA-Z0-9._-]+$/)
+  // Dots are reserved: Lua's require maps dots to directory separators, so a
+  // dotted name cannot be loaded from the client's flat store today. Allowing
+  // them later must land together with namespaced install paths.
+  .regex(/^[a-zA-Z0-9_-]+$/)
   .openapi({ example: "example" });
 
 const authorSchema = z.string().optional().openapi({ example: "chungindustries" });
+
+// Existence of the referenced file inside the tarball is checked at publish.
+const startupSchema = z.string().min(1).optional().openapi({
+  example: "startup.lua",
+  description:
+    "Path, relative to the package root, of a Lua file the client runs at computer startup",
+});
 
 const dependenciesSchema = z
   .record(packageNameSchema, semverRangeSchema)
@@ -120,6 +130,7 @@ export const packageVersionMetadataSchema = z.strictObject({
   version: semverSchema,
   author: authorSchema,
   dependencies: dependenciesSchema,
+  startup: startupSchema,
 });
 export type PackageVersionMetadata = z.infer<typeof packageVersionMetadataSchema>;
 
