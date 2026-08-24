@@ -60,24 +60,6 @@ function parseManifest(bytes: Uint8Array | undefined): PackageVersionMetadata {
   return parsed.data;
 }
 
-/** The optional `meta` form field must agree with the manifest it duplicates. */
-function assertMetaMatchesManifest(
-  meta: PackageVersionMetadata,
-  manifest: PackageVersionMetadata,
-): void {
-  // Key order must not affect equality, so dependency maps compare sorted.
-  const deps = (of: PackageVersionMetadata) =>
-    JSON.stringify(Object.entries(of.dependencies ?? {}).sort(([a], [b]) => a.localeCompare(b)));
-  const matches =
-    meta.name === manifest.name &&
-    meta.version === manifest.version &&
-    meta.author === manifest.author &&
-    deps(meta) === deps(manifest);
-  if (!matches) {
-    throw new BadRequestError(`\`meta\` does not match the tarball's ${MANIFEST_FILE}`);
-  }
-}
-
 /**
  * Registry business logic, independent of both the HTTP framework and the
  * storage backend: it talks to a {@link RegistryStore} (the index) and a
@@ -107,7 +89,7 @@ export class PackageService {
     return entry;
   }
 
-  async publish(meta: PackageVersionMetadata | undefined, data: Uint8Array): Promise<Package> {
+  async publish(data: Uint8Array): Promise<Package> {
     if (data.byteLength === 0) {
       throw new BadRequestError("Tarball data is missing");
     }
@@ -120,11 +102,10 @@ export class PackageService {
 
     // Unpack up front: an upload that is not a valid, reasonably sized tarball
     // of clean paths is rejected before anything is stored, and the tarball's
-    // own cpm.json is the metadata source of truth (`meta` only cross-checks).
+    // own cpm.json is the sole metadata source.
     const tar = await gunzipLimited(data, MAX_EXTRACTED_BYTES);
     const files = collectPackageFiles(tar);
     const metadata = parseManifest(files.get(MANIFEST_FILE));
-    if (meta) assertMetaMatchesManifest(meta, metadata);
 
     const existing = await this.registry.get(metadata.name);
     // Published versions are immutable. Reject before any write so the stored

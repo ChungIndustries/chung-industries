@@ -3,11 +3,9 @@ import type { Context } from "hono";
 
 import {
   packageSchema,
-  packageVersionMetadataSchema,
   packageVersionSchema,
   resolveRequestSchema,
   semverSchema,
-  type PackageVersionMetadata,
 } from "@/components/package/schemas";
 import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { D1RegistryStore } from "@/components/package/store/d1";
@@ -22,22 +20,8 @@ function serviceFor(env: Env): PackageService {
   return new PackageService(new D1RegistryStore(env.DB), new R2BlobStore(env.BUCKET));
 }
 
-/** Validates the multipart publish form into raw tarball bytes plus the optional meta cross-check. */
-async function parsePublishForm(form: {
-  meta?: string;
-  tarball: unknown;
-}): Promise<{ meta: PackageVersionMetadata | undefined; data: Uint8Array }> {
-  let meta: PackageVersionMetadata | undefined;
-  if (form.meta !== undefined) {
-    let json: unknown;
-    try {
-      json = JSON.parse(form.meta);
-    } catch {
-      throw new BadRequestError("`meta` must be valid JSON");
-    }
-    meta = packageVersionMetadataSchema.parse(json);
-  }
-
+/** Validates the multipart publish form into raw tarball bytes. */
+async function parsePublishForm(form: { tarball: unknown }): Promise<Uint8Array> {
   if (!(form.tarball instanceof File)) {
     throw new BadRequestError("Tarball file is missing");
   }
@@ -48,7 +32,7 @@ async function parsePublishForm(form: {
       `Tarball exceeds the maximum size of ${MAX_TARBALL_BYTES} bytes`,
     );
   }
-  return { meta, data: new Uint8Array(await form.tarball.arrayBuffer()) };
+  return new Uint8Array(await form.tarball.arrayBuffer());
 }
 
 // Immutable versions can be cached forever. Repeat downloads are served from the
@@ -167,18 +151,13 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; a \`cpm.json\` at the tarball root ({ name, version, author?, dependencies? }) is the metadata source of truth, and the optional \`meta\` field, when sent, must match it. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
+      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; the \`cpm.json\` at the tarball root ({ name, version, author?, dependencies? }) is the package metadata. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
       request: {
         body: {
           required: true,
           content: {
             "multipart/form-data": {
               schema: z.object({
-                meta: z.string().optional().openapi({
-                  description:
-                    "Optional cross-check: package version metadata as a JSON string, must match the tarball's cpm.json",
-                  example: '{"name":"example","version":"1.0.0"}',
-                }),
                 tarball: z.any().openapi({
                   type: "string",
                   format: "binary",
@@ -198,8 +177,8 @@ export function registerPackageRoutes(app: App): void {
       },
     }),
     async (c) => {
-      const { meta, data } = await parsePublishForm(c.req.valid("form"));
-      const pkg = await serviceFor(c.env).publish(meta, data);
+      const data = await parsePublishForm(c.req.valid("form"));
+      const pkg = await serviceFor(c.env).publish(data);
       return c.json({ status: "success" as const, data: pkg }, 201);
     },
   );

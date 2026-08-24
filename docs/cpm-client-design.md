@@ -158,7 +158,7 @@ Because `package.path` is per-program (1.3), that prepend line must run inside t
 - `init.lua` at the package root: library entry point, returned table is the module.
 - `bin/*.lua`: each file becomes an invocable program (shim per file, named by basename).
 - Everything else: internal modules and assets, addressable as submodules or via `fs` relative to the package dir.
-- `cpm.json` at the package root is the manifest and authoring-side source of truth: { name, version, author?, dependencies? }. It ships in the tarball (and so in the bundle, making installed packages self-describing); the registry parses it at publish and treats the multipart `meta` field as an optional cross-check that must match. Future fields (description, bin aliases, entry overrides) have a natural home here.
+- `cpm.json` at the package root is the manifest and authoring-side source of truth: { name, version, author?, dependencies? }. It ships in the tarball (and so in the bundle, making installed packages self-describing); the registry parses it at publish; the former multipart `meta` field is gone, the tarball is the whole publish request. Future fields (description, bin aliases, entry overrides) have a natural home here.
 - Package names must not contain dots: `require` maps dots to directory separators, so a dotted name would install at a path `require` never searches. Dots are reserved until namespaced installs (dot-to-slash install paths) are designed deliberately.
 
 ---
