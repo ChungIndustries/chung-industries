@@ -69,6 +69,53 @@ local function shimSource(name, program)
   }, "\n")
 end
 
+local function startupHookPath(name)
+  return "/startup/60_cpm_" .. name .. ".lua"
+end
+
+-- Every bundle ships the package's own cpm.json, so the installed tree is self-describing.
+local function readManifest(name)
+  local path = fs.combine(store.packageDir(name), "cpm.json")
+  if not fs.exists(path) then
+    return nil
+  end
+  local handle = fs.open(path, "r")
+  if not handle then
+    return nil
+  end
+  local content = handle.readAll()
+  handle.close()
+  local manifest = textutils.unserialiseJSON(content or "")
+  if type(manifest) == "table" then
+    return manifest
+  end
+  return nil
+end
+
+-- A package declaring `startup` in its cpm.json gets a numbered drop-in that runs that file at
+-- boot. It sorts after 50_cpm.lua, so /cpm/bin is already on the shell path when it runs. The
+-- hook is regenerated on every install and deleted when the field (or the package) goes away.
+local function syncStartupHook(name)
+  local manifest = readManifest(name)
+  local startup = manifest and manifest.startup
+  local hook = startupHookPath(name)
+  if type(startup) ~= "string" or startup == "" then
+    if fs.exists(hook) then
+      fs.delete(hook)
+    end
+    return
+  end
+  store.writeFile(
+    hook,
+    table.concat({
+      PATH_PREPEND,
+      string.format('local fn = assert(loadfile("/cpm/packages/%s/%s", nil, _ENV))', name, startup),
+      "return fn()",
+      "",
+    }, "\n")
+  )
+end
+
 --- Regenerate the shims for the package currently installed under /cpm/packages/<name>.
 function store.writeShims(name)
   for _, program in ipairs(binPrograms(name)) do
@@ -100,6 +147,7 @@ function store.commit(name)
   end
   fs.move(staging, target)
   store.writeShims(name)
+  syncStartupHook(name)
 end
 
 function store.clearStaging(name)
@@ -111,6 +159,10 @@ end
 
 function store.removePackage(name)
   store.removeShims(name)
+  local hook = startupHookPath(name)
+  if fs.exists(hook) then
+    fs.delete(hook)
+  end
   local target = store.packageDir(name)
   if fs.exists(target) then
     fs.delete(target)

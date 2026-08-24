@@ -34,9 +34,12 @@ Version resolution happens on the registry (`POST /resolve`), so ranges, exact v
 /cpm/boot.lua              dofile("/cpm/boot.lua") from ad-hoc scripts to require packages
 /cpm/state.json            roots (what you asked for) and installed (what is on disk)
 /startup/50_cpm.lua        adds /cpm/bin to the shell path at boot
+/startup/60_cpm_<name>.lua runs a package's declared startup file at boot
 ```
 
 Packages expose a library via `init.lua` at their root (`require("foo")`) and submodules as files (`require("foo.bar")`). Every bundle is sha256-verified before anything is written, and packages are extracted to `/cpm/.staging/<name>/` and swapped into place only once complete.
+
+A package that declares `"startup": "<file>"` in its `cpm.json` gets a `/startup/60_cpm_<name>.lua` drop-in on install that runs that file at boot (after `50_cpm.lua`, so the shell path and `require` path are ready). The hook is regenerated on every install and removed when the package (or the field) goes away. Startup files run sequentially, so a long-running daemon should background itself (for example via `multishell.launch`) instead of blocking the boot sequence.
 
 ## Source layout
 
