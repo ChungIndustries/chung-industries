@@ -10,6 +10,7 @@
 
 local DEFAULT_URL = "https://registry.cpm.chungindustries.com"
 local PACKAGE_DIR = "/cpm/packages/cpm"
+local STAGING_DIR = "/cpm/.staging/cpm"
 
 if not http then
   printError("The http API is disabled on this computer; cpm needs it to reach the registry")
@@ -74,12 +75,22 @@ if not response then
   return fail((failed and jsendMessage(readAll(failed))) or err or "resolve request failed")
 end
 local resolved = textutils.unserialiseJSON(readAll(response))
-local pkg = type(resolved) == "table"
+local pkg
+if
+  type(resolved) == "table"
   and resolved.status == "success"
   and type(resolved.data) == "table"
   and type(resolved.data.packages) == "table"
-  and resolved.data.packages[1]
-if not pkg or pkg.name ~= "cpm" then
+then
+  -- The registry orders results dependencies first, so locate cpm by name; any dependencies
+  -- it grows are installed by the first sync.
+  for _, candidate in ipairs(resolved.data.packages) do
+    if candidate.name == "cpm" then
+      pkg = candidate
+    end
+  end
+end
+if not pkg then
   return fail("registry did not resolve the cpm package")
 end
 
@@ -118,32 +129,53 @@ for _, file in ipairs(manifest.files) do
   end
 end
 
-if fs.exists(PACKAGE_DIR) then
-  fs.delete(PACKAGE_DIR)
+-- Extract to staging and swap in only once complete, so a failed write (full disk, bad
+-- bundle) never destroys a working install.
+if fs.exists(STAGING_DIR) then
+  fs.delete(STAGING_DIR)
 end
 for index, file in ipairs(manifest.files) do
   local first = blobStart + file.offset
-  writeFile(fs.combine(PACKAGE_DIR, file.path), bytes:sub(first, first + file.length - 1), "wb")
+  writeFile(fs.combine(STAGING_DIR, file.path), bytes:sub(first, first + file.length - 1), "wb")
   if index % 4 == 0 then
     os.queueEvent("cpm_yield")
     os.pullEvent("cpm_yield")
   end
 end
+if not fs.exists(STAGING_DIR) then
+  return fail("bundle contained no files")
+end
+if fs.exists(PACKAGE_DIR) then
+  fs.delete(PACKAGE_DIR)
+end
+local packages = fs.getDir(PACKAGE_DIR)
+if not fs.exists(packages) then
+  fs.makeDir(packages)
+end
+fs.move(STAGING_DIR, PACKAGE_DIR)
 
 -- The package is on disk now; its own store.lua (which requires nothing) does the rest:
 -- shims, the startup drop-in, and both live activations, from their single source.
 local store = assert(loadfile(fs.combine(PACKAGE_DIR, "store.lua"), nil, _ENV))()
 store.writeShims("cpm")
 store.writeStartup()
-store.writeFile(
-  store.STATE,
-  textutils.serialiseJSON({
-    -- cpm tracks "latest" rather than a caret range so `cpm update` always picks up new
-    -- releases, including the 0.x ones a caret would exclude.
-    roots = { cpm = "latest" },
-    installed = { cpm = pkg.version },
-  })
-)
+-- Merged into any existing state so re-running the bootstrap never untracks other packages.
+local prior = {}
+local stateHandle = fs.open(store.STATE, "r")
+if stateHandle then
+  local existing = textutils.unserialiseJSON(stateHandle.readAll() or "")
+  stateHandle.close()
+  if type(existing) == "table" then
+    prior = existing
+  end
+end
+local roots = type(prior.roots) == "table" and prior.roots or {}
+local installed = type(prior.installed) == "table" and prior.installed or {}
+-- cpm tracks "latest" rather than a caret range so `cpm update` always picks up new
+-- releases, including the 0.x ones a caret would exclude.
+roots.cpm = "latest"
+installed.cpm = pkg.version
+store.writeFile(store.STATE, textutils.serialiseJSON({ roots = roots, installed = installed }))
 store.ensureShellPath()
 store.ensureRequireHook()
 
