@@ -1,15 +1,15 @@
 -- cpm bootstrap installer. Served by the registry at GET /install and run with:
 --   wget run https://registry.cpm.chungindustries.com/install
 --
--- Nothing is installed yet, so this file is self-contained: it duplicates the minimal container
--- parsing and path validation from cpm.bundle instead of requiring it. It also skips sha256
--- verification, trusting HTTPS for this first hop; the installed client verifies every bundle
--- from then on, including its own updates via `cpm update cpm`.
+-- Nothing is installed yet, so up to extraction this file is self-contained: it duplicates
+-- the minimal container parsing and path validation from cpm.bundle instead of requiring it.
+-- It also skips sha256 verification, trusting HTTPS for this first hop; the installed client
+-- verifies every bundle from then on, including its own updates via `cpm update cpm`. Once
+-- the package is on disk, setup is delegated to the package's own store.lua so shims, the
+-- startup drop-in, and the require hook each have a single source.
 
 local DEFAULT_URL = "https://registry.cpm.chungindustries.com"
 local PACKAGE_DIR = "/cpm/packages/cpm"
-local PATH_PREPEND = 'package.path = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"'
-  .. " .. package.path"
 
 if not http then
   printError("The http API is disabled on this computer; cpm needs it to reach the registry")
@@ -130,54 +130,13 @@ for index, file in ipairs(manifest.files) do
   end
 end
 
--- Shims put every bin/ program on the shell path with the package path already set.
-local binDir = fs.combine(PACKAGE_DIR, "bin")
-if fs.isDir(binDir) then
-  for _, file in ipairs(fs.list(binDir)) do
-    local program = file:match("^(.+)%.lua$")
-    if program then
-      writeFile(
-        fs.combine("/cpm/bin", file),
-        PATH_PREPEND
-          .. "\n"
-          .. string.format(
-            'local fn = assert(loadfile("%s/bin/%s", nil, _ENV))\n',
-            PACKAGE_DIR,
-            file
-          )
-          .. "return fn(...)\n"
-      )
-    end
-  end
-end
-
-writeFile("/cpm/boot.lua", PATH_PREPEND .. "\n")
--- Kept in sync with store.lua (STARTUP_SOURCE / ensureRequireHook): shell path plus the
--- global `load` wrapper that makes require find cpm packages in every program environment.
-writeFile(
-  "/startup/50_cpm.lua",
-  [[
-if not shell.path():find(":/cpm/bin", 1, true) then
-  shell.setPath(shell.path() .. ":/cpm/bin")
-end
-if not _G.__cpm_require_hook then
-  _G.__cpm_require_hook = true
-  local prefix = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"
-  local native_load = load
-  _G.load = function(chunk, name, mode, env)
-    if type(env) == "table" then
-      local pkg = rawget(env, "package")
-      if type(pkg) == "table" and type(pkg.path) == "string" and not pkg.path:find(prefix, 1, true) then
-        pkg.path = prefix .. pkg.path
-      end
-    end
-    return native_load(chunk, name, mode, env)
-  end
-end
-]]
-)
-writeFile(
-  "/cpm/state.json",
+-- The package is on disk now; its own store.lua (which requires nothing) does the rest:
+-- shims, the startup drop-in, and both live activations, from their single source.
+local store = assert(loadfile(fs.combine(PACKAGE_DIR, "store.lua"), nil, _ENV))()
+store.writeShims("cpm")
+store.writeStartup()
+store.writeFile(
+  store.STATE,
   textutils.serialiseJSON({
     -- cpm tracks "latest" rather than a caret range so `cpm update` always picks up new
     -- releases, including the 0.x ones a caret would exclude.
@@ -185,28 +144,7 @@ writeFile(
     installed = { cpm = pkg.version },
   })
 )
-
-if not shell.path():find(":/cpm/bin", 1, true) then
-  shell.setPath(shell.path() .. ":/cpm/bin")
-end
--- Activate the require hook for this session too, so no reboot is needed.
-if not _G.__cpm_require_hook then
-  _G.__cpm_require_hook = true
-  local hookPrefix = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"
-  local native_load = _G.load
-  _G.load = function(chunk, name, mode, env)
-    if type(env) == "table" then
-      local envPackage = rawget(env, "package")
-      if
-        type(envPackage) == "table"
-        and type(envPackage.path) == "string"
-        and not envPackage.path:find(hookPrefix, 1, true)
-      then
-        envPackage.path = hookPrefix .. envPackage.path
-      end
-    end
-    return native_load(chunk, name, mode, env)
-  end
-end
+store.ensureShellPath()
+store.ensureRequireHook()
 
 print("Installed cpm@" .. pkg.version .. ". Run `cpm help` to get started.")

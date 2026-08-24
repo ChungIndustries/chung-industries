@@ -150,9 +150,8 @@ function sync.apply(roots)
 
   state.save(current)
 
-  -- Rewrite the session helpers on every sync so a cpm upgrade rolls out new startup or
-  -- boot content to existing computers, and activate them for the current session.
-  store.writeBoot()
+  -- Rewrite the startup drop-in on every sync so a cpm upgrade rolls out new content to
+  -- existing computers, and activate the shell path and require hook for this session.
   store.writeStartup()
   store.ensureShellPath()
   store.ensureRequireHook()
