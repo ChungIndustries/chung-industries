@@ -13,8 +13,9 @@ const registry = (
 
 const tarball = await readFile(join(root, "dist", filename));
 
+// The tarball is the whole publish request: the registry reads name, version,
+// and dependencies from the cpm.json the build script generated into it.
 const form = new FormData();
-form.append("meta", JSON.stringify({ name: "cpm", version, author: "chungindustries" }));
 form.append("tarball", new File([tarball], filename, { type: "application/gzip" }));
 
 const response = await fetch(`${registry}/packages`, { method: "POST", body: form });
