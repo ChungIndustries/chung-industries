@@ -53,6 +53,8 @@ src/
   install.lua      self-contained bootstrap installer served at GET /install
 ```
 
+`src/` is packed verbatim into the published tarball, plus a generated `cpm.json` manifest ({ name, version, author }) derived from `package.json` so the version has one source of truth. The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
+
 ## Tooling
 
 | Task                           | Command                                                                                                           |
