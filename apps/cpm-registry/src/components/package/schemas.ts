@@ -21,7 +21,10 @@ const packageNameSchema = z
   .string()
   // Explicit character class rather than the `i` flag: a case-insensitive regex
   // serializes into the OpenAPI `pattern` with a stray trailing `/i`.
-  .regex(/^[a-zA-Z0-9._-]+$/)
+  // Dots are reserved: Lua's require maps dots to directory separators, so a
+  // dotted name cannot be loaded from the client's flat store today. Allowing
+  // them later must land together with namespaced install paths.
+  .regex(/^[a-zA-Z0-9_-]+$/)
   .openapi({ example: "example" });
 
 const authorSchema = z.string().optional().openapi({ example: "chungindustries" });
