@@ -22,18 +22,21 @@ function serviceFor(env: Env): PackageService {
   return new PackageService(new D1RegistryStore(env.DB), new R2BlobStore(env.BUCKET));
 }
 
-/** Validates the multipart publish form into metadata plus raw tarball bytes. */
+/** Validates the multipart publish form into raw tarball bytes plus the optional meta cross-check. */
 async function parsePublishForm(form: {
-  meta: string;
+  meta?: string;
   tarball: unknown;
-}): Promise<{ meta: PackageVersionMetadata; data: Uint8Array }> {
-  let json: unknown;
-  try {
-    json = JSON.parse(form.meta);
-  } catch {
-    throw new BadRequestError("`meta` must be valid JSON");
+}): Promise<{ meta: PackageVersionMetadata | undefined; data: Uint8Array }> {
+  let meta: PackageVersionMetadata | undefined;
+  if (form.meta !== undefined) {
+    let json: unknown;
+    try {
+      json = JSON.parse(form.meta);
+    } catch {
+      throw new BadRequestError("`meta` must be valid JSON");
+    }
+    meta = packageVersionMetadataSchema.parse(json);
   }
-  const meta = packageVersionMetadataSchema.parse(json);
 
   if (!(form.tarball instanceof File)) {
     throw new BadRequestError("Tarball file is missing");
@@ -164,15 +167,16 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send metadata JSON as \`meta\` plus the tarball file as \`tarball\` in multipart/form-data. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
+      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; a \`cpm.json\` at the tarball root ({ name, version, author?, dependencies? }) is the metadata source of truth, and the optional \`meta\` field, when sent, must match it. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
       request: {
         body: {
           required: true,
           content: {
             "multipart/form-data": {
               schema: z.object({
-                meta: z.string().openapi({
-                  description: "Package version metadata as a JSON string",
+                meta: z.string().optional().openapi({
+                  description:
+                    "Optional cross-check: package version metadata as a JSON string, must match the tarball's cpm.json",
                   example: '{"name":"example","version":"1.0.0"}',
                 }),
                 tarball: z.any().openapi({

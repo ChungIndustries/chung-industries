@@ -1,12 +1,20 @@
+import { z } from "@hono/zod-openapi";
+
 import {
   MAX_EXTRACTED_BYTES,
   buildBundle,
+  collectPackageFiles,
   gunzipLimited,
   readBundleFile,
 } from "@/components/package/bundle";
 import { computeDigests, sha256Hex } from "@/components/package/integrity";
 import { resolveDependencies } from "@/components/package/resolve";
-import type { Package, PackageVersion, PackageVersionMetadata } from "@/components/package/schemas";
+import {
+  packageVersionMetadataSchema,
+  type Package,
+  type PackageVersion,
+  type PackageVersionMetadata,
+} from "@/components/package/schemas";
 import {
   type BlobStore,
   type RegistryStore,
@@ -28,6 +36,47 @@ export const MAX_TARBALL_BYTES = 5 * 1024 * 1024;
 /** The package that is cpm itself; its bundle carries the bootstrap installer. */
 export const CPM_PACKAGE = "cpm";
 export const INSTALLER_FILE = "install.lua";
+
+/**
+ * The in-package manifest and authoring-side source of truth: every tarball
+ * must carry a `cpm.json` at its root declaring name, version, and (optionally)
+ * author and dependencies, so artifacts are self-describing and can never
+ * disagree with their registry entry.
+ */
+export const MANIFEST_FILE = "cpm.json";
+
+function parseManifest(bytes: Uint8Array | undefined): PackageVersionMetadata {
+  if (!bytes) throw new BadRequestError(`Tarball is missing ${MANIFEST_FILE} at its root`);
+  let json: unknown;
+  try {
+    json = JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new BadRequestError(`${MANIFEST_FILE} is not valid JSON`);
+  }
+  const parsed = packageVersionMetadataSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new BadRequestError(`${MANIFEST_FILE} is invalid: ${z.prettifyError(parsed.error)}`);
+  }
+  return parsed.data;
+}
+
+/** The optional `meta` form field must agree with the manifest it duplicates. */
+function assertMetaMatchesManifest(
+  meta: PackageVersionMetadata,
+  manifest: PackageVersionMetadata,
+): void {
+  // Key order must not affect equality, so dependency maps compare sorted.
+  const deps = (of: PackageVersionMetadata) =>
+    JSON.stringify(Object.entries(of.dependencies ?? {}).sort(([a], [b]) => a.localeCompare(b)));
+  const matches =
+    meta.name === manifest.name &&
+    meta.version === manifest.version &&
+    meta.author === manifest.author &&
+    deps(meta) === deps(manifest);
+  if (!matches) {
+    throw new BadRequestError(`\`meta\` does not match the tarball's ${MANIFEST_FILE}`);
+  }
+}
 
 /**
  * Registry business logic, independent of both the HTTP framework and the
@@ -58,7 +107,7 @@ export class PackageService {
     return entry;
   }
 
-  async publish(metadata: PackageVersionMetadata, data: Uint8Array): Promise<Package> {
+  async publish(meta: PackageVersionMetadata | undefined, data: Uint8Array): Promise<Package> {
     if (data.byteLength === 0) {
       throw new BadRequestError("Tarball data is missing");
     }
@@ -68,6 +117,14 @@ export class PackageService {
         `Tarball exceeds the maximum size of ${MAX_TARBALL_BYTES} bytes`,
       );
     }
+
+    // Unpack up front: an upload that is not a valid, reasonably sized tarball
+    // of clean paths is rejected before anything is stored, and the tarball's
+    // own cpm.json is the metadata source of truth (`meta` only cross-checks).
+    const tar = await gunzipLimited(data, MAX_EXTRACTED_BYTES);
+    const files = collectPackageFiles(tar);
+    const metadata = parseManifest(files.get(MANIFEST_FILE));
+    if (meta) assertMetaMatchesManifest(meta, metadata);
 
     const existing = await this.registry.get(metadata.name);
     // Published versions are immutable. Reject before any write so the stored
@@ -79,10 +136,7 @@ export class PackageService {
       );
     }
 
-    // Derive the client-facing bundle up front: an upload that is not a valid,
-    // reasonably sized tarball of clean paths is rejected before anything is stored.
-    const tar = await gunzipLimited(data, MAX_EXTRACTED_BYTES);
-    const bundle = buildBundle(metadata, tar);
+    const bundle = buildBundle(metadata, files);
     const bundleSha256 = sha256Hex(bundle);
 
     const { shasum, integrity } = computeDigests(data);

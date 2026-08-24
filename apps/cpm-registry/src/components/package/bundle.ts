@@ -95,8 +95,11 @@ export function normalizeBundlePath(raw: string): string {
   return path;
 }
 
-/** Builds the bundle container from an uncompressed tar (already size-checked). */
-export function buildBundle(meta: { name: string; version: string }, tar: Uint8Array): Uint8Array {
+/**
+ * Parses an uncompressed tar (already size-checked) into its validated file map.
+ * The service reads `cpm.json` out of this map before the container is built.
+ */
+export function collectPackageFiles(tar: Uint8Array): Map<string, Uint8Array> {
   let entries: ParsedTarFileItem[];
   try {
     entries = parseTar(tar) as ParsedTarFileItem[];
@@ -126,7 +129,14 @@ export function buildBundle(meta: { name: string; version: string }, tar: Uint8A
     files.set(path, entry.data ?? new Uint8Array());
   }
   if (files.size === 0) throw new BadRequestError("Tarball contains no files");
+  return files;
+}
 
+/** Builds the bundle container from a validated file map. */
+export function buildBundle(
+  meta: { name: string; version: string },
+  files: Map<string, Uint8Array>,
+): Uint8Array {
   // Sorted paths keep the bundle bytes (and so the digest) deterministic for a
   // given set of files regardless of tar entry order.
   const sorted = [...files.keys()].sort();

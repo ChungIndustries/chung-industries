@@ -15,10 +15,15 @@ const sha1 = (data: Uint8Array) => createHash("sha1").update(data).digest("hex")
 const sha256 = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
 const text = (data: Uint8Array) => new TextDecoder().decode(data);
 
-/** A gzipped tarball of the given files, as a publisher's build script would produce. */
+/** A raw gzipped tarball of exactly the given files, no manifest injected. */
 function tgz(files: Record<string, string>): Uint8Array {
   const tar = createTar(Object.entries(files).map(([name, data]) => ({ name, data })));
   return new Uint8Array(gzipSync(tar));
+}
+
+/** A publishable tarball: the given files plus the cpm.json the build tooling would emit. */
+function pack(manifest: PackageVersionMetadata, files: Record<string, string>): Uint8Array {
+  return tgz({ "cpm.json": JSON.stringify(manifest), ...files });
 }
 
 /**
@@ -62,8 +67,8 @@ describe("PackageService", () => {
   });
 
   it("round-trips publish -> resolve latest -> download with a matching checksum", async () => {
-    const v1 = tgz({ "init.lua": "return { version = '1.0.0' }" });
-    const v2 = tgz({ "init.lua": "return { version = '1.2.0' }" });
+    const v1 = pack(meta("1.0.0"), { "init.lua": "return { version = '1.0.0' }" });
+    const v2 = pack(meta("1.2.0"), { "init.lua": "return { version = '1.2.0' }" });
 
     await service.publish(meta("1.0.0"), v1);
     const pkg = await service.publish(meta("1.2.0"), v2);
@@ -84,6 +89,39 @@ describe("PackageService", () => {
     expect(sha512(downloaded)).toBe(dist?.tarball.integrity);
   });
 
+  it("uses the tarball's cpm.json as the metadata source of truth", async () => {
+    // No meta form field at all: everything comes from the manifest.
+    const manifest = meta("1.4.0", { dependencies: { "cc-http": "^1.0.0" } });
+    const pkg = await service.publish(undefined, pack(manifest, { "init.lua": "return {}" }));
+
+    expect(pkg.name).toBe("example");
+    expect(pkg["dist-tags"].latest).toBe("1.4.0");
+    expect(pkg.versions["1.4.0"]?.dependencies).toEqual({ "cc-http": "^1.0.0" });
+  });
+
+  it("rejects tarballs without cpm.json, with invalid cpm.json, or with mismatched meta", async () => {
+    await expect(
+      service.publish(undefined, tgz({ "init.lua": "return {}" })),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      service.publish(undefined, tgz({ "cpm.json": "not json", "init.lua": "x" })),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(
+      service.publish(undefined, tgz({ "cpm.json": '{"name":"example"}', "init.lua": "x" })),
+    ).rejects.toMatchObject({ status: 400 });
+    // The optional meta cross-check must agree with the manifest.
+    await expect(
+      service.publish(meta("2.0.0"), pack(meta("1.0.0"), { "init.lua": "x" })),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("rejects dotted package names (reserved until namespaced installs exist)", async () => {
+    const dotted: PackageVersionMetadata = { name: "chung.maps", version: "1.0.0" };
+    await expect(
+      service.publish(undefined, pack(dotted, { "init.lua": "x" })),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
   it("derives a bundle the client can slice files out of, with its digest recorded", async () => {
     const files = {
       "init.lua": "return require('example.util')",
@@ -91,7 +129,7 @@ describe("PackageService", () => {
       "bin/example.lua": "print('hi')",
       "assets/blob.bin": "not lua at all",
     };
-    const pkg = await service.publish(meta("1.0.0"), tgz(files));
+    const pkg = await service.publish(meta("1.0.0"), pack(meta("1.0.0"), files));
     const dist = pkg.versions["1.0.0"]!.dist;
     expect(dist.bundle.url).toBe("/packages/example/1.0.0/dist/bundle");
 
@@ -102,9 +140,11 @@ describe("PackageService", () => {
     const { manifest } = parseBundle(bundle);
     expect(manifest).toMatchObject({ name: "example", version: "1.0.0" });
     // Sorted paths keep the digest deterministic regardless of tar entry order.
+    // cpm.json ships in the bundle too, so installed packages are self-describing.
     expect(manifest.files.map((f) => f.path)).toEqual([
       "assets/blob.bin",
       "bin/example.lua",
+      "cpm.json",
       "init.lua",
       "util.lua",
     ]);
@@ -116,13 +156,21 @@ describe("PackageService", () => {
   it("never stores a bundle path that escapes the package directory", async () => {
     // nanotar resolves `..` and strips leading slashes while parsing; our own
     // validator is the second layer. Either way the manifest must come out clean.
-    const pkg = await service.publish(
-      meta("1.0.0"),
-      tgz({ "../startup.lua": "evil", "/etc/startup.lua": "evil", "./ok.lua": "fine" }),
+    await service.publish(
+      undefined,
+      pack(meta("1.0.0"), {
+        "../startup.lua": "evil",
+        "/etc/startup.lua": "evil",
+        "./ok.lua": "fine",
+      }),
     );
     const { manifest } = parseBundle(await service.readBundle("example", "1.0.0"));
-    expect(manifest.files.map((f) => f.path)).toEqual(["etc/startup.lua", "ok.lua", "startup.lua"]);
-    expect(pkg.versions["1.0.0"]?.dist.bundle.size).toBeGreaterThan(0);
+    expect(manifest.files.map((f) => f.path)).toEqual([
+      "cpm.json",
+      "etc/startup.lua",
+      "ok.lua",
+      "startup.lua",
+    ]);
   });
 
   it("rejects tarballs containing link entries instead of silently dropping them", async () => {
@@ -144,26 +192,27 @@ describe("PackageService", () => {
   });
 
   it("rejects tarballs over the extracted size cap", async () => {
-    const big = tgz({ "big.lua": "-- ".padEnd(600 * 1024, "x") });
+    const big = pack(meta("1.0.0"), { "big.lua": "-- ".padEnd(600 * 1024, "x") });
     await expect(service.publish(meta("1.0.0"), big)).rejects.toMatchObject({ status: 400 });
   });
 
   it("keeps dist-tags.latest pointing at the highest stable version", async () => {
-    await service.publish(meta("1.0.0"), tgz({ "a.lua": "a" }));
-    await service.publish(meta("1.2.0"), tgz({ "a.lua": "b" }));
-    await service.publish(meta("1.1.0"), tgz({ "a.lua": "c" }));
-    const afterStable = await service.publish(meta("2.0.0-beta.1"), tgz({ "a.lua": "d" }));
+    const lib = (v: string) => pack(meta(v), { "a.lua": v });
+    await service.publish(meta("1.0.0"), lib("1.0.0"));
+    await service.publish(meta("1.2.0"), lib("1.2.0"));
+    await service.publish(meta("1.1.0"), lib("1.1.0"));
+    const afterStable = await service.publish(meta("2.0.0-beta.1"), lib("2.0.0-beta.1"));
 
     // A prerelease must not become latest while a stable release exists.
     expect(afterStable["dist-tags"].latest).toBe("1.2.0");
   });
 
   it("rejects re-publishing an existing version and leaves the stored tarball intact", async () => {
-    const original = tgz({ "init.lua": "original" });
+    const original = pack(meta("1.0.0"), { "init.lua": "original" });
     await service.publish(meta("1.0.0"), original);
 
     await expect(
-      service.publish(meta("1.0.0"), tgz({ "init.lua": "overwrite attempt" })),
+      service.publish(meta("1.0.0"), pack(meta("1.0.0"), { "init.lua": "overwrite attempt" })),
     ).rejects.toMatchObject({ status: 409 });
 
     // The stored tarball was never touched by the rejected publish.
@@ -194,7 +243,7 @@ describe("PackageService", () => {
   it("returns 404 for unknown packages, versions, and artifacts", async () => {
     await expect(service.get("missing")).rejects.toMatchObject({ status: 404 });
 
-    await service.publish(meta("1.0.0"), tgz({ "a.lua": "x" }));
+    await service.publish(meta("1.0.0"), pack(meta("1.0.0"), { "a.lua": "x" }));
     await expect(service.getVersion("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
     await expect(service.readTarball("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
     await expect(service.readBundle("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
@@ -202,18 +251,17 @@ describe("PackageService", () => {
 
   describe("resolve", () => {
     beforeEach(async () => {
-      const lib = (version: string) => tgz({ "init.lua": `return '${version}'` });
-      await service.publish({ name: "util", version: "1.0.0" }, lib("1.0.0"));
-      await service.publish({ name: "util", version: "1.5.0" }, lib("1.5.0"));
-      await service.publish({ name: "util", version: "2.0.0" }, lib("2.0.0"));
-      await service.publish(
-        { name: "http", version: "1.0.0", dependencies: { util: "^1.0.0" } },
-        lib("1.0.0"),
-      );
-      await service.publish(
-        { name: "app", version: "1.0.0", dependencies: { http: "^1.0.0", util: ">=1.2.0" } },
-        lib("1.0.0"),
-      );
+      const put = (manifest: PackageVersionMetadata) =>
+        service.publish(undefined, pack(manifest, { "init.lua": `return '${manifest.version}'` }));
+      await put({ name: "util", version: "1.0.0" });
+      await put({ name: "util", version: "1.5.0" });
+      await put({ name: "util", version: "2.0.0" });
+      await put({ name: "http", version: "1.0.0", dependencies: { util: "^1.0.0" } });
+      await put({
+        name: "app",
+        version: "1.0.0",
+        dependencies: { http: "^1.0.0", util: ">=1.2.0" },
+      });
     });
 
     it("pins the highest version satisfying every requester, dependencies first", async () => {
@@ -246,13 +294,14 @@ describe("PackageService", () => {
   it("serves the bootstrap installer from the latest cpm package", async () => {
     await expect(service.readInstaller()).rejects.toMatchObject({ status: 404 });
 
+    const cpm = (version: string): PackageVersionMetadata => ({ name: "cpm", version });
     await service.publish(
-      { name: "cpm", version: "0.1.0" },
-      tgz({ "bin/cpm.lua": "print('cpm')", "install.lua": "-- installer v0.1.0" }),
+      undefined,
+      pack(cpm("0.1.0"), { "bin/cpm.lua": "print('cpm')", "install.lua": "-- installer v0.1.0" }),
     );
     await service.publish(
-      { name: "cpm", version: "0.2.0" },
-      tgz({ "bin/cpm.lua": "print('cpm')", "install.lua": "-- installer v0.2.0" }),
+      undefined,
+      pack(cpm("0.2.0"), { "bin/cpm.lua": "print('cpm')", "install.lua": "-- installer v0.2.0" }),
     );
     expect(text(await service.readInstaller())).toBe("-- installer v0.2.0");
   });
