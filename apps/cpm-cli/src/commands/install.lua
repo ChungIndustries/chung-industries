@@ -32,7 +32,7 @@ return function(args)
 
   local resolved = sync.apply(roots)
 
-  -- A bare `cpm install foo` pins a caret range on whatever "latest" resolved to, npm style,
+  -- A bare `cpm install foo` pins a caret range on whatever "latest" resolved to,
   -- so later updates stay within the same major version.
   local saved = state.load()
   for _, pkg in ipairs(resolved) do

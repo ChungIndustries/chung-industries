@@ -150,6 +150,13 @@ function sync.apply(roots)
 
   state.save(current)
 
+  -- Rewrite the session helpers on every sync so a cpm upgrade rolls out new startup or
+  -- boot content to existing computers, and activate them for the current session.
+  store.writeBoot()
+  store.writeStartup()
+  store.ensureShellPath()
+  store.ensureRequireHook()
+
   if #toInstall == 0 and #orphans == 0 then
     print("Already up to date")
   end

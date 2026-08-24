@@ -31,13 +31,15 @@ Version resolution happens on the registry (`POST /resolve`), so ranges, exact v
 ```
 /cpm/packages/<name>/      one installed version per package
 /cpm/bin/<program>.lua     shim per file under a package's bin/ (on the shell path)
-/cpm/boot.lua              dofile("/cpm/boot.lua") from ad-hoc scripts to require packages
+/cpm/boot.lua              fallback require setup for environments without the load hook
 /cpm/state.json            roots (what you asked for) and installed (what is on disk)
-/startup/50_cpm.lua        adds /cpm/bin to the shell path at boot
+/startup/50_cpm.lua        shell path for /cpm/bin, plus the require hook
 /startup/60_cpm_<name>.lua runs a package's declared startup file at boot
 ```
 
 Packages expose a library via `init.lua` at their root (`require("foo")`) and submodules as files (`require("foo.bar")`). Every bundle is sha256-verified before anything is written, and packages are extracted to `/cpm/.staging/<name>/` and swapped into place only once complete.
+
+`require` finds installed packages from anywhere: any program, any directory, and the `lua` REPL, with no boilerplate. CC:Tweaked builds a fresh `package.path` per program, but every program environment is created through the global `load`, so `50_cpm.lua` wraps it once per boot and prepends `/cpm/packages` to each new environment's search path (cpm also activates the hook in the running session, so it works without a reboot). If a future CC:Tweaked version restructures its loaders, `dofile("/cpm/boot.lua")` at the top of a script is the manual fallback.
 
 A package that declares `"startup": "<file>"` in its `cpm.json` gets a `/startup/60_cpm_<name>.lua` drop-in on install that runs that file at boot (after `50_cpm.lua`, so the shell path and `require` path are ready). The hook is regenerated on every install and removed when the package (or the field) goes away. Startup files run sequentially, so a long-running daemon should background itself (for example via `multishell.launch`) instead of blocking the boot sequence.
 
@@ -56,7 +58,7 @@ src/
   install.lua      self-contained bootstrap installer served at GET /install
 ```
 
-`src/` is packed verbatim into the published tarball, plus a generated `cpm.json` manifest ({ name, version, author }) derived from `package.json` so the version has one source of truth. The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
+`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, author }) generated at build time from the workspace version so it has one source of truth. The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
 
 ## Tooling
 

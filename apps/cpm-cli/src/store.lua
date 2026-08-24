@@ -10,8 +10,8 @@ store.STATE = "/cpm/state.json"
 store.BOOT = "/cpm/boot.lua"
 store.STARTUP = "/startup/50_cpm.lua"
 
-local PATH_PREPEND = 'package.path = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"'
-  .. " .. package.path"
+local PATH_PREFIX = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"
+local PATH_PREPEND = 'package.path = "' .. PATH_PREFIX .. '" .. package.path'
 
 function store.packageDir(name)
   return fs.combine(store.PACKAGES, name)
@@ -169,29 +169,72 @@ function store.removePackage(name)
   end
 end
 
---- Ad-hoc user scripts opt in with dofile("/cpm/boot.lua"). dofile runs the chunk with the
---- caller's globals, so assigning package.path here mutates the caller's package table.
+--- Fallback for environments where the require hook is not active (an old drop-in, or a
+--- future CC version restructuring its loaders): dofile("/cpm/boot.lua") runs the chunk with
+--- the caller's globals, so assigning package.path here mutates the caller's package table.
 function store.writeBoot()
   store.writeFile(store.BOOT, PATH_PREPEND .. "\n")
 end
 
---- Startup drop-in that puts /cpm/bin on the shell path without touching the user's startup.lua.
+-- Keep this text in sync with ensureRequireHook below and with the self-contained bootstrap
+-- installer (src/install.lua), which embeds the same two blocks.
+local STARTUP_SOURCE = [[
+if not shell.path():find(":/cpm/bin", 1, true) then
+  shell.setPath(shell.path() .. ":/cpm/bin")
+end
+if not _G.__cpm_require_hook then
+  _G.__cpm_require_hook = true
+  local prefix = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"
+  local native_load = load
+  _G.load = function(chunk, name, mode, env)
+    if type(env) == "table" then
+      local pkg = rawget(env, "package")
+      if type(pkg) == "table" and type(pkg.path) == "string" and not pkg.path:find(prefix, 1, true) then
+        pkg.path = prefix .. pkg.path
+      end
+    end
+    return native_load(chunk, name, mode, env)
+  end
+end
+]]
+
+--- Startup drop-in: puts /cpm/bin on the shell path and installs the require hook, without
+--- touching the user's startup.lua.
 function store.writeStartup()
-  store.writeFile(
-    store.STARTUP,
-    table.concat({
-      'if not shell.path():find(":/cpm/bin", 1, true) then',
-      '  shell.setPath(shell.path() .. ":/cpm/bin")',
-      "end",
-      "",
-    }, "\n")
-  )
+  store.writeFile(store.STARTUP, STARTUP_SOURCE)
 end
 
 --- Add /cpm/bin to the running shell so programs work without a reboot.
 function store.ensureShellPath()
   if not shell.path():find(":/cpm/bin", 1, true) then
     shell.setPath(shell.path() .. ":/cpm/bin")
+  end
+end
+
+--- Make installed packages requireable from every program with no boilerplate. Every program
+--- environment in CC:Tweaked flows through the global `load`, resolved at call time (the
+--- shell's program launcher, `loadfile` and so `os.run`, and the `lua` REPL), so wrapping it
+--- lets cpm prepend its store to each fresh package.path. rawget skips a `package` inherited
+--- through the env's `__index = _G` chain, and prepending only when our prefix is absent keeps
+--- the wrapper idempotent for sandboxes that reuse an already-patched path.
+function store.ensureRequireHook()
+  if _G.__cpm_require_hook then
+    return
+  end
+  _G.__cpm_require_hook = true
+  local native_load = _G.load
+  _G.load = function(chunk, name, mode, env)
+    if type(env) == "table" then
+      local pkg = rawget(env, "package")
+      if
+        type(pkg) == "table"
+        and type(pkg.path) == "string"
+        and not pkg.path:find(PATH_PREFIX, 1, true)
+      then
+        pkg.path = PATH_PREFIX .. pkg.path
+      end
+    end
+    return native_load(chunk, name, mode, env)
   end
 end
 

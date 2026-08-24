@@ -152,11 +152,29 @@ if fs.isDir(binDir) then
 end
 
 writeFile("/cpm/boot.lua", PATH_PREPEND .. "\n")
+-- Kept in sync with store.lua (STARTUP_SOURCE / ensureRequireHook): shell path plus the
+-- global `load` wrapper that makes require find cpm packages in every program environment.
 writeFile(
   "/startup/50_cpm.lua",
-  'if not shell.path():find(":/cpm/bin", 1, true) then\n'
-    .. '  shell.setPath(shell.path() .. ":/cpm/bin")\n'
-    .. "end\n"
+  [[
+if not shell.path():find(":/cpm/bin", 1, true) then
+  shell.setPath(shell.path() .. ":/cpm/bin")
+end
+if not _G.__cpm_require_hook then
+  _G.__cpm_require_hook = true
+  local prefix = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"
+  local native_load = load
+  _G.load = function(chunk, name, mode, env)
+    if type(env) == "table" then
+      local pkg = rawget(env, "package")
+      if type(pkg) == "table" and type(pkg.path) == "string" and not pkg.path:find(prefix, 1, true) then
+        pkg.path = prefix .. pkg.path
+      end
+    end
+    return native_load(chunk, name, mode, env)
+  end
+end
+]]
 )
 writeFile(
   "/cpm/state.json",
@@ -170,6 +188,25 @@ writeFile(
 
 if not shell.path():find(":/cpm/bin", 1, true) then
   shell.setPath(shell.path() .. ":/cpm/bin")
+end
+-- Activate the require hook for this session too, so no reboot is needed.
+if not _G.__cpm_require_hook then
+  _G.__cpm_require_hook = true
+  local hookPrefix = "/cpm/packages/?.lua;/cpm/packages/?/init.lua;"
+  local native_load = _G.load
+  _G.load = function(chunk, name, mode, env)
+    if type(env) == "table" then
+      local envPackage = rawget(env, "package")
+      if
+        type(envPackage) == "table"
+        and type(envPackage.path) == "string"
+        and not envPackage.path:find(hookPrefix, 1, true)
+      then
+        envPackage.path = hookPrefix .. envPackage.path
+      end
+    end
+    return native_load(chunk, name, mode, env)
+  end
 end
 
 print("Installed cpm@" .. pkg.version .. ". Run `cpm help` to get started.")
