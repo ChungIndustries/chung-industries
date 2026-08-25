@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.5.1",
-    "hono": "^4.12.34",
+    "hono": "^4.13.3",
     "nanotar": "^0.3.0",
     "semver": "^7.7.4",
     "zod": "^4.4.3"
