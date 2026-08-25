@@ -1,0 +1,10 @@
+# Wrangler local state (miniflare data, build cache)
+.wrangler/
+
+# Local dev secrets for `wrangler dev`
+.dev.vars
+.dev.vars.*
+
+# Local env overrides & secrets
+.env.local
+.env.*.local

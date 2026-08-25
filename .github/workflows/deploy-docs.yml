@@ -7,6 +7,10 @@ on:
   workflow_call:
   workflow_dispatch:
 
+# The deploy talks to Cloudflare, not GitHub; the token only needs to read the repo.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
