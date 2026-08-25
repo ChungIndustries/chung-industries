@@ -1,0 +1,1231 @@
+{
+  "name": "CpmRegistry",
+  "slug": "cpmRegistry",
+  "generatorVersion": "0.28.0",
+  "servers": [
+    "https://registry.cpm.chungindustries.com"
+  ],
+  "environments": {
+    "production": "https://registry.cpm.chungindustries.com"
+  },
+  "environmentOrder": [
+    "production"
+  ],
+  "auth": [],
+  "authDetails": [],
+  "clientHeaderParams": [],
+  "schemas": [
+    {
+      "name": "package",
+      "source": "package",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "name",
+            "publicName": "name",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "example"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "validation": {
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              }
+            }
+          },
+          {
+            "name": "author",
+            "publicName": "author",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "chungindustries"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          },
+          {
+            "name": "dist-tags",
+            "publicName": "dist-tags",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": {
+                "latest": "1.0.0"
+              }
+            },
+            "type": {
+              "kind": "ref",
+              "name": "dist_tags"
+            }
+          },
+          {
+            "name": "versions",
+            "publicName": "versions",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": {
+                "1.0.0": {
+                  "name": "example",
+                  "author": "chungindustries",
+                  "version": "1.0.0",
+                  "dependencies": {
+                    "cc-http": "^1.2.0"
+                  },
+                  "dist": {
+                    "tarball": {
+                      "url": "/packages/example/1.0.0/dist/tarball",
+                      "shasum": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+                      "integrity": "sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg=="
+                    },
+                    "bundle": {
+                      "url": "/packages/example/1.0.0/dist/bundle",
+                      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+                      "size": 4096
+                    }
+                  }
+                }
+              }
+            },
+            "type": {
+              "kind": "record",
+              "value": {
+                "kind": "ref",
+                "name": "package_version"
+              },
+              "propertyNames": {
+                "kind": "primitive",
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "dist_tags",
+      "source": "dist_tags",
+      "publicAliases": [],
+      "deprecated": false,
+      "extensions": {
+        "source": [
+          "examples"
+        ],
+        "examples": {
+          "latest": "1.0.0"
+        }
+      },
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "latest",
+            "publicName": "latest",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "1.0.0"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          }
+        ],
+        "additionalProperties": {
+          "kind": "primitive",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "package_version",
+      "source": "package_version",
+      "publicAliases": [],
+      "deprecated": false,
+      "extensions": {
+        "source": [
+          "examples"
+        ],
+        "examples": {
+          "name": "example",
+          "author": "chungindustries",
+          "version": "1.0.0",
+          "dependencies": {
+            "cc-http": "^1.2.0"
+          },
+          "dist": {
+            "tarball": {
+              "url": "/packages/example/1.0.0/dist/tarball",
+              "shasum": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+              "integrity": "sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg=="
+            },
+            "bundle": {
+              "url": "/packages/example/1.0.0/dist/bundle",
+              "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+              "size": 4096
+            }
+          }
+        }
+      },
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "name",
+            "publicName": "name",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "example"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "validation": {
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "publicName": "version",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "1.0.0"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          },
+          {
+            "name": "author",
+            "publicName": "author",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "chungindustries"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string"
+            }
+          },
+          {
+            "name": "dependencies",
+            "publicName": "dependencies",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": {
+                "cc-http": "^1.2.0"
+              }
+            },
+            "type": {
+              "kind": "record",
+              "value": {
+                "kind": "primitive",
+                "type": "string"
+              },
+              "propertyNames": {
+                "kind": "primitive",
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "startup",
+            "publicName": "startup",
+            "required": false,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": "startup.lua"
+            },
+            "type": {
+              "kind": "primitive",
+              "type": "string",
+              "validation": {
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "dist",
+            "publicName": "dist",
+            "required": true,
+            "deprecated": false,
+            "type": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "tarball",
+                  "publicName": "tarball",
+                  "required": true,
+                  "deprecated": false,
+                  "type": {
+                    "kind": "object",
+                    "properties": [
+                      {
+                        "name": "url",
+                        "publicName": "url",
+                        "required": true,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": "/packages/example/1.0.0/dist/tarball"
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "name": "shasum",
+                        "publicName": "shasum",
+                        "required": true,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "string",
+                          "validation": {
+                            "pattern": "^[a-f0-9]{40}$"
+                          }
+                        }
+                      },
+                      {
+                        "name": "integrity",
+                        "publicName": "integrity",
+                        "required": true,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": "sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg=="
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "string",
+                          "validation": {
+                            "pattern": "^sha512-[A-Za-z0-9+/]+={0,2}$"
+                          }
+                        }
+                      }
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "name": "bundle",
+                  "publicName": "bundle",
+                  "required": true,
+                  "deprecated": false,
+                  "type": {
+                    "kind": "object",
+                    "properties": [
+                      {
+                        "name": "url",
+                        "publicName": "url",
+                        "required": true,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": "/packages/example/1.0.0/dist/bundle"
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "string"
+                        }
+                      },
+                      {
+                        "name": "sha256",
+                        "publicName": "sha256",
+                        "required": true,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "string",
+                          "validation": {
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        }
+                      },
+                      {
+                        "name": "size",
+                        "publicName": "size",
+                        "required": true,
+                        "deprecated": false,
+                        "extensions": {
+                          "source": [
+                            "examples"
+                          ],
+                          "examples": 4096
+                        },
+                        "type": {
+                          "kind": "primitive",
+                          "type": "integer",
+                          "validation": {}
+                        }
+                      }
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              ],
+              "additionalProperties": false
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "resolve_request",
+      "source": "resolve_request",
+      "publicAliases": [],
+      "deprecated": false,
+      "type": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "dependencies",
+            "publicName": "dependencies",
+            "required": true,
+            "deprecated": false,
+            "extensions": {
+              "source": [
+                "examples"
+              ],
+              "examples": {
+                "cc-http": "latest",
+                "examples": [
+                  "^1.2.0"
+                ]
+              }
+            },
+            "type": {
+              "kind": "record",
+              "value": {
+                "kind": "primitive",
+                "type": "string",
+                "validation": {
+                  "minLength": 1
+                }
+              },
+              "propertyNames": {
+                "kind": "primitive",
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "resources": [
+    "packages",
+    "packages.dist",
+    "bootstrap"
+  ],
+  "publicResources": [
+    "packages",
+    "packages.dist",
+    "bootstrap"
+  ],
+  "operations": [
+    {
+      "resource": "packages",
+      "publicResource": "packages",
+      "operation": "list",
+      "publicOperation": "list",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/packages",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "packages",
+      "publicResource": "packages",
+      "operation": "create",
+      "publicOperation": "create",
+      "deprecated": false,
+      "method": "POST",
+      "path": "/packages",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "tarball"
+      ],
+      "publicBodyParams": [
+        "tarball"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "tarball",
+          "required": false
+        }
+      ],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PackageCreateParams"
+      },
+      "requestBody": {
+        "contentType": "multipart/form-data",
+        "encoding": "multipart",
+        "contents": [
+          {
+            "contentType": "multipart/form-data",
+            "encoding": "multipart"
+          }
+        ],
+        "required": true,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "201",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "201",
+        "errorStatuses": [
+          "400",
+          "409",
+          "413",
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "409",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "413",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "packages",
+      "publicResource": "packages",
+      "operation": "retrieve",
+      "publicOperation": "retrieve",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/packages/{name}",
+      "pathParams": [
+        "name"
+      ],
+      "publicPathParams": [
+        "name"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [
+        {
+          "name": "name",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PackageRetrieveParams"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "404",
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "packages",
+      "publicResource": "packages",
+      "operation": "retrieveVersion",
+      "publicOperation": "retrieveVersion",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/packages/{name}/{version}",
+      "pathParams": [
+        "name",
+        "version"
+      ],
+      "publicPathParams": [
+        "name",
+        "version"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [
+        {
+          "name": "name",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "version",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PackageRetrieveVersionParams"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "400",
+          "404",
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "packages",
+      "publicResource": "packages",
+      "operation": "resolve",
+      "publicOperation": "resolve",
+      "deprecated": false,
+      "method": "POST",
+      "path": "/resolve",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [
+        "dependencies"
+      ],
+      "publicBodyParams": [
+        "dependencies"
+      ],
+      "bodyParamDetails": [
+        {
+          "name": "dependencies",
+          "required": true
+        }
+      ],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "PackageResolveParams"
+      },
+      "requestBody": {
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ],
+        "required": true,
+        "publicName": "body",
+        "publicIdentifier": "body"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/json",
+        "encoding": "json",
+        "contents": [
+          {
+            "contentType": "application/json",
+            "encoding": "json"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "400",
+          "404",
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "packages.dist",
+      "publicResource": "packages.dist",
+      "operation": "listTarball",
+      "publicOperation": "listTarball",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/packages/{name}/{version}/dist/tarball",
+      "pathParams": [
+        "name",
+        "version"
+      ],
+      "publicPathParams": [
+        "name",
+        "version"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [
+        {
+          "name": "name",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "version",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "DistListTarballParams"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/gzip",
+        "encoding": "binary",
+        "contents": [
+          {
+            "contentType": "application/gzip",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "400",
+          "404",
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "packages.dist",
+      "publicResource": "packages.dist",
+      "operation": "listBundle",
+      "publicOperation": "listBundle",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/packages/{name}/{version}/dist/bundle",
+      "pathParams": [
+        "name",
+        "version"
+      ],
+      "publicPathParams": [
+        "name",
+        "version"
+      ],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [
+        {
+          "name": "name",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        },
+        {
+          "name": "version",
+          "required": true,
+          "style": "simple",
+          "explode": false
+        }
+      ],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "paramsModel": {
+        "publicName": "DistListBundleParams"
+      },
+      "response": {
+        "status": "200",
+        "contentType": "application/octet-stream",
+        "encoding": "binary",
+        "contents": [
+          {
+            "contentType": "application/octet-stream",
+            "encoding": "binary"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "400",
+          "404",
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "400",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    },
+    {
+      "resource": "bootstrap",
+      "publicResource": "bootstrap",
+      "operation": "listInstall",
+      "publicOperation": "listInstall",
+      "deprecated": false,
+      "method": "GET",
+      "path": "/install",
+      "pathParams": [],
+      "publicPathParams": [],
+      "queryParams": [],
+      "publicQueryParams": [],
+      "headerParams": [],
+      "publicHeaderParams": [],
+      "bodyParams": [],
+      "publicBodyParams": [],
+      "bodyParamDetails": [],
+      "pathParamDetails": [],
+      "queryParamDetails": [],
+      "headerParamDetails": [],
+      "cookieParams": [],
+      "publicCookieParams": [],
+      "cookieParamDetails": [],
+      "response": {
+        "status": "200",
+        "contentType": "text/plain",
+        "encoding": "text",
+        "contents": [
+          {
+            "contentType": "text/plain",
+            "encoding": "text"
+          }
+        ]
+      },
+      "result": {
+        "successStatus": "200",
+        "errorStatuses": [
+          "404",
+          "500"
+        ]
+      },
+      "errorResponses": [
+        {
+          "status": "404",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        },
+        {
+          "status": "500",
+          "contentType": "application/json",
+          "encoding": "json",
+          "contents": [
+            {
+              "contentType": "application/json",
+              "encoding": "json"
+            }
+          ]
+        }
+      ],
+      "responseLinks": [],
+      "transport": "http"
+    }
+  ],
+  "webhooks": []
+}

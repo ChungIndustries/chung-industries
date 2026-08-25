@@ -1,8 +1,0 @@
-packages:
-  - "apps/*"
-  - "packages/*"
-allowBuilds:
-  esbuild: false
-  msw: false
-  nx: true
-  "@nx/js": true

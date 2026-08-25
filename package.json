@@ -1,55 +1,54 @@
 {
-  "name": "chung-industries",
-  "private": true,
+  "name": "cpmregistry-cli",
+  "version": "0.1.0",
+  "description": "API for the CPM Registry, used by the Chung Package Manager (cpm) to host and distribute ComputerCraft-focused Lua packages.",
+  "author": "CPM Registry",
   "type": "module",
+  "bin": {
+    "cpmregistry": "./dist/esm/bin.js"
+  },
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "api.md",
+    "man",
+    "SKILL.md"
+  ],
+  "man": [
+    "./man/cpmregistry.1",
+    "./man/cpmregistry-packages-list.1",
+    "./man/cpmregistry-packages-create.1",
+    "./man/cpmregistry-packages-retrieve.1",
+    "./man/cpmregistry-packages-retrieve-version.1",
+    "./man/cpmregistry-packages-resolve.1",
+    "./man/cpmregistry-packages-dist-list-tarball.1",
+    "./man/cpmregistry-packages-dist-list-bundle.1",
+    "./man/cpmregistry-bootstrap-list-install.1",
+    "./man/cpmregistry-completion.1"
+  ],
   "scripts": {
-    "dev": "nx run-many -t dev",
-    "build": "nx run-many -t build",
-    "lint": "nx run-many -t lint",
-    "lint:fix": "nx run-many -t lint:fix",
-    "typecheck": "nx run-many -t typecheck",
-    "format": "oxfmt",
-    "format:check": "oxfmt --check",
-    "test": "nx run-many -t test",
-    "graph": "nx graph",
-    "affected": "nx affected",
-    "release": "node tools/release.mjs prepare --dry-run",
-    "db:start": "supabase start",
-    "db:stop": "supabase stop",
-    "db:reset": "supabase db reset",
-    "db:gen-types": "supabase gen types typescript --local > packages/supabase/src/types.gen.ts",
-    "prepare": "husky"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/finalize-build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.cjs.json --noEmit"
+  },
+  "dependencies": {
+    "ansis": "^4.3.0",
+    "commander": "^14.0.3",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^21.2.0",
-    "@nx/js": "23.0.1",
-    "@workspace/lint-config": "workspace:*",
-    "husky": "^9.1.7",
-    "nx": "^23.0.2",
-    "oxfmt": "^0.62.0",
-    "oxlint": "^1.59.0",
-    "oxlint-tsgolint": "^0.20.0"
+    "@types/node": "^20.17.0",
+    "typescript": "^6.0.0"
   },
-  "engines": {
-    "node": ">=24",
-    "pnpm": ">=10"
-  },
-  "packageManager": "pnpm@10.33.0",
-  "pnpm": {
-    "overrides": {
-      "undici": "^7.29.0",
-      "ws": "^8.21.0",
-      "qs": "^6.15.2",
-      "@babel/core": "^7.29.6",
-      "esbuild": "^0.28.1",
-      "seroval": "^1.5.6",
-      "seroval-plugins": "^1.5.6",
-      "axios": "^1.18.1",
-      "brace-expansion": "^5.0.9",
-      "nanoid": "^3.3.18",
-      "postcss": "^8.5.26",
-      "nx": "^23.0.2"
-    }
-  }
+  "license": "Apache-2.0"
 }
