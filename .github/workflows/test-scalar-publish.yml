@@ -1,0 +1,33 @@
+name: Test Scalar project publish
+
+# Temporary check that `scalar project publish` works with our Scalar plan and
+# scalar.config.json before a release depends on it (PR #89). Publishes in
+# preview mode only, so the live docs site is untouched. Delete after the check.
+on:
+  workflow_dispatch:
+
+jobs:
+  test-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # @scalar/cli requires Node >= 24; the runner default is older.
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+
+      - name: Publish docs in preview mode
+        env:
+          SCALAR_API_KEY: ${{ secrets.SCALAR_API_KEY }}
+        run: |
+          if [ -z "$SCALAR_API_KEY" ]; then
+            echo "::error::SCALAR_API_KEY is not set."
+            exit 1
+          fi
+          npm install -g @scalar/cli@2.1.0
+          scalar auth login --token "$SCALAR_API_KEY"
+          scalar auth whoami
+          scalar project publish --slug chungindustries --config apps/cpm-registry/scalar.config.json --preview
