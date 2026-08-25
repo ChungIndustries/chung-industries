@@ -18,7 +18,7 @@ local function formatSize(bytes)
   return string.format("%d B", bytes)
 end
 
-local function resolve(roots)
+function sync.resolve(roots)
   local data, err = registry.post("/resolve", { dependencies = roots })
   if not data then
     error("resolve failed: " .. err, 0)
@@ -97,7 +97,7 @@ function sync.apply(roots)
   local resolved = {}
   if next(roots) ~= nil then
     print("Resolving...")
-    resolved = resolve(roots)
+    resolved = sync.resolve(roots)
   end
 
   local resolvedByName = {}
@@ -125,7 +125,7 @@ function sync.apply(roots)
           "Downloading %s@%s (%s)",
           pkg.name,
           pkg.version,
-          formatSize(pkg.dist.bundle.size)
+          formatSize(pkg.dist.bundle.size or 0)
         )
       )
     end
@@ -142,9 +142,12 @@ function sync.apply(roots)
     end
   end
 
+  -- Cleared from state before the files go: an interruption can leak an untracked tree, but
+  -- state.json never claims a package whose files are gone.
   for _, name in ipairs(orphans) do
-    store.removePackage(name)
     current.installed[name] = nil
+    state.save(current)
+    store.removePackage(name)
     print("Removed " .. name)
   end
 

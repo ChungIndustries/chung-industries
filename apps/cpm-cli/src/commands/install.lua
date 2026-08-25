@@ -30,15 +30,16 @@ return function(args)
     end
   end
 
-  local resolved = sync.apply(roots)
-
-  -- A bare `cpm install foo` pins a caret range on whatever "latest" resolved to,
-  -- so later updates stay within the same major version.
-  local saved = state.load()
-  for _, pkg in ipairs(resolved) do
-    if bare[pkg.name] then
-      saved.roots[pkg.name] = "^" .. pkg.version
+  -- A bare `cpm install foo` pins a caret range on whatever "latest" resolves to, so later
+  -- updates stay within the same major version. Pinned before the sync so an interrupted
+  -- sync never records "latest" as the root spec.
+  if next(bare) ~= nil then
+    for _, pkg in ipairs(sync.resolve(roots)) do
+      if bare[pkg.name] then
+        roots[pkg.name] = "^" .. pkg.version
+      end
     end
   end
-  state.save(saved)
+
+  sync.apply(roots)
 end

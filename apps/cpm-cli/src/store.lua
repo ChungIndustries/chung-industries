@@ -55,6 +55,17 @@ local function shimPath(program)
   return fs.combine(store.BIN, program .. ".lua")
 end
 
+-- A shim's loadfile line names the package it runs, so ownership can be read back from disk.
+local function shimOwner(program)
+  local handle = fs.open(shimPath(program), "r")
+  if not handle then
+    return nil
+  end
+  local source = handle.readAll() or ""
+  handle.close()
+  return source:match('loadfile%("/cpm/packages/([^/"]+)/bin/')
+end
+
 -- The shim runs the real file in the caller's globals after prepending the package path, which
 -- is what lets packages require their dependencies without any boilerplate of their own.
 local function shimSource(name, program)
@@ -117,19 +128,24 @@ local function syncStartupHook(name)
   )
 end
 
---- Regenerate the shims for the package currently installed under /cpm/packages/<name>.
+--- Regenerate the shims for the package currently installed under /cpm/packages/<name>,
+--- warning when a shim written by another package gets taken over.
 function store.writeShims(name)
   for _, program in ipairs(binPrograms(name)) do
+    local owner = shimOwner(program)
+    if owner and owner ~= name then
+      print(string.format("Warning: %s replaces the `%s` command from %s", name, program, owner))
+    end
     store.writeFile(shimPath(program), shimSource(name, program))
   end
 end
 
---- Remove the shims that point at the package currently installed under /cpm/packages/<name>.
+--- Remove the shims owned by the package currently installed under /cpm/packages/<name>,
+--- leaving any that another package has since taken over.
 function store.removeShims(name)
   for _, program in ipairs(binPrograms(name)) do
-    local path = shimPath(program)
-    if fs.exists(path) then
-      fs.delete(path)
+    if shimOwner(program) == name then
+      fs.delete(shimPath(program))
     end
   end
 end
@@ -139,6 +155,11 @@ end
 function store.commit(name)
   local staging = store.stagingDir(name)
   local target = store.packageDir(name)
+  -- An empty bundle never creates the staging dir; fail before touching the installed tree
+  -- so a bad bundle cannot destroy a working install.
+  if not fs.exists(staging) then
+    error("nothing staged for " .. name, 0)
+  end
   store.removeShims(name)
   if fs.exists(target) then
     fs.delete(target)
