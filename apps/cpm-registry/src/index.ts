@@ -3,13 +3,17 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { registerPackageRoutes } from "@/components/package/routes";
 import { RegistryError } from "@/errors";
+import packageJson from "../package.json";
 
 /** Static half of the OpenAPI document; the paths are filled in from the routes. */
 export const openApiBase = {
   openapi: "3.0.0",
   info: {
     title: "CPM Registry",
-    version: "0.0.0-development",
+    // The release PR bumps package.json and regenerates openapi.yaml in the same
+    // commit (tools/release.mjs prepare), so the published spec always carries the
+    // released version.
+    version: packageJson.version,
     description:
       "API for the CPM Registry, used by the Chung Package Manager (cpm) to host and distribute ComputerCraft-focused Lua packages.",
   },

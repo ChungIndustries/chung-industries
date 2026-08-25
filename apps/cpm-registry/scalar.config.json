@@ -1,0 +1,25 @@
+{
+  "$schema": "https://registry.scalar.com/@scalar/schemas/config",
+  "scalar": "2.0.0",
+  "info": {
+    "title": "ChungIndustries API Documentation",
+    "description": "API documentation for ChungIndustries services."
+  },
+  "siteConfig": {
+    "subdomain": "chungindustries",
+    "routing": {
+      "redirects": [{ "from": "/", "to": "/cpm-registry" }]
+    }
+  },
+  "navigation": {
+    "routes": {
+      "/cpm-registry": {
+        "type": "openapi",
+        "title": "CPM Registry",
+        "namespace": "chungindustries",
+        "slug": "cpm-registry",
+        "version": "latest"
+      }
+    }
+  }
+}

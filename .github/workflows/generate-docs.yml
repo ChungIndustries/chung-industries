@@ -25,6 +25,11 @@ jobs:
             exit 1
           fi
 
+      # A broken docs config would otherwise only surface during the release's
+      # `scalar project publish`. Same pinned CLI version as release.yml.
+      - name: Validate the Scalar docs config
+        run: npx -y @scalar/cli@2.1.0 project check-config apps/cpm-registry/scalar.config.json
+
       - name: Verify generated Env types match wrangler.toml
         run: |
           pnpm --filter cpm-registry gen-types

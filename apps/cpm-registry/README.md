@@ -24,7 +24,9 @@ Business logic ([`src/components/package/service.ts`](src/components/package/ser
 
 Full HTTP API docs (generated from this codebase) are available at https://chungindustries.apidocumentation.com/cpm-registry. Refer there for endpoints, request/response shapes, and examples. [Source](https://chungindustries.apidocumentation.com/cpm-registry)
 
-These docs are published to Scalar automatically by the Release workflow whenever a new `cpm-registry` version is released (via `scalar registry publish`, versioned by the release tag). The committed `openapi.yaml` is the spec that gets published; CI fails if it drifts from the code, so regenerate and commit it whenever you change the API: `pnpm gen-docs`.
+These docs are published to Scalar automatically by the Release workflow whenever a new `cpm-registry` version is released: the committed `openapi.yaml` is pushed to the [Scalar registry](https://registry.scalar.com/@chungindustries/apis/cpm-registry) versioned by the release tag, and the hosted docs site is republished from [`scalar.config.json`](scalar.config.json), which renders that registry document. Each GitHub Release of `cpm-registry` also attaches the released `openapi.yaml` and links these docs.
+
+The spec embeds the version from `package.json` (stamped by the release PR) and CI fails if `openapi.yaml` drifts from the code, so regenerate and commit it whenever you change the API: `pnpm gen-docs`.
 
 ## Getting started
 
