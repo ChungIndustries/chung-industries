@@ -106,8 +106,15 @@ jobs:
           npm install -g @scalar/cli@2.1.0
           scalar auth login --token "$SCALAR_API_KEY"
           scalar registry publish apps/cpm-registry/openapi.yaml --slug cpm-registry --version "$version"
+          # Docs-as-code publish of the hosted docs site. Best-effort: Scalar gates
+          # `project publish` behind paid plans (verified 2026-08-25, the free plan
+          # rejects it), so a failure only warns. On the free plan, connect the docs
+          # project's API reference to the registry document once in the dashboard;
+          # the registry publish above then keeps the docs current on every release.
           # --slug is the docs project's slug from the Scalar dashboard.
-          scalar project publish --slug chungindustries --config apps/cpm-registry/scalar.config.json
+          if ! scalar project publish --slug chungindustries --config apps/cpm-registry/scalar.config.json; then
+            echo "::warning::scalar project publish failed (docs publishing requires a paid Scalar plan); the registry publish still updates docs connected via the dashboard."
+          fi
 
       # Tidy up so the next release starts from a fresh branch (best-effort; the repo
       # may already auto-delete merged branches). Uses the checkout-persisted token.
