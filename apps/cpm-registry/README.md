@@ -9,7 +9,7 @@ The official registry service for the Chung Package Manager (CPM), providing a h
 - Derives a client-facing **bundle** from each published tarball (a length-prefixed JSON manifest plus raw file bytes, served gzip on the wire) so the in-game cpm client never has to gunzip or untar in Lua; see [docs/cpm-client-design.md](../../docs/cpm-client-design.md).
 - Resolves dependency ranges server-side (`POST /resolve`) with the canonical `semver` package, pinning one version per package for the client's flat install store.
 - Serves the cpm bootstrap installer (`GET /install`) straight out of the latest published `cpm` package: `wget run https://registry.cpm.chungindustries.com/install`.
-- Generates an OpenAPI/Scalar documentation site for the HTTP API.
+- Generates an OpenAPI spec (`openapi.yaml`, also served at `GET /openapi.json`) that drives the [`docs`](../docs) site and the Scalar registry entry.
 
 ## Architecture
 
@@ -22,9 +22,9 @@ Business logic ([`src/components/package/service.ts`](src/components/package/ser
 
 ## API documentation
 
-Full HTTP API docs (generated from this codebase) are available at https://chungindustries.apidocumentation.com/cpm-registry. Refer there for endpoints, request/response shapes, and examples. [Source](https://chungindustries.apidocumentation.com/cpm-registry)
+Full HTTP API docs (generated from this codebase) are served by the [`docs`](../docs) app at https://docs.chungindustries.com/cpm-registry (on its workers.dev URL until that domain is onboarded to Cloudflare). Refer there for endpoints, request/response shapes, and examples. The reference reads this Worker's live `GET /openapi.json` through a service binding, so it always matches the deployed API.
 
-These docs are published to Scalar automatically by the Release workflow whenever a new `cpm-registry` version is released: the committed `openapi.yaml` is pushed to the [Scalar registry](https://registry.scalar.com/@chungindustries/apis/cpm-registry) versioned by the release tag, and the hosted docs render that registry document, so they update on every release once the docs project's API reference is connected to it (a one-time step in the Scalar dashboard on the free plan). The workflow also attempts a docs-as-code publish from [`scalar.config.json`](scalar.config.json), but Scalar gates `project publish` behind paid plans, so that step is best-effort until the plan is upgraded. Each GitHub Release of `cpm-registry` also attaches the released `openapi.yaml` and links these docs.
+The Release workflow also publishes the committed `openapi.yaml` to the [Scalar registry](https://registry.scalar.com/@chungindustries/apis/cpm-registry), versioned by the release tag, which keeps Scalar features that consume the spec (SDK and MCP generation) available. Scalar's hosted docs site is not used: publishing it is gated behind paid Scalar plans. Each GitHub Release of `cpm-registry` also attaches the released `openapi.yaml` and links the docs.
 
 The spec embeds the version from `package.json` (stamped by the release PR) and CI fails if `openapi.yaml` drifts from the code, so regenerate and commit it whenever you change the API: `pnpm gen-docs`.
 

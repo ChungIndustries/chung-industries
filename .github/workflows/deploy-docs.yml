@@ -1,0 +1,35 @@
+name: Deploy Docs
+
+# Deploys are release-gated: release.yml calls this workflow after a release
+# that includes the docs app (detected via the docs@{version} tag).
+# workflow_dispatch remains for manual deploys/redeploys of current main.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-docs
+      cancel-in-progress: false
+    env:
+      # Reuses the repository secrets set up for the cpm-registry deploy; the
+      # token needs Workers Scripts edit permissions.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Always deploy main, regardless of the calling event's sha.
+          ref: main
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # `run deploy`, not `deploy`: pnpm's built-in deploy command shadows the
+      # package script of the same name.
+      - name: Deploy Worker
+        run: pnpm --filter docs run deploy

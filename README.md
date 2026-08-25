@@ -18,6 +18,7 @@ ChungIndustries rebuilds real internet infrastructure inside Minecraft using Com
 | ----------------------------------- | ----------------------- | ------------------------------------------------------------------------------- |
 | [`cpm-registry`](apps/cpm-registry) | TypeScript · Express    | Registry API for the Chung Package Manager; hosts package metadata and tarballs |
 | [`web`](apps/web)                   | React · Vite · Supabase | Web app (currently template boilerplate)                                        |
+| [`docs`](apps/docs)                 | Hono · Scalar           | API docs site (docs.chungindustries.com), serves the CPM Registry reference     |
 | [`packages/*`](packages)            | TypeScript              | `@workspace/*` shared configuration and libraries                               |
 
 See each project's own README for how to run and configure it.

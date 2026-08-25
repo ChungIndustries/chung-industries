@@ -1,0 +1,20 @@
+# Cloudflare Workers configuration for the ChungIndustries docs site.
+#
+# A thin Hono Worker serving Scalar API reference UIs. The CPM Registry spec is
+# proxied same-origin over a service binding to the `cpm-registry` Worker, so
+# the docs render without depending on public DNS or CORS on the registry.
+name = "chungindustries-docs"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+[observability]
+enabled = true
+
+# Intended home. Uncomment once the chungindustries.com zone is onboarded to
+# Cloudflare (custom domains auto-create their DNS record); until then the
+# Worker serves on its workers.dev URL.
+# routes = [{ pattern = "docs.chungindustries.com", custom_domain = true }]
+
+[[services]]
+binding = "REGISTRY"
+service = "cpm-registry"

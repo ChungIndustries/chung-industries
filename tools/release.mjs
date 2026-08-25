@@ -36,7 +36,7 @@ const releaseExtras = {
   "cpm-registry": {
     assets: [{ path: "apps/cpm-registry/openapi.yaml", label: "OpenAPI spec (openapi.yaml)" }],
     footer:
-      "[API documentation](https://chungindustries.apidocumentation.com/cpm-registry) · " +
+      "[API documentation](https://docs.chungindustries.com/cpm-registry) · " +
       "[OpenAPI spec on the Scalar registry](https://registry.scalar.com/@chungindustries/apis/cpm-registry) · " +
       "this release's spec is attached below",
   },
