@@ -3,6 +3,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { registerPackageRoutes } from "@/components/package/routes";
 import { RegistryError } from "@/errors";
+
 import packageJson from "../package.json";
 
 /** Static half of the OpenAPI document; the paths are filled in from the routes. */

@@ -228,7 +228,9 @@ function tagReleasedProjects() {
       }
     }
     if (dryRun) {
-      console.log(`Would create GitHub release ${tag}${assets.length > 0 ? ` with assets: ${assets.join(", ")}` : ""}`);
+      console.log(
+        `Would create GitHub release ${tag}${assets.length > 0 ? ` with assets: ${assets.join(", ")}` : ""}`,
+      );
       continue;
     }
     execFileSync(
