@@ -152,7 +152,9 @@ Because `package.path` is per-program (1.3), that prepend line must run inside t
    `/cpm/bin` is on the shell path via the startup drop-in, so installed programs run by name.
 
 2. **Packages requiring their dependencies**: they execute under a shim (or under another package that did), so the path is already set; plain `require("dep")` works.
-3. **Ad-hoc user scripts** using cpm libraries: one documented boilerplate line at the top, `dofile("/cpm/boot.lua")`, where cpm installs a tiny helper that performs the same prepend into the caller's environment. This is the one wart forced by CC's per-program `package` state; see open questions for a possible upstream-setting escape hatch.
+3. **Ad-hoc user scripts** using cpm libraries: covered by the require hook (below), no boilerplate.
+
+**The require hook** (added 2026-08-25, replacing an earlier `dofile("/cpm/boot.lua")` boilerplate design that was removed outright; it could not have worked anyway, since CC's `dofile` runs chunks against `_G`, where no `package` table exists to prepend to): every program environment in CC:Tweaked is created and passed through the global `load`, resolved at call time. Verified against the mc-1.20.x source: the shell's `executeProgram` calls `load(contents, "@/"..path, nil, env)` with the env from `createShellEnv` (which carries `package` from `cc.require.make`); bios `loadfile` calls the global `load`, so `os.run` flows through it too; the `lua` REPL evaluates input via `load(input, name, "t", tEnv)` with its own `cc.require` package; and none of them capture `load` as a local. The hook wraps `_G.load`: when a chunk is loaded with an env whose own `package.path` (via `rawget`, to skip inheritance through `__index = _G`) lacks the cpm prefix, the prefix is prepended. Result: `require("pkg")` works in any program, from any directory, and in the `lua` REPL. The hook has a single source, `hook.lua` inside the cpm package itself (`/cpm/packages/cpm/hook.lua`), run via `dofile` (against `_G`, all it touches) both by `/startup/50_cpm.lua` at boot and by the client after installs for the current session, so it updates with cpm like any other file. The shim prepend (case 1) is kept as belt and braces. Accepted risk: it is a monkey-patch of a core global; if a future CC version restructures its loaders the hook degrades to a no-op and the shims still cover installed programs.
 
 ### 4.3 Package content conventions
 
@@ -247,7 +249,7 @@ wget run https://registry.cpm.chungindustries.com/install
 ```
 
 - New registry endpoint `GET /install` serves the installer as plain Lua (`Content-Type: text/plain`). No auth, aggressively cacheable with a short TTL (it changes on cpm releases).
-- The installer is a small, dependency-free, single-file Lua script that: checks `http` is enabled, fetches the `cpm` package's own bundle via `/resolve` + `/packages/cpm/{v}/dist/bundle` (cpm is published as a normal package named `cpm`), verifies, installs it into the same `/cpm/` layout, writes `/startup/50_cpm.lua` and `/cpm/boot.lua`, and calls `shell.setPath` so `cpm` works immediately in the current session without reboot.
+- The installer is a small, dependency-free, single-file Lua script that: checks `http` is enabled, fetches the `cpm` package's own bundle via `/resolve` + `/packages/cpm/{v}/dist/bundle` (cpm is published as a normal package named `cpm`), verifies, installs it into the same `/cpm/` layout, then delegates the rest (shims, `/startup/50_cpm.lua`, shell path, require hook) to the freshly extracted package's own `store.lua` so `cpm` works immediately in the current session without reboot.
 - Self-update is then just `cpm update cpm`: cpm is a package like any other, so the bootstrap path never needs to be special-cased again.
 - The installer file itself is a build artifact of the client repo (section 7) embedded into or fetched by the Worker at deploy time.
 
@@ -265,9 +267,10 @@ apps/cpm-cli/
     cpm.lua              CLI entry (arg parsing, command dispatch)
     cpm/
       commands/          install.lua, remove.lua, update.lua, list.lua, ...
-      registry.lua       HTTP client for the registry API (JSend unwrapping)
+      registry.lua       registry endpoints (base URL from settings) on top of net.lua
+      net.lua            HTTP helpers: JSend unwrapping, JSON requests, binary downloads
       bundle.lua         bundle fetch, verify, extract
-      store.lua          /cpm layout, staging swap, shim + boot generation
+      store.lua          /cpm layout, staging swap, shim + startup generation
       state.lua          state.json read/write, closure GC
   vendor/
     sha256.lua           ccryptolib sha256 (vendored, license header retained)
@@ -306,7 +309,7 @@ Kept deliberately npm-shaped. `publish` is intentionally absent from the in-game
 | Gzip in Lua           | Avoided entirely (Java-side wire decompression); LibDeflate not vendored                                                                                                                                         |
 | Tar in Lua            | Avoided (bundle replaces it); tarball endpoint remains for publish/tooling                                                                                                                                       |
 | Integrity             | SHA-256 hex over bundle bytes, vendored ccryptolib, yields while hashing, default on; SHA-512 rejected on 32-bit VM grounds                                                                                      |
-| Install layout        | Global flat store `/cpm/packages/<name>/`, one version per package; shims in `/cpm/bin` + `/startup/50_cpm.lua`; `dofile("/cpm/boot.lua")` header for ad-hoc scripts                                             |
+| Install layout        | Global flat store `/cpm/packages/<name>/`, one version per package; shims in `/cpm/bin` + `/startup/50_cpm.lua`, which runs the require hook (`hook.lua` in the cpm package)                                     |
 | Dependency resolution | Server-side `POST /resolve` using the canonical `semver` package; client has zero semver logic; highest-satisfying-intersection, hard fail on conflict                                                           |
 | Lockfile              | No separate lockfile; `/cpm/state.json` records roots + pinned installed set                                                                                                                                     |
 | Bootstrap             | `wget run https://registry.cpm.chungindustries.com/install`; cpm is itself a package named `cpm`; self-update via `cpm update cpm`                                                                               |
@@ -327,7 +330,7 @@ Each of these is a registry change implied by this design, to be done as normal 
 - **Extracted-size limit** for publishes (item 1): what cap fits CC's 1 MB default disk while leaving room for user data? Initial suggestion 512 KB, revisit with real packages.
 - **Lint/test tooling**: keep the snapshot's luacheck + stylua, or switch to selene (better CC:Tweaked std support)? CraftOS-PC vs CCEmuX for e2e? The old blocker (no local Lua tooling to validate the CI lane) still needs a decision: install locally, or start the CI lane lenient. Decide when resurrecting `apps/cpm-cli`.
 - **Publishing tooling for authors**: out of scope here; presumably a small TS CLI (or CI-only flow) on real machines. Where does it live, and when does the registry grow auth for publishes? (Publish is currently unauthenticated, which is fine for a private registry but worth revisiting before third parties publish.)
-- **Ad-hoc script ergonomics**: `dofile("/cpm/boot.lua")` is a wart. Worth checking whether a shell-level `require` path setting (mbs-style) or an upstream CC:Tweaked feature could remove it later.
+- **Ad-hoc script ergonomics**: resolved 2026-08-25 by the require hook in section 4.2 (wrapping the global `load`, single-sourced as `hook.lua` in the cpm package); the `boot.lua` boilerplate is gone. An upstream CC:Tweaked extra-path setting would still be the cleaner mechanism if one ever appears.
 - **Per-folder installs**: considered and explicitly deferred (2026-08-24). The registry needs no changes (`POST /resolve` takes an arbitrary root map, so any folder can resolve independently); the client sketch is `cpm install --dir <folder>` writing a local `cpm_packages/` plus state file, with `package.path` checking local before global. Revisit only when two things on one computer actually need conflicting versions; the flat store errors loudly when that happens.
 - **Fleet provisioning**: `cpm install --from state.json` (reusing a known-good state file) as a cheap lockfile-equivalent for provisioning many turtles; not in v1.
 
