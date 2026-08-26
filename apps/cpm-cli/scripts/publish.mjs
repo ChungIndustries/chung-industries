@@ -7,8 +7,10 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const filename = `cpm-${version}.tgz`;
+// `||` rather than `??`: CI passes the variable through unconditionally, so an
+// unset repository variable arrives as an empty string.
 const registry = (
-  process.env.CPM_REGISTRY_URL ?? "https://registry.cpm.chungindustries.com"
+  process.env.CPM_REGISTRY_URL || "https://registry.cpm.chungindustries.com"
 ).replace(/\/+$/, "");
 
 const tarball = await readFile(join(root, "dist", filename));
@@ -29,6 +31,10 @@ try {
 }
 console.log(`${response.status} ${response.statusText}\n${body}`);
 
-if (!response.ok) {
+// Published versions are immutable, so a 409 means this version is already up:
+// the expected outcome when a release publish is re-run, not a failure.
+if (response.status === 409) {
+  console.log(`cpm@${version} is already published; nothing to do.`);
+} else if (!response.ok) {
   process.exitCode = 1;
 }
