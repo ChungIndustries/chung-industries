@@ -1,3 +1,15 @@
+## 0.0.3 (2026-08-26)
+
+### 🩹 Fixes
+
+- The OpenAPI spec now reports the released registry version instead of `0.0.0-development`, both at `GET /openapi.json` and in the published spec on Scalar. ([f5bb59d](https://github.com/ChungIndustries/chung-industries/commit/f5bb59d))
+- The registry is now served at its canonical domain, https://registry.cpm.chungindustries.com, declared as a Workers custom domain in `wrangler.toml` and created automatically on deploy. ([a290db5](https://github.com/ChungIndustries/chung-industries/commit/a290db5))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5
+
 ## 0.0.2 (2026-08-25)
 
 ### 🚀 Features
