@@ -25,9 +25,22 @@
 //     without installing dependencies.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
+
+// Extra content for specific projects' GitHub Releases, keyed by package name:
+// assets to attach (repo-relative paths, labeled per the gh CLI's "path#label"
+// syntax) and a footer appended below the changelog notes.
+const releaseExtras = {
+  "cpm-registry": {
+    assets: [{ path: "apps/cpm-registry/openapi.yaml", label: "OpenAPI spec (openapi.yaml)" }],
+    footer:
+      "[API documentation](https://docs.chungindustries.com/cpm-registry) · " +
+      "[OpenAPI spec on the Scalar registry](https://registry.scalar.com/@chungindustries/apis/cpm-registry) · " +
+      "this release's spec is attached below",
+  },
+};
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -83,6 +96,16 @@ async function prepare() {
     dryRun,
     verbose,
   });
+
+  // Regenerate committed artifacts that embed the package version (the registry's
+  // openapi.yaml reads it from package.json), so the release PR carries them in
+  // sync with the bumps and the generate-docs drift check stays green.
+  if (!dryRun) {
+    execFileSync("pnpm", ["run", "--recursive", "--if-present", "gen-docs"], {
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+  }
 
   const bodyPath = values["pr-body"];
   if (bodyPath) {
@@ -161,6 +184,7 @@ function tagReleasedProjects() {
     }
     tags.push({
       tag,
+      name: current.name,
       dir: file === "package.json" ? "." : dirname(file),
       version: current.version,
     });
@@ -186,18 +210,32 @@ function tagReleasedProjects() {
     console.log("Pushed tags to origin.");
   }
 
-  // A GitHub Release per tag, with that version's changelog section as notes.
-  // Piggybacks on the tag-exists skip above, so re-running a completed release
-  // stays a no-op.
-  for (const { tag, dir, version } of tags) {
-    const notes = changelogSection(dir, version) ?? `See ${dir}/CHANGELOG.md.`;
+  // A GitHub Release per tag, with that version's changelog section as notes plus
+  // any per-project extras (attached assets, footer links). Piggybacks on the
+  // tag-exists skip above, so re-running a completed release stays a no-op.
+  for (const { tag, name, dir, version } of tags) {
+    const extras = releaseExtras[name] ?? {};
+    let notes = changelogSection(dir, version) ?? `See ${dir}/CHANGELOG.md.`;
+    if (extras.footer) {
+      notes += `\n\n---\n\n${extras.footer}`;
+    }
+    const assets = [];
+    for (const { path, label } of extras.assets ?? []) {
+      if (existsSync(path)) {
+        assets.push(`${path}#${label}`);
+      } else {
+        console.warn(`::warning::Release asset ${path} not found, skipping it for ${tag}.`);
+      }
+    }
     if (dryRun) {
-      console.log(`Would create GitHub release ${tag}`);
+      console.log(
+        `Would create GitHub release ${tag}${assets.length > 0 ? ` with assets: ${assets.join(", ")}` : ""}`,
+      );
       continue;
     }
     execFileSync(
       "gh",
-      ["release", "create", tag, "--verify-tag", "--title", tag, "--notes", notes],
+      ["release", "create", tag, "--verify-tag", "--title", tag, "--notes", notes, ...assets],
       {
         stdio: "inherit",
       },

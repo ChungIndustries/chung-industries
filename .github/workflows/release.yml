@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cpm-registry-version: ${{ steps.released.outputs.cpm-registry-version }}
+      docs-version: ${{ steps.released.outputs.docs-version }}
     steps:
       - name: Checkout main (post-merge)
         uses: actions/checkout@v7
@@ -61,19 +62,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node tools/release.mjs tag
 
-      # Whether cpm-registry was part of this release, detected via the
-      # cpm-registry@{version} tag just created. Gates the Scalar publish below
-      # and the deploy job. A recovery dispatch falls back to the newest
-      # cpm-registry tag, re-publishing that release's artifacts from main.
-      - name: Detect released cpm-registry version
+      # Which deployable projects were part of this release, detected via the
+      # {projectName}@{version} tags just created. Gates the Scalar publish below
+      # and the deploy jobs. A recovery dispatch falls back to each project's
+      # newest tag, re-publishing that release's artifacts from main.
+      - name: Detect released project versions
         id: released
         run: |
           version="$(git tag --points-at HEAD | sed -n 's/^cpm-registry@//p' | head -n1)"
-          if [ -z "$version" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version="$(git tag -l 'cpm-registry@*' --sort=-version:refname | head -n1 | sed 's/^cpm-registry@//')"
+          docs_version="$(git tag --points-at HEAD | sed -n 's/^docs@//p' | head -n1)"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -z "$version" ]; then
+              version="$(git tag -l 'cpm-registry@*' --sort=-version:refname | head -n1 | sed 's/^cpm-registry@//')"
+            fi
+            if [ -z "$docs_version" ]; then
+              docs_version="$(git tag -l 'docs@*' --sort=-version:refname | head -n1 | sed 's/^docs@//')"
+            fi
           fi
           echo "cpm-registry-version=$version" >> "$GITHUB_OUTPUT"
+          echo "docs-version=$docs_version" >> "$GITHUB_OUTPUT"
           echo "cpm-registry release detected: '${version:-none}'"
+          echo "docs release detected: '${docs_version:-none}'"
 
       # @scalar/cli requires Node >= 24; the runner default is older, and this
       # job intentionally skips the full pnpm setup action.
@@ -83,8 +92,12 @@ jobs:
           node-version-file: package.json
 
       # Publishes the committed (CI-verified) OpenAPI spec to the Scalar registry,
-      # versioned by the release tag.
-      - name: Publish CPM Registry docs to Scalar
+      # versioned by the release tag. Kept for the Scalar features that consume
+      # the registry document (SDK and MCP generation); the API reference itself
+      # is served by the `docs` app. Scalar's hosted docs site is deliberately
+      # not published: `scalar project publish` is gated behind paid plans
+      # (verified 2026-08-25, even in preview mode).
+      - name: Publish CPM Registry spec to Scalar
         env:
           SCALAR_API_KEY: ${{ secrets.SCALAR_API_KEY }}
           version: ${{ steps.released.outputs.cpm-registry-version }}
@@ -97,9 +110,9 @@ jobs:
             echo "::warning::SCALAR_API_KEY is not set, skipping Scalar publish for cpm-registry@$version."
             exit 0
           fi
-          echo "Publishing cpm-registry@$version docs to Scalar."
+          echo "Publishing cpm-registry@$version spec to Scalar."
           # Pinned for reproducibility. Bump deliberately after checking the CLI changelog.
-          npm install -g @scalar/cli@2.0.0
+          npm install -g @scalar/cli@2.1.0
           scalar auth login --token "$SCALAR_API_KEY"
           scalar registry publish apps/cpm-registry/openapi.yaml --slug cpm-registry --version "$version"
 
@@ -109,12 +122,19 @@ jobs:
         if: github.event_name == 'pull_request'
         run: git push origin --delete release/next || true
 
-  # Deploys ride the release train: only a release that includes cpm-registry
-  # ships the Worker. Manual deploys stay available via the called workflow's
-  # workflow_dispatch trigger.
+  # Deploys ride the release train: only a release that includes a deployable
+  # project ships its Worker. Manual deploys stay available via the called
+  # workflows' workflow_dispatch triggers.
   deploy-cpm-registry:
     name: Deploy CPM Registry
     needs: release
     if: needs.release.outputs.cpm-registry-version != ''
     uses: ./.github/workflows/deploy-cpm-registry.yml
+    secrets: inherit
+
+  deploy-docs:
+    name: Deploy Docs
+    needs: release
+    if: needs.release.outputs.docs-version != ''
+    uses: ./.github/workflows/deploy-docs.yml
     secrets: inherit

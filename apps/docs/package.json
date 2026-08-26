@@ -1,0 +1,28 @@
+{
+  "name": "docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ChungIndustries API documentation site, a Cloudflare Worker serving Scalar API references.",
+  "author": "chrille0313",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "gen-types": "wrangler types --include-runtime=false",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@scalar/hono-api-reference": "^0.11.16",
+    "hono": "^4.13.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260707.1",
+    "@total-typescript/tsconfig": "^1.0.4",
+    "@workspace/lint-config": "workspace:*",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.116.0"
+  }
+}
