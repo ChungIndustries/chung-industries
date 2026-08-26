@@ -147,14 +147,18 @@ jobs:
     name: Deploy CPM Registry
     needs: release
     if: needs.release.outputs.cpm-registry-version != ''
-    uses: ./.github/workflows/deploy-cpm-registry.yml
+    uses: ./.github/workflows/deploy-worker.yml
+    with:
+      project: cpm-registry
     secrets: inherit
 
   deploy-docs:
     name: Deploy Docs
     needs: release
     if: needs.release.outputs.docs-version != ''
-    uses: ./.github/workflows/deploy-docs.yml
+    uses: ./.github/workflows/deploy-worker.yml
+    with:
+      project: docs
     secrets: inherit
 
   # Publishing cpm to the registry rides the release train too: a release that
