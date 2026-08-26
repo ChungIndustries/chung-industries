@@ -9,6 +9,10 @@ main = "src/index.ts"
 compatibility_date = "2026-07-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Custom domain on the chungindustries.com zone: deploying creates the DNS
+# record and certificate automatically. The workers.dev URL keeps working.
+routes = [{ pattern = "registry.cpm.chungindustries.com", custom_domain = true }]
+
 [observability]
 enabled = true
 
