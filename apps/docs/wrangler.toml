@@ -7,12 +7,14 @@ name = "chungindustries-docs"
 main = "src/index.ts"
 compatibility_date = "2026-07-01"
 
+# Custom domains auto-create their DNS record and certificate on deploy; the
+# chungindustries.com zone lives in the same Cloudflare account. Top-level keys
+# must sit above the first [table] header, or TOML nests them into that table
+# (wrangler warned about `observability.routes` and ignored the route).
+routes = [{ pattern = "docs.chungindustries.com", custom_domain = true }]
+
 [observability]
 enabled = true
-
-# Custom domains auto-create their DNS record and certificate on deploy; the
-# chungindustries.com zone lives in the same Cloudflare account.
-routes = [{ pattern = "docs.chungindustries.com", custom_domain = true }]
 
 [[services]]
 binding = "REGISTRY"
