@@ -6,9 +6,12 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  affected:
-    name: Affected (typecheck / lint / test / build)
+  checks:
+    name: Checks (commitlint / format / affected)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,8 +22,18 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
+      # The cheap whole-repo checks run first for fast feedback; the commit range
+      # only exists on pull_request events (pushes to main are already validated
+      # by their PR run).
+      - name: Validate commit messages
+        if: github.event_name == 'pull_request'
+        run: pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Derive affected SHAs
-        uses: nrwl/nx-set-shas@v5
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5
 
       # verify-generated regenerates committed artifacts (OpenAPI spec, Worker Env
       # types) and fails on drift, so the checks only run for affected projects.
@@ -29,16 +42,3 @@ jobs:
 
       - name: Lint (affected)
         run: pnpm exec nx affected -t lint -- --format=github
-
-  format:
-    name: Format (oxfmt)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Check formatting
-        run: pnpm format:check
