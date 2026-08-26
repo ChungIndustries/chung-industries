@@ -16,7 +16,13 @@ app.get("/cpm-registry/openapi.json", (c) =>
 
 app.get(
   "/cpm-registry",
-  Scalar({ url: "/cpm-registry/openapi.json", pageTitle: "CPM Registry API | ChungIndustries" }),
+  Scalar({
+    url: "/cpm-registry/openapi.json",
+    pageTitle: "CPM Registry API | ChungIndustries",
+    // Explicit so Scalar's stock default theme renders; with no theme set, the
+    // hono integration injects its own orange-accent custom CSS instead.
+    theme: "default",
+  }),
 );
 
 export default app;
