@@ -1,5 +1,5 @@
 name: Setup
-description: Checkout, install pnpm, Node, and dependencies
+description: Install pnpm, Node, and dependencies (run checkout first)
 
 runs:
   using: composite
