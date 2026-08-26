@@ -22,7 +22,7 @@ Business logic ([`src/components/package/service.ts`](src/components/package/ser
 
 ## API documentation
 
-Full HTTP API docs (generated from this codebase) are served by the [`docs`](../docs) app at https://docs.chungindustries.com/cpm-registry (on its workers.dev URL until that domain is onboarded to Cloudflare). Refer there for endpoints, request/response shapes, and examples. The reference reads this Worker's live `GET /openapi.json` through a service binding, so it always matches the deployed API.
+Full HTTP API docs (generated from this codebase) are served by the [`docs`](../docs) app at https://docs.chungindustries.com/cpm-registry. Refer there for endpoints, request/response shapes, and examples. The reference reads this Worker's live `GET /openapi.json` through a service binding, so it always matches the deployed API.
 
 The Release workflow also publishes the committed `openapi.yaml` to the [Scalar registry](https://registry.scalar.com/@chungindustries/apis/cpm-registry), versioned by the release tag, which keeps Scalar features that consume the spec (SDK and MCP generation) available. Scalar's hosted docs site is not used: publishing it is gated behind paid Scalar plans. Each GitHub Release of `cpm-registry` also attaches the released `openapi.yaml` and links the docs.
 
@@ -45,5 +45,5 @@ First-time setup (one-off, on your Cloudflare account):
 
 1. `wrangler d1 create cpm-registry` and paste the printed `database_id` into `wrangler.toml`.
 2. `wrangler r2 bucket create cpm-registry-tarballs`.
-3. Add repository secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts + D1 + R2 edit) and `CLOUDFLARE_ACCOUNT_ID`.
+3. Add repository secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts + D1 + R2 edit, plus Workers Routes edit on the `chungindustries.com` zone so deploys can attach the custom domains) and `CLOUDFLARE_ACCOUNT_ID`.
 4. Apply migrations and deploy once by hand if you like: `pnpm db:migrate:remote` then `pnpm run deploy` (`run` is required; pnpm's built-in `deploy` command shadows the script).

@@ -9,6 +9,11 @@ main = "src/index.ts"
 compatibility_date = "2026-07-01"
 compatibility_flags = ["nodejs_compat"]
 
+# The registry's canonical URL (hardcoded in the cpm client and the OpenAPI
+# servers list). Custom domains auto-create their DNS record and certificate on
+# deploy; the chungindustries.com zone lives in the same Cloudflare account.
+routes = [{ pattern = "registry.cpm.chungindustries.com", custom_domain = true }]
+
 [observability]
 enabled = true
 

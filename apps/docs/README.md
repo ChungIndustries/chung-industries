@@ -4,7 +4,7 @@ API documentation site for ChungIndustries services, served by a thin Hono Worke
 
 The CPM Registry reference lives at `/cpm-registry` (the root redirects there). The spec is fetched same-origin and proxied to the `cpm-registry` Worker over a service binding, so the docs always show the deployed API without depending on public DNS or CORS.
 
-Intended home: https://docs.chungindustries.com. Uncomment the custom domain route in [`wrangler.toml`](wrangler.toml) once the `chungindustries.com` zone is onboarded to Cloudflare; until then the Worker serves on its workers.dev URL.
+Served at https://docs.chungindustries.com, declared as a custom domain in [`wrangler.toml`](wrangler.toml) (DNS record and certificate are created automatically on deploy).
 
 ## Getting started
 

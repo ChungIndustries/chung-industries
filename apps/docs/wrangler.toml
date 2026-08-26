@@ -10,10 +10,9 @@ compatibility_date = "2026-07-01"
 [observability]
 enabled = true
 
-# Intended home. Uncomment once the chungindustries.com zone is onboarded to
-# Cloudflare (custom domains auto-create their DNS record); until then the
-# Worker serves on its workers.dev URL.
-# routes = [{ pattern = "docs.chungindustries.com", custom_domain = true }]
+# Custom domains auto-create their DNS record and certificate on deploy; the
+# chungindustries.com zone lives in the same Cloudflare account.
+routes = [{ pattern = "docs.chungindustries.com", custom_domain = true }]
 
 [[services]]
 binding = "REGISTRY"
