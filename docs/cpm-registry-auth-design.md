@@ -1,8 +1,8 @@
 # CPM Registry: authentication and package ownership
 
 Status: proposed (design only, nothing implemented)
-Scope: `apps/cpm-registry`, plus the browser surface it needs and the `cpm` CC:Tweaked client that publishes to it
-Date: 2026-07-28
+Scope: `apps/cpm-registry`, the publish tooling that authenticates to it (CI and author terminals today, possibly an in-game client later), and the minimal browser surface accounts need
+Date: 2026-08-27
 
 ## 1. Problem and constraints
 
@@ -17,8 +17,12 @@ Fixed constraints:
 - **No shared secret, no single admin token.** Real accounts or nothing.
 - The registry is a **Cloudflare Worker** (Hono + `@hono/zod-openapi`), metadata in **D1** (`DB`),
   tarballs in **R2** (`BUCKET`). No origin server to fall back on.
-- The publish client runs **inside Minecraft under CC:Tweaked**: Lua, `http.post` with custom headers,
-  no browser, no OS keychain, a filesystem any player at the keyboard can read.
+- Publishers run on **real machines, not in game**: the shipped `cpm` client
+  ([docs/cpm-client-design.md](cpm-client-design.md), section 8) deliberately has no `publish`
+  command. Today's actual publishers are the release workflow (CI publishes the `cpm` package itself
+  via `apps/cpm-cli/scripts/publish.mjs`) and authors publishing from a normal terminal. In-game
+  publishing from CC:Tweaked (Lua, no browser, no keychain, world-readable filesystem) remains a
+  possible future surface and is designed for in section 10, but it is no longer the primary one.
 - Data will be **wiped** when auth ships. No migration path for existing accounts or packages is needed.
 - Repo conventions apply: zod-validated env, generated `Env` type, JSend envelopes, domain errors in
   `src/errors.ts`, routes colocated with handlers, Vitest under `tests/`, no trailing periods in
@@ -32,10 +36,10 @@ Fixed constraints:
 | 2 | **Better Auth** for authentication (sessions, GitHub OAuth, publish tokens) | Runs on workerd, native D1 support since 1.5, GitHub OAuth + API keys + device flow are exactly the roadmap |
 | 3 | **Authorization stays hand-rolled** in the registry's own tables | Package ownership is domain logic. No auth library models "who may publish `turtle-utils`" |
 | 4 | Auth state lives in the **same D1 database** as the registry | One binding, and the ownership check can share a transaction with the version insert |
-| 5 | Publish credential is a **long-lived bearer token**, hashed at rest, publish-scoped by default | Mirrors npm granular tokens; survives a Lua client with no keychain |
+| 5 | Publish credential is a **long-lived bearer token**, hashed at rest, publish-scoped by default | Mirrors npm granular tokens; works identically for CI, a terminal, and any future in-game client |
 | 6 | **First publish wins** the name, recorded in a `package_maintainers` ACL with exactly one owner | Simplest rule that is also npm's rule; multi-maintainer support falls out of the same table |
-| 7 | Token onboarding is **paste-a-token** first, **RFC 8628 device flow** second | Paste ships with almost no client code; the device flow removes the paste entirely and Better Auth already implements it |
-| 8 | The account/token UI is **deferred**; any interim surface is a minimal stopgap, and the real UI ships later as **its own app** (not `apps/web`, not folded into the Worker) | Decided 2026-07-28. Building UI is explicitly not part of this phase; the API is designed so a browser is only strictly needed for the GitHub redirect and token display |
+| 7 | Token onboarding is **paste-a-token**; the **RFC 8628 device flow** is parked unless in-game publishing ships | The shipped client has no publish command (updated 2026-08-27), so today's consumers are CI secrets and real terminals, where pasting is the normal thing |
+| 8 | The account/token UI is **deferred**; any interim surface is a minimal stopgap, and the real UI ships later as **its own app** (not `apps/web`, not folded into the Worker) | Decided 2026-08-27. Building UI is explicitly not part of this phase; the API is designed so a browser is only strictly needed for the GitHub redirect and token display |
 
 ## 3. The two surfaces
 
@@ -45,9 +49,12 @@ npm separates these and so should we:
 transfer or deprecate a package. Credential: a session cookie. Interactive, rare, tolerant of
 redirects and JavaScript.
 
-**Machine / CC:Tweaked.** `cpm publish` sends a multipart POST. Credential: a bearer token in an
-`Authorization` header. Non-interactive, must work with one HTTP call, no redirects, no cookie jar,
-no browser.
+**Machine.** A publish is one multipart POST (the tarball is the whole request; metadata comes from
+the `cpm.json` at its root). Credential: a bearer token in an `Authorization` header. Non-interactive,
+must work with one HTTP call, no redirects, no cookie jar. Today this surface has two concrete
+callers: the release workflow publishing `cpm` itself (token from a GitHub Actions secret) and an
+author at a terminal. A future in-game CC:Tweaked publisher would be a third caller of the same
+endpoint with the same header.
 
 **Should one system serve both?** Yes, with a hard split in the middle:
 
@@ -232,15 +239,16 @@ Schema implications either way:
 
 ## 7. Data model
 
-Three migration files, additive, applied after the wipe. `0001_init.sql` stays as it is.
+Three migration files, additive, applied after the wipe. `0001_init.sql` and `0002_bundles.sql`
+(the bundle columns added for the client, 2026-08) stay as they are.
 
-### 7.1 `0002_auth.sql` (vendor-owned, generated)
+### 7.1 `0003_auth.sql` (vendor-owned, generated)
 
 Generated by `@better-auth/cli generate` and committed verbatim. Expected tables for the chosen plugin
 set: `user`, `session`, `account`, `verification`, `apikey`, and later `deviceCode`. Do not hand-edit;
 regenerate on upgrade and commit the diff as a new numbered migration.
 
-### 7.2 `0003_ownership.sql` (ours)
+### 7.2 `0004_ownership.sql` (ours)
 
 ```sql
 -- Who may publish a package name. Exactly one row per package has role 'owner';
@@ -287,7 +295,7 @@ CREATE TABLE audit_events (
 CREATE INDEX audit_events_by_package ON audit_events (package_name, created_at);
 ```
 
-### 7.3 `0004_provenance.sql` (ours)
+### 7.3 `0005_provenance.sql` (ours)
 
 ```sql
 -- `versions.author` and `packages.author` are free-text metadata the publisher
@@ -315,7 +323,10 @@ This is the part that protects the registry. Authentication only says who is cal
 claim queue.
 
 Blocked before that: names in `reserved_names`, and names that fail the existing `nameParam` validation.
-Seed `reserved_names` with `cpm`, `chung`, `registry`, and the names of anything bundled with the client.
+Seed `reserved_names` with `chung`, `registry`, and similar infrastructure names. `cpm` itself is NOT
+reserved: it is a real published package (CI publishes it every cpm-cli release), so it gets claimed
+by its owner account through the normal first-authenticated-publish path during the phase 2 cutover,
+before anyone else can race for it (the wipe and the token flip happen in the same release).
 
 ### 8.2 Multiple maintainers
 
@@ -403,7 +414,7 @@ Machine surface, JSend, part of `openapi.yaml`:
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `POST` | `/packages` | bearer, `publish` scope | now `401` / `403` |
-| `GET` | `/me` | bearer or session | whoami: user handle, token scopes, expiry. `cpm whoami` |
+| `GET` | `/me` | bearer or session | whoami: user handle, token scopes, expiry; also how CI smoke-tests its token |
 | `GET` | `/me/packages` | bearer or session | packages the actor maintains |
 | `PUT` | `/packages/{name}/dist-tags/{tag}` | bearer, `publish` scope | maintainers only |
 | `POST` | `/packages/{name}/deprecate` | bearer, `publish` scope | maintainers only |
@@ -412,8 +423,12 @@ Machine surface, JSend, part of `openapi.yaml`:
 | `POST` | `/packages/{name}/transfer` | session, or bearer with `manage` | owner nominates |
 | `POST` | `/packages/{name}/transfer/accept` | session | nominee accepts |
 
-Reads (`GET /packages`, `GET /packages/{name}`, tarball download) stay **public and unauthenticated**.
-A package registry nobody can read is not a registry.
+Reads stay **public and unauthenticated**: `GET /packages`, `GET /packages/{name}`, the tarball and
+bundle downloads, and also `POST /resolve` and `GET /install` (added by the client work, 2026-08).
+`/resolve` deserves an explicit callout because it is a POST: auth must be attached per-route (or the
+middleware scoped to specific paths), never as a blanket "all POSTs require a token" rule, or the
+resolver and the `wget run .../install` bootstrap break for every anonymous computer. A package
+registry nobody can read is not a registry.
 
 Human surface, mounted as an opaque Better Auth handler under `/auth/*`: GitHub OAuth start and
 callback, session, sign-out, API key create/list/revoke, and later the device endpoints.
@@ -488,7 +503,8 @@ createRoute({
 Then `pnpm --filter cpm-registry gen-docs` and commit `openapi.yaml` in the same PR. CI fails on drift,
 so this is not optional. The `/auth/*` routes will **not** appear in the generated document; add a
 short prose section to `openApiBase.info.description` pointing at the website for account and token
-management, so the published Scalar docs are not silently misleading.
+management, so the published API reference (the self-hosted `apps/docs` Worker and the Scalar
+registry copy) is not silently misleading.
 
 ### 9.4 Env and bindings
 
@@ -553,9 +569,29 @@ Under `tests/`, Vitest, no runtime required:
   right status.
 - One integration test per new route asserting the JSend envelope shape.
 
-## 10. Tokens on a Minecraft computer
+## 10. Tokens in publishers' hands
 
-### 10.1 Getting a token onto the computer
+### 10.0 Today's publishers: CI and real terminals (updated 2026-08-27)
+
+The shipped `cpm` client has no publish command, so the token consumers that exist right now are:
+
+- **The release workflow.** `release.yml` publishes the `cpm` package to the registry on every
+  cpm-cli release (`apps/cpm-cli/scripts/publish.mjs`, target from the `CPM_REGISTRY_URL` repository
+  variable). Once auth ships this needs a `publish`-scoped token in a GitHub Actions secret
+  (`CPM_REGISTRY_TOKEN`), sent as `Authorization: Bearer`, and the `cpm` package needs a real owner
+  account, claimed by first authenticated publish like any other package. The script's 409-means-
+  already-published idempotency is unaffected, since a valid token hits the same 409 on re-runs; but
+  an expired CI token turns every release publish into a 401, so the token's expiry needs a calendar
+  owner (or a deliberately long expiry, see open questions).
+- **Authors at a terminal**, publishing with curl or a future publisher CLI: create a token on the
+  website, paste it into a shell env var or config file. Ordinary npm-style workflow, nothing to
+  design.
+
+Everything below about Minecraft computers applies **only if an in-game publish surface ships later**
+(the client design leaves this open). It is kept because it is the hard case, and because the scoping
+and hygiene rules it forces (10.3, 10.4) are the right defaults for CI secrets too.
+
+### 10.1 Getting a token onto an in-game computer (future surface)
 
 **v1, paste-a-token** (this is exactly npm's model):
 
@@ -626,18 +662,17 @@ is additive; not v1.
 
 ### 10.5 A CC:Tweaked constraint worth writing down
 
-CC:Tweaked caps HTTP uploads at **4 MiB by default** (headers plus body, server-configurable). A
-multipart publish therefore cannot carry a tarball much above that, whatever the registry allows. The
-registry should enforce its own explicit limit below that ceiling and return a clear `413` or a JSend
-`fail`, rather than letting the client fail opaquely. Not strictly an auth concern, but it lands on the
-same endpoint and the same PR should handle it.
+CC:Tweaked caps HTTP uploads at **4 MiB by default** (headers plus body, server-configurable), so an
+in-game publish could never carry a tarball much above that. Already handled on main (2026-08): the
+registry enforces `MAX_TARBALL_BYTES` and returns a JSend 413 via `PayloadTooLargeError`, and the
+extracted size is capped at 512 KiB. Nothing left to do here.
 
 ## 11. Rollout
 
 The data wipe removes every compatibility concern, so this is a straight sequence. One `nx release plan`
 entry per logical change, per repo convention.
 
-**Phase 0, spike. DONE 2026-07-28, both questions answered yes.** Results, measured on
+**Phase 0, spike. DONE 2026-08-27, both questions answered yes.** Results, measured on
 better-auth 1.6.25 with `@better-auth/api-key` 1.6.25:
 
 - **Bundle**: baseline 784 KiB (128 KiB gzip); with full `better-auth` + api-key plugin
@@ -651,7 +686,8 @@ better-auth 1.6.25 with `@better-auth/api-key` 1.6.25:
   `@better-auth/cli` package is stale (stuck at 1.4.x) and replaced by the `auth` package. The
   working command, using the throwaway `node:sqlite` config committed as
   `apps/cpm-registry/auth-schema.config.ts`:
-  `pnpm dlx auth generate --config auth-schema.config.ts --output migrations/0002_auth.sql -y`.
+  `pnpm dlx auth generate --config auth-schema.config.ts --output migrations/0003_auth.sql -y`
+  (renumbered from `0002` after main gained `0002_bundles.sql`).
   The emitted DDL (`user`, `session`, `account`, `verification`, `apikey` plus indexes) applies
   cleanly via `wrangler d1 migrations apply`. Note the generated columns use camelCase quoted
   names and a `date` type keyword; both are fine under SQLite type affinity, and our own tables
@@ -661,30 +697,37 @@ better-auth 1.6.25 with `@better-auth/api-key` 1.6.25:
   authorize URL (state + PKCE) and writes its state rows to the `verification` table through the
   native D1 adapter.
 
-**Phase 1, accounts.** `0002_auth.sql`, GitHub OAuth, sessions, minimal Worker-served pages (sign in,
-account, tokens). Publish stays open. Nothing user-visible breaks yet.
+**Phase 1, accounts.** `0003_auth.sql`, GitHub OAuth, sessions, and the smallest possible token
+stopgap (the UI proper is deferred by decision 2 in section 12; a bare "you are signed in, here is
+your new token, copy it now" page served by the Worker is acceptable as a stopgap until the separate
+UI app exists). Publish stays open. Nothing user-visible breaks yet.
 
-**Phase 2, ownership.** `0003_ownership.sql` and `0004_provenance.sql`. Wipe D1 and R2. `POST /packages`
+**Phase 2, ownership.** `0004_ownership.sql` and `0005_provenance.sql`. Wipe D1 and R2. `POST /packages`
 requires a `publish`-scoped bearer token; add `GET /me`, `GET /me/packages`; add `UnauthorizedError` /
 `ForbiddenError`; register the security scheme; regenerate and commit `openapi.yaml`; update the README
-and the published Scalar docs. **This is the breaking change**, and it is the release that closes the
-open publish endpoint.
+and the API reference (self-hosted by the `apps/docs` Worker, plus the Scalar registry publish in CI).
+**Before this release goes out**: mint a `publish`-scoped token, add it as the `CPM_REGISTRY_TOKEN`
+repository secret, teach `apps/cpm-cli/scripts/publish.mjs` to send it, and republish `cpm` (first
+authenticated publish claims the name for the bot/owner account). Otherwise the next cpm-cli release
+fails its registry publish with a 401. **This is the breaking change**, and it is the release that
+closes the open publish endpoint.
 
-**Phase 3, client.** `cpm login` (paste), `cpm whoami`, `cpm publish` sending the header, and readable
-handling of 401 and 403. Coordinate with the separate cpm client design.
+**Phase 3, publisher tooling.** Readable 401/403 handling in `scripts/publish.mjs`, and whatever
+author-side publish tooling emerges from the client design's open question (a small TS CLI on real
+machines). No in-game work: the shipped `cpm` client does not publish.
 
 **Phase 4, the rest.** Maintainer management, transfer with accept, deprecate, soft removal, audit
-events surfaced in the UI.
+events surfaced wherever the UI ends up.
 
-**Phase 5, device flow.** RFC 8628 login from in game, replacing the paste as the recommended path.
-Keep the paste flow working; it is the fallback when a player has no second screen.
+**Phase 5, device flow (parked).** RFC 8628 login from in game. Only relevant if an in-game publish
+surface ships; Better Auth's plugin makes it cheap to add then, so nothing is lost by waiting.
 
-**Phase 6, hardening.** Package-scoped tokens, rate limits, a richer UI in `apps/web`, KV verification
+**Phase 6, hardening.** Package-scoped tokens, rate limits, the separate UI app, KV verification
 cache if publish volume ever justifies it.
 
 ## 12. Decisions and open questions
 
-Resolved 2026-07-28:
+Resolved 2026-08-27:
 
 1. **Providers: GitHub OAuth only for v1.** No email/password, no email sender. Adding a second
    provider later costs one Better Auth flag plus an email sender.
@@ -710,9 +753,16 @@ Still open:
    administration. Leaning session-only, listed as bearer-or-session in section 9.1 pending a call.
 3. **Admin.** Who holds `admin`, and is it a column on `user` or a hard-coded list of user ids in a
    secret? A column is more honest; a secret is faster to ship.
-4. **Token expiry default.** 90 days matches npm, but npm users have CI and a laptop. A Minecraft
-   computer that silently stops publishing three months later, in a world nobody has loaded for weeks,
-   is a bad experience. Consider 180 days with a warning printed by the client as expiry approaches.
+4. **Token expiry default.** 90 days matches npm, but the main consumer is now the release
+   workflow's secret, and an expired CI token silently breaks the registry publish of the next
+   cpm-cli release (it degrades to a red job, not data loss). Options: a long-lived (1 year) CI
+   token with `last used` visibility, or a calendar reminder, or exempting `admin`-minted CI tokens
+   from the cap. Any future in-game tokens have the same problem in a worse shape (a world nobody
+   loads for weeks), which argues for 180 days there.
+5. **Who owns the `cpm` package (added 2026-08-27)?** The release workflow publishes `cpm`, so some
+   account must own the name: your personal GitHub-backed account (simplest; CI's token is just
+   your token), or a dedicated bot/org account (cleaner ownership story, one more GitHub account to
+   manage). Needs deciding before phase 2's "republish cpm authenticated" step.
 
 ## Sources
 

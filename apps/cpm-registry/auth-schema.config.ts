@@ -6,7 +6,7 @@
  * MUST mirror `src/auth.ts`, or the generated tables will drift from what the
  * Worker expects at runtime.
  *
- * Usage: pnpm exec @better-auth/cli generate --config auth-schema.config.ts --output migrations/0002_auth.sql -y
+ * Usage: pnpm dlx auth generate --config auth-schema.config.ts --output migrations/0003_auth.sql -y
  */
 import { DatabaseSync } from "node:sqlite";
 
