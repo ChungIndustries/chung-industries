@@ -6,6 +6,7 @@ The official registry service for the Chung Package Manager (CPM), providing a h
 
 - Hosts CPM package metadata (in D1) and tarballs (in R2) for distribution.
 - Validates publish requests and enforces immutable, integrity-checked versions, capped at 5 MiB per tarball (512 KiB extracted).
+- Authenticates publishers (GitHub-backed accounts via Better Auth under `/auth/*`, hashed publish tokens for machines) and enforces package ownership: the first authenticated publish claims a name into `package_maintainers`, and only its maintainers can publish later versions. Reads stay public. See [docs/cpm-registry-auth-design.md](../../docs/cpm-registry-auth-design.md).
 - Derives a client-facing **bundle** from each published tarball (a length-prefixed JSON manifest plus raw file bytes, served gzip on the wire) so the in-game cpm client never has to gunzip or untar in Lua; see [docs/cpm-client-design.md](../../docs/cpm-client-design.md).
 - Resolves dependency ranges server-side (`POST /resolve`) with the canonical `semver` package, pinning one version per package for the client's flat install store.
 - Serves the cpm bootstrap installer (`GET /install`) straight out of the latest published `cpm` package: `wget run https://registry.cpm.chungindustries.com/install`.
@@ -31,7 +32,7 @@ The spec embeds the version from `package.json` (stamped by the release PR) and 
 ## Getting started
 
 1. Install dependencies: `pnpm install`
-2. Configuration lives in [`wrangler.toml`](wrangler.toml). The runtime bindings (`DB`, `BUCKET`) are declared there; there are no `.env` files. `wrangler dev` provisions local miniflare D1/R2 automatically. The `Env` type the code uses is generated from `wrangler.toml` into `worker-configuration.d.ts` by `pnpm gen-types`; rerun it (and commit the result) whenever bindings change.
+2. Configuration lives in [`wrangler.toml`](wrangler.toml). The runtime bindings (`DB`, `BUCKET`) are declared there. `wrangler dev` provisions local miniflare D1/R2 automatically. The `Env` type the code uses is generated from `wrangler.toml` into `worker-configuration.d.ts` by `pnpm gen-types`; rerun it (and commit the result) whenever bindings change. Auth needs four secrets, validated in [`src/env.ts`](src/env.ts) and read from a gitignored `.dev.vars` locally (`wrangler secret put` in production): `BETTER_AUTH_SECRET` (any 32+ char random string locally), `BETTER_AUTH_URL` (`http://localhost:8787` locally), and `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` from a GitHub OAuth App whose callback is `<BETTER_AUTH_URL>/auth/callback/github`. Routes that never touch auth work without them.
 3. Apply the D1 schema locally: `pnpm db:migrate` (adds migrations under [`migrations/`](migrations)).
 4. Run locally: `pnpm dev` (`wrangler dev`, local D1 + R2).
 5. Check the Worker bundles: `pnpm build` (`wrangler deploy --dry-run`).

@@ -1,6 +1,6 @@
 # CPM Registry: authentication and package ownership
 
-Status: proposed (design only, nothing implemented)
+Status: phases 0-2 implemented (accounts, tokens, ownership enforcement); phases 3+ pending
 Scope: `apps/cpm-registry`, the publish tooling that authenticates to it (CI and author terminals today, possibly an in-game client later), and the minimal browser surface accounts need
 Date: 2026-08-27
 
@@ -759,10 +759,8 @@ Still open:
    token with `last used` visibility, or a calendar reminder, or exempting `admin`-minted CI tokens
    from the cap. Any future in-game tokens have the same problem in a worse shape (a world nobody
    loads for weeks), which argues for 180 days there.
-5. **Who owns the `cpm` package (added 2026-08-27)?** The release workflow publishes `cpm`, so some
-   account must own the name: your personal GitHub-backed account (simplest; CI's token is just
-   your token), or a dedicated bot/org account (cleaner ownership story, one more GitHub account to
-   manage). Needs deciding before phase 2's "republish cpm authenticated" step.
+5. **Who owns the `cpm` package?** Resolved 2026-08-27: the personal GitHub-backed account. CI's
+   `CPM_REGISTRY_TOKEN` is a publish-scoped token minted by that account.
 
 ## Sources
 
