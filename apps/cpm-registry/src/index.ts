@@ -1,6 +1,7 @@
 import { OpenAPIHono, z } from "@hono/zod-openapi";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
+import { authFor, type AuthEnv } from "@/auth";
 import { registerPackageRoutes } from "@/components/package/routes";
 import { RegistryError } from "@/errors";
 
@@ -50,6 +51,11 @@ app.onError((err, c) => {
   console.error(err);
   return c.json({ status: "error", message: "Internal Server Error" }, 500);
 });
+
+// Better Auth owns everything under /auth/* (GitHub OAuth, sessions, API
+// keys). These routes are library-native and intentionally outside both the
+// JSend envelope and the generated OpenAPI document.
+app.on(["GET", "POST"], "/auth/*", (c) => authFor(c.env as AuthEnv).handler(c.req.raw));
 
 registerPackageRoutes(app);
 

@@ -20,7 +20,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@better-auth/api-key": "^1.6.25",
     "@hono/zod-openapi": "^1.5.1",
+    "better-auth": "^1.6.25",
     "hono": "^4.13.3",
     "nanotar": "^0.3.0",
     "semver": "^7.7.4",
