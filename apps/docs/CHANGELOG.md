@@ -1,3 +1,13 @@
+## 0.0.3 (2026-08-26)
+
+### 🩹 Fixes
+
+- The API reference renders with Scalar's stock default theme instead of the hono integration's orange-accent custom CSS fallback. ([94a5cf8](https://github.com/ChungIndustries/chung-industries/commit/94a5cf8))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+
 ## 0.0.2 (2026-08-26)
 
 ### 🩹 Fixes
