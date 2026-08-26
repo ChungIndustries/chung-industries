@@ -64,32 +64,13 @@ jobs:
         run: node tools/release.mjs tag
 
       # Which deployable projects were part of this release, detected via the
-      # {projectName}@{version} tags just created. Gates the Scalar publish below
-      # and the deploy jobs. A recovery dispatch falls back to each project's
-      # newest tag, re-publishing that release's artifacts from main.
+      # {projectName}@{version} tags just created; writes a <project>-version
+      # output per released project. Gates the Scalar publish below and the
+      # deploy jobs. A recovery dispatch falls back to each project's newest
+      # tag, re-publishing that release's artifacts from main.
       - name: Detect released project versions
         id: released
-        run: |
-          version="$(git tag --points-at HEAD | sed -n 's/^cpm-registry@//p' | head -n1)"
-          cli_version="$(git tag --points-at HEAD | sed -n 's/^cpm-cli@//p' | head -n1)"
-          docs_version="$(git tag --points-at HEAD | sed -n 's/^docs@//p' | head -n1)"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ -z "$version" ]; then
-              version="$(git tag -l 'cpm-registry@*' --sort=-version:refname | head -n1 | sed 's/^cpm-registry@//')"
-            fi
-            if [ -z "$cli_version" ]; then
-              cli_version="$(git tag -l 'cpm-cli@*' --sort=-version:refname | head -n1 | sed 's/^cpm-cli@//')"
-            fi
-            if [ -z "$docs_version" ]; then
-              docs_version="$(git tag -l 'docs@*' --sort=-version:refname | head -n1 | sed 's/^docs@//')"
-            fi
-          fi
-          echo "cpm-registry-version=$version" >> "$GITHUB_OUTPUT"
-          echo "cpm-cli-version=$cli_version" >> "$GITHUB_OUTPUT"
-          echo "docs-version=$docs_version" >> "$GITHUB_OUTPUT"
-          echo "cpm-registry release detected: '${version:-none}'"
-          echo "cpm-cli release detected: '${cli_version:-none}'"
-          echo "docs release detected: '${docs_version:-none}'"
+        run: node tools/release.mjs released ${{ github.event_name == 'workflow_dispatch' && '--fallback-latest' || '' }}
 
       # @scalar/cli requires Node >= 24; the runner default is older, and this
       # job intentionally skips the full pnpm setup action.

@@ -23,9 +23,18 @@
 //     CHANGELOG.md section as the notes. Uses only git, node builtins, and the
 //     gh CLI (preinstalled on runners; needs GH_TOKEN), so CI can run it
 //     without installing dependencies.
+//
+//   released [--fallback-latest]
+//     Run after `tag` (release.yml). Reports which projects the current release
+//     includes via the release tags on HEAD, writing a "<project>-version"
+//     GitHub Actions output per released project (echoed to stdout when
+//     $GITHUB_OUTPUT is unset, e.g. locally). With --fallback-latest (recovery
+//     dispatch), every project missing a tag on HEAD falls back to its newest
+//     tag, so the publish/deploy jobs re-run against the latest release. Like
+//     `tag`, runs without installed dependencies.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -48,6 +57,7 @@ const { positionals, values } = parseArgs({
     "dry-run": { type: "boolean", default: false },
     verbose: { type: "boolean", default: false },
     "pr-body": { type: "string" },
+    "fallback-latest": { type: "boolean", default: false },
   },
 });
 
@@ -148,9 +158,23 @@ function showJson(ref, path) {
   }
 }
 
-function tagReleasedProjects() {
+function releaseTagPattern() {
   const release = JSON.parse(readFileSync("nx.json", "utf8")).release ?? {};
-  const tagPattern = release.releaseTag?.pattern ?? "v{version}";
+  return release.releaseTag?.pattern ?? "v{version}";
+}
+
+// A regex matching tags produced by the releaseTag pattern, capturing `name` and
+// `version` (e.g. "cpm-registry@1.2.3" for "{projectName}@{version}").
+function releaseTagRegex(pattern) {
+  const source = pattern
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace("\\{projectName\\}", "(?<name>.+)")
+    .replace("\\{version\\}", "(?<version>[^@]+)");
+  return new RegExp(`^${source}$`);
+}
+
+function tagReleasedProjects() {
+  const tagPattern = releaseTagPattern();
 
   const changedFiles = git("diff", "--name-only", "HEAD^1", "HEAD")
     .split("\n")
@@ -244,6 +268,52 @@ function tagReleasedProjects() {
   }
 }
 
+// Report which projects the current release includes, as one
+// "<project>-version" GitHub Actions output per released project. Downstream
+// jobs read a fixed set of these outputs; a project without one resolves to ''
+// in workflow expressions, which is exactly the "not released" signal the
+// deploy/publish gates check for.
+function detectReleasedVersions() {
+  const pattern = releaseTagPattern();
+  if (!pattern.includes("{projectName}")) {
+    console.error(
+      `releaseTag pattern "${pattern}" has no {projectName}; cannot map tags to projects.`,
+    );
+    process.exit(1);
+  }
+  const regex = releaseTagRegex(pattern);
+  const parse = (tag) => tag.match(regex)?.groups;
+
+  const versions = new Map();
+
+  // Recovery fallback first, so the tags on HEAD (the normal signal) win. All
+  // release tags newest-first via git's version sort, keeping the first seen
+  // per project.
+  if (values["fallback-latest"]) {
+    for (const tag of git("tag", "-l", "--sort=-version:refname").split("\n").filter(Boolean)) {
+      const parsed = parse(tag);
+      if (parsed && !versions.has(parsed.name)) versions.set(parsed.name, parsed.version);
+    }
+  }
+
+  for (const tag of git("tag", "--points-at", "HEAD").split("\n").filter(Boolean)) {
+    const parsed = parse(tag);
+    if (parsed) versions.set(parsed.name, parsed.version);
+  }
+
+  if (versions.size === 0) {
+    console.log("No released projects detected.");
+    return;
+  }
+  const lines = [...versions].map(([name, version]) => `${name}-version=${version}\n`).join("");
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, lines);
+  }
+  for (const [name, version] of versions) {
+    console.log(`${name} release detected: '${version}'`);
+  }
+}
+
 // The section for one version in a project's CHANGELOG.md: from its "## <version>"
 // heading (nx renders "## <version> (<date>)") up to the next release heading.
 function changelogSection(projectDir, version) {
@@ -269,7 +339,11 @@ if (command === "prepare") {
   await prepare();
 } else if (command === "tag") {
   tagReleasedProjects();
+} else if (command === "released") {
+  detectReleasedVersions();
 } else {
-  console.error("Usage: node tools/release.mjs <prepare|tag> [--dry-run] [--verbose]");
+  console.error(
+    "Usage: node tools/release.mjs <prepare|tag|released> [--dry-run] [--verbose] [--fallback-latest]",
+  );
   process.exit(1);
 }
