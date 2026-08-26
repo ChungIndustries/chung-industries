@@ -7,11 +7,18 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const filename = `cpm-${version}.tgz`;
-// `||` rather than `??`: CI passes the variable through unconditionally, so an
-// unset repository variable arrives as an empty string.
-const registry = (
-  process.env.CPM_REGISTRY_URL || "https://registry.cpm.chungindustries.com"
-).replace(/\/+$/, "");
+// No fallback URL on purpose: a publish must state its target explicitly, so a
+// missing variable fails loudly instead of silently publishing somewhere stale.
+// The `!` check also catches CI passing an unset repository variable through as
+// an empty string.
+if (!process.env.CPM_REGISTRY_URL) {
+  console.error(
+    "CPM_REGISTRY_URL is not set. Point it at the registry base URL " +
+      "(the release workflow supplies it from the repository variable of the same name).",
+  );
+  process.exit(1);
+}
+const registry = process.env.CPM_REGISTRY_URL.replace(/\/+$/, "");
 
 const tarball = await readFile(join(root, "dist", filename));
 
