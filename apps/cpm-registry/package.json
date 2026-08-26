@@ -13,6 +13,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply cpm-registry --remote",
     "gen-docs": "tsx src/gen-docs.ts",
     "gen-types": "wrangler types --include-runtime=false",
+    "verify-generated": "pnpm gen-docs && pnpm gen-types && git diff --ignore-space-at-eol --exit-code -- openapi.yaml worker-configuration.d.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",

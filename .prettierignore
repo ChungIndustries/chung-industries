@@ -6,4 +6,5 @@ packages/supabase/src/types.gen.ts
 **/CHANGELOG.md
 
 # Worker Env types, generated from wrangler.toml by `wrangler types` (pnpm gen-types).
-apps/cpm-registry/worker-configuration.d.ts
+# Verified instead by each Worker project's `verify-generated` target.
+apps/*/worker-configuration.d.ts
