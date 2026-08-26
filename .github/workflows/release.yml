@@ -11,7 +11,7 @@ on:
     branches: [main]
   # Recovery hatch: re-runs the publish/deploy half of a release that failed
   # after tagging. Tagging is idempotent (existing tags are a no-op) and the
-  # publish/deploy steps fall back to the newest cpm-registry tag.
+  # publish/deploy steps fall back to each project's newest tag.
   workflow_dispatch:
 
 concurrency:
@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cpm-registry-version: ${{ steps.released.outputs.cpm-registry-version }}
+      cpm-cli-version: ${{ steps.released.outputs.cpm-cli-version }}
       docs-version: ${{ steps.released.outputs.docs-version }}
     steps:
       - name: Checkout main (post-merge)
@@ -70,18 +71,24 @@ jobs:
         id: released
         run: |
           version="$(git tag --points-at HEAD | sed -n 's/^cpm-registry@//p' | head -n1)"
+          cli_version="$(git tag --points-at HEAD | sed -n 's/^cpm-cli@//p' | head -n1)"
           docs_version="$(git tag --points-at HEAD | sed -n 's/^docs@//p' | head -n1)"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             if [ -z "$version" ]; then
               version="$(git tag -l 'cpm-registry@*' --sort=-version:refname | head -n1 | sed 's/^cpm-registry@//')"
+            fi
+            if [ -z "$cli_version" ]; then
+              cli_version="$(git tag -l 'cpm-cli@*' --sort=-version:refname | head -n1 | sed 's/^cpm-cli@//')"
             fi
             if [ -z "$docs_version" ]; then
               docs_version="$(git tag -l 'docs@*' --sort=-version:refname | head -n1 | sed 's/^docs@//')"
             fi
           fi
           echo "cpm-registry-version=$version" >> "$GITHUB_OUTPUT"
+          echo "cpm-cli-version=$cli_version" >> "$GITHUB_OUTPUT"
           echo "docs-version=$docs_version" >> "$GITHUB_OUTPUT"
           echo "cpm-registry release detected: '${version:-none}'"
+          echo "cpm-cli release detected: '${cli_version:-none}'"
           echo "docs release detected: '${docs_version:-none}'"
 
       # @scalar/cli requires Node >= 24; the runner default is older, and this
@@ -114,7 +121,18 @@ jobs:
           # Pinned for reproducibility. Bump deliberately after checking the CLI changelog.
           npm install -g @scalar/cli@2.1.0
           scalar auth login --token "$SCALAR_API_KEY"
-          scalar registry publish apps/cpm-registry/openapi.yaml --slug cpm-registry --version "$version"
+          # A version that is already in the Scalar registry is the expected state on a
+          # recovery dispatch, not a failure; Scalar refuses the overwrite without --force
+          # and this deliberately never forces (published spec versions stay immutable).
+          output="$(scalar registry publish apps/cpm-registry/openapi.yaml --slug cpm-registry --version "$version" 2>&1)" || {
+            if echo "$output" | grep -q "Overriding an existing version"; then
+              echo "cpm-registry@$version is already in the Scalar registry; nothing to do."
+              exit 0
+            fi
+            echo "$output"
+            exit 1
+          }
+          echo "$output"
 
       # Tidy up so the next release starts from a fresh branch (best-effort; the repo
       # may already auto-delete merged branches). Uses the checkout-persisted token.
@@ -138,3 +156,36 @@ jobs:
     if: needs.release.outputs.docs-version != ''
     uses: ./.github/workflows/deploy-docs.yml
     secrets: inherit
+
+  # Publishing cpm to the registry rides the release train too: a release that
+  # includes cpm-cli builds the tarball and uploads it. Ordered after the
+  # registry deploy so a release shipping both never publishes against the old
+  # Worker; the !failure() guard (not the default success()) lets it run when
+  # the deploy was skipped because the release had no registry changes. The
+  # registry rejects re-publishes of an existing version with a 409, which the
+  # publish script treats as success, so recovery dispatches are idempotent.
+  publish-cpm-cli:
+    name: Publish cpm to the registry
+    needs: [release, deploy-cpm-registry]
+    if: ${{ !failure() && !cancelled() && needs.release.outputs.cpm-cli-version != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Always publish from main, matching the deploy workflows.
+          ref: main
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build tarball
+        run: pnpm --filter cpm-cli build
+
+      # The CPM_REGISTRY_URL repository variable points the publish at the
+      # Worker's reachable URL until registry.cpm.chungindustries.com is in
+      # DNS; once the domain exists the variable can be deleted.
+      - name: Publish to the registry
+        env:
+          CPM_REGISTRY_URL: ${{ vars.CPM_REGISTRY_URL }}
+        run: pnpm --filter cpm-cli publish:registry
