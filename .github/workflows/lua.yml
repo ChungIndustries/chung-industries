@@ -1,10 +1,9 @@
 name: Lua
 
+# PR-only: unlike ci.yml, whose pushes to main feed nx-set-shas base tracking,
+# nothing consumes a run on main, and the PR run already validated the changes.
 on:
   pull_request:
-    branches: [main]
-    paths: ["apps/cpm-cli/**", ".github/workflows/lua.yml"]
-  push:
     branches: [main]
     paths: ["apps/cpm-cli/**", ".github/workflows/lua.yml"]
 
