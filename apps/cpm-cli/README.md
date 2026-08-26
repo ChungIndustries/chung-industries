@@ -66,7 +66,7 @@ src/
 | Task                           | Command                                                                                                           |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | Build `dist/cpm-<version>.tgz` | `nx build cpm-cli`                                                                                                |
-| Publish to the registry        | `nx publish:registry cpm-cli` (`CPM_REGISTRY_URL` overrides the target)                                           |
+| Publish to the registry        | `nx publish:registry cpm-cli` (`CPM_REGISTRY_URL` is the target and required)                                     |
 | Lint                           | `nx lint:lua cpm-cli` (needs [luacheck](https://github.com/lunarmodules/luacheck))                                |
 | Format                         | `nx format:lua cpm-cli` / `nx format:lua:check cpm-cli` (needs [StyLua](https://github.com/JohnnyMorganz/StyLua)) |
 

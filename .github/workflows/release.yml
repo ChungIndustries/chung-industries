@@ -182,9 +182,8 @@ jobs:
       - name: Build tarball
         run: pnpm --filter cpm-cli build
 
-      # The CPM_REGISTRY_URL repository variable points the publish at the
-      # Worker's reachable URL until registry.cpm.chungindustries.com is in
-      # DNS; once the domain exists the variable can be deleted.
+      # The CPM_REGISTRY_URL repository variable is the publish target and is
+      # required: the script has no fallback URL and fails when it is unset.
       - name: Publish to the registry
         env:
           CPM_REGISTRY_URL: ${{ vars.CPM_REGISTRY_URL }}
