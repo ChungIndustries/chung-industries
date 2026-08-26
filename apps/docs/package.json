@@ -10,6 +10,7 @@
     "build": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "gen-types": "wrangler types --include-runtime=false",
+    "verify-generated": "pnpm gen-types && git diff --ignore-space-at-eol --exit-code -- worker-configuration.d.ts",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit"

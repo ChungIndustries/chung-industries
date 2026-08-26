@@ -22,8 +22,10 @@ jobs:
       - name: Derive affected SHAs
         uses: nrwl/nx-set-shas@v5
 
-      - name: Typecheck, test, build (affected)
-        run: pnpm exec nx affected -t typecheck test build
+      # verify-generated regenerates committed artifacts (OpenAPI spec, Worker Env
+      # types) and fails on drift, so the checks only run for affected projects.
+      - name: Typecheck, test, build, verify generated files (affected)
+        run: pnpm exec nx affected -t typecheck test build verify-generated
 
       - name: Lint (affected)
         run: pnpm exec nx affected -t lint -- --format=github
