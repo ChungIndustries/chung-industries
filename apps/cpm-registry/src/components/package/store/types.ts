@@ -11,6 +11,21 @@ export interface AddVersionInput {
   bundleKey: string;
   /** The full set of dist-tags the package should have after this publish. */
   distTags: Record<string, string>;
+  /** Authenticated user id performing the publish; claims ownership on a new name. */
+  publishedBy: string;
+}
+
+export type MaintainerRole = "owner" | "maintainer";
+
+export interface Maintainer {
+  userId: string;
+  role: MaintainerRole;
+}
+
+/** One row of "packages this user maintains", for `GET /me/packages`. */
+export interface MaintainedPackage {
+  name: string;
+  role: MaintainerRole;
 }
 
 /**
@@ -24,8 +39,16 @@ export interface RegistryStore {
    * Upserts the package, inserts the immutable version (throws `ConflictError`
    * if that (name, version) already exists), and upserts the dist-tags, all in
    * one atomic unit. Returns the updated package. Does not touch blob bytes.
+   *
+   * Ownership is enforced inside the same atomic unit: a first publish of a
+   * new name claims `publishedBy` as owner, and a publish by anyone without a
+   * `package_maintainers` row throws `ForbiddenError`. This is the race-proof
+   * backstop behind the service's friendlier pre-flight checks.
    */
   addVersion(input: AddVersionInput): Promise<Package>;
+  getMaintainers(name: string): Promise<Maintainer[]>;
+  isReserved(name: string): Promise<boolean>;
+  packagesByMaintainer(userId: string): Promise<MaintainedPackage[]>;
 }
 
 /** Blob storage for tarball and bundle bytes, keyed by {@link tarballKey} / {@link bundleKey}. */

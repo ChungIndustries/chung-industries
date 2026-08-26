@@ -4,11 +4,16 @@ import { gzipSync } from "node:zlib";
 import { createTar } from "nanotar";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import type { Actor } from "@/components/auth/actor";
 import { parseBundle, readBundleFile } from "@/components/package/bundle";
 import type { PackageVersionMetadata } from "@/components/package/schemas";
 import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
 import { InMemoryBlobStore, InMemoryRegistryStore } from "@/components/package/store/memory";
 import { tarballKey } from "@/components/package/store/types";
+
+const OWNER: Actor = { userId: "user-owner", scopes: ["publish"], via: "token" };
+const OTHER: Actor = { userId: "user-other", scopes: ["publish"], via: "token" };
+const ADMIN: Actor = { userId: "user-admin", scopes: ["publish", "admin"], via: "session" };
 
 const sha512 = (data: Uint8Array) => `sha512-${createHash("sha512").update(data).digest("base64")}`;
 const sha1 = (data: Uint8Array) => createHash("sha1").update(data).digest("hex");
@@ -60,18 +65,23 @@ function meta(
 describe("PackageService", () => {
   let service: PackageService;
   let blobs: InMemoryBlobStore;
+  let registry: InMemoryRegistryStore;
+
+  /** Publishes as OWNER unless a test is specifically about somebody else. */
+  const publish = (data: Uint8Array, actor: Actor = OWNER) => service.publish(actor, data);
 
   beforeEach(() => {
     blobs = new InMemoryBlobStore();
-    service = new PackageService(new InMemoryRegistryStore(), blobs);
+    registry = new InMemoryRegistryStore();
+    service = new PackageService(registry, blobs);
   });
 
   it("round-trips publish -> resolve latest -> download with a matching checksum", async () => {
     const v1 = pack(meta("1.0.0"), { "init.lua": "return { version = '1.0.0' }" });
     const v2 = pack(meta("1.2.0"), { "init.lua": "return { version = '1.2.0' }" });
 
-    await service.publish(v1);
-    const pkg = await service.publish(v2);
+    await publish(v1);
+    const pkg = await publish(v2);
 
     // dist-tags.latest resolves to the newest published version.
     expect(pkg["dist-tags"].latest).toBe("1.2.0");
@@ -92,7 +102,7 @@ describe("PackageService", () => {
   it("uses the tarball's cpm.json as the metadata source of truth", async () => {
     // No meta form field at all: everything comes from the manifest.
     const manifest = meta("1.4.0", { dependencies: { "cc-http": "^1.0.0" } });
-    const pkg = await service.publish(pack(manifest, { "init.lua": "return {}" }));
+    const pkg = await publish(pack(manifest, { "init.lua": "return {}" }));
 
     expect(pkg.name).toBe("example");
     expect(pkg["dist-tags"].latest).toBe("1.4.0");
@@ -100,20 +110,20 @@ describe("PackageService", () => {
   });
 
   it("rejects tarballs without cpm.json or with invalid cpm.json", async () => {
-    await expect(service.publish(tgz({ "init.lua": "return {}" }))).rejects.toMatchObject({
+    await expect(publish(tgz({ "init.lua": "return {}" }))).rejects.toMatchObject({
       status: 400,
     });
     await expect(
-      service.publish(tgz({ "cpm.json": "not json", "init.lua": "x" })),
+      publish(tgz({ "cpm.json": "not json", "init.lua": "x" })),
     ).rejects.toMatchObject({ status: 400 });
     await expect(
-      service.publish(tgz({ "cpm.json": '{"name":"example"}', "init.lua": "x" })),
+      publish(tgz({ "cpm.json": '{"name":"example"}', "init.lua": "x" })),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it("carries a declared startup file through to the version entry", async () => {
     const manifest = meta("1.0.0", { startup: "startup.lua" });
-    const pkg = await service.publish(
+    const pkg = await publish(
       pack(manifest, { "init.lua": "return {}", "startup.lua": "print('boot')" }),
     );
     expect(pkg.versions["1.0.0"]?.startup).toBe("startup.lua");
@@ -121,14 +131,14 @@ describe("PackageService", () => {
 
   it("rejects a manifest whose startup file is not in the tarball", async () => {
     const manifest = meta("1.0.0", { startup: "startup.lua" });
-    await expect(service.publish(pack(manifest, { "init.lua": "x" }))).rejects.toMatchObject({
+    await expect(publish(pack(manifest, { "init.lua": "x" }))).rejects.toMatchObject({
       status: 400,
     });
   });
 
   it("rejects dotted package names (reserved until namespaced installs exist)", async () => {
     const dotted: PackageVersionMetadata = { name: "chung.maps", version: "1.0.0" };
-    await expect(service.publish(pack(dotted, { "init.lua": "x" }))).rejects.toMatchObject({
+    await expect(publish(pack(dotted, { "init.lua": "x" }))).rejects.toMatchObject({
       status: 400,
     });
   });
@@ -140,7 +150,7 @@ describe("PackageService", () => {
       "bin/example.lua": "print('hi')",
       "assets/blob.bin": "not lua at all",
     };
-    const pkg = await service.publish(pack(meta("1.0.0"), files));
+    const pkg = await publish(pack(meta("1.0.0"), files));
     const dist = pkg.versions["1.0.0"]!.dist;
     expect(dist.bundle.url).toBe("/packages/example/1.0.0/dist/bundle");
 
@@ -167,7 +177,7 @@ describe("PackageService", () => {
   it("never stores a bundle path that escapes the package directory", async () => {
     // nanotar resolves `..` and strips leading slashes while parsing; our own
     // validator is the second layer. Either way the manifest must come out clean.
-    await service.publish(
+    await publish(
       pack(meta("1.0.0"), {
         "../startup.lua": "evil",
         "/etc/startup.lua": "evil",
@@ -189,29 +199,29 @@ describe("PackageService", () => {
     const tar = new Uint8Array(512 + plain.byteLength);
     tar.set(tarHeader("link.lua", "2"), 0);
     tar.set(plain, 512);
-    await expect(service.publish(new Uint8Array(gzipSync(tar)))).rejects.toMatchObject({
+    await expect(publish(new Uint8Array(gzipSync(tar)))).rejects.toMatchObject({
       status: 400,
     });
   });
 
   it("rejects tarballs with no files or invalid gzip", async () => {
-    await expect(service.publish(tgz({}))).rejects.toMatchObject({ status: 400 });
-    await expect(service.publish(new TextEncoder().encode("not gzip"))).rejects.toMatchObject({
+    await expect(publish(tgz({}))).rejects.toMatchObject({ status: 400 });
+    await expect(publish(new TextEncoder().encode("not gzip"))).rejects.toMatchObject({
       status: 400,
     });
   });
 
   it("rejects tarballs over the extracted size cap", async () => {
     const big = pack(meta("1.0.0"), { "big.lua": "-- ".padEnd(600 * 1024, "x") });
-    await expect(service.publish(big)).rejects.toMatchObject({ status: 400 });
+    await expect(publish(big)).rejects.toMatchObject({ status: 400 });
   });
 
   it("keeps dist-tags.latest pointing at the highest stable version", async () => {
     const lib = (v: string) => pack(meta(v), { "a.lua": v });
-    await service.publish(lib("1.0.0"));
-    await service.publish(lib("1.2.0"));
-    await service.publish(lib("1.1.0"));
-    const afterStable = await service.publish(lib("2.0.0-beta.1"));
+    await publish(lib("1.0.0"));
+    await publish(lib("1.2.0"));
+    await publish(lib("1.1.0"));
+    const afterStable = await publish(lib("2.0.0-beta.1"));
 
     // A prerelease must not become latest while a stable release exists.
     expect(afterStable["dist-tags"].latest).toBe("1.2.0");
@@ -219,10 +229,10 @@ describe("PackageService", () => {
 
   it("rejects re-publishing an existing version and leaves the stored tarball intact", async () => {
     const original = pack(meta("1.0.0"), { "init.lua": "original" });
-    await service.publish(original);
+    await publish(original);
 
     await expect(
-      service.publish(pack(meta("1.0.0"), { "init.lua": "overwrite attempt" })),
+      publish(pack(meta("1.0.0"), { "init.lua": "overwrite attempt" })),
     ).rejects.toMatchObject({ status: 409 });
 
     // The stored tarball was never touched by the rejected publish.
@@ -231,7 +241,7 @@ describe("PackageService", () => {
   });
 
   it("rejects an empty tarball", async () => {
-    await expect(service.publish(new Uint8Array())).rejects.toMatchObject({
+    await expect(publish(new Uint8Array())).rejects.toMatchObject({
       status: 400,
     });
   });
@@ -243,7 +253,7 @@ describe("PackageService", () => {
   it("rejects a tarball over the size limit and stores nothing", async () => {
     const oversized = new Uint8Array(MAX_TARBALL_BYTES + 1);
 
-    await expect(service.publish(oversized)).rejects.toMatchObject({ status: 413 });
+    await expect(publish(oversized)).rejects.toMatchObject({ status: 413 });
 
     // The rejected publish never reached the index or the tarball store.
     await expect(service.get("example")).rejects.toMatchObject({ status: 404 });
@@ -253,7 +263,7 @@ describe("PackageService", () => {
   it("returns 404 for unknown packages, versions, and artifacts", async () => {
     await expect(service.get("missing")).rejects.toMatchObject({ status: 404 });
 
-    await service.publish(pack(meta("1.0.0"), { "a.lua": "x" }));
+    await publish(pack(meta("1.0.0"), { "a.lua": "x" }));
     await expect(service.getVersion("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
     await expect(service.readTarball("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
     await expect(service.readBundle("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
@@ -262,7 +272,7 @@ describe("PackageService", () => {
   describe("resolve", () => {
     beforeEach(async () => {
       const put = (manifest: PackageVersionMetadata) =>
-        service.publish(pack(manifest, { "init.lua": `return '${manifest.version}'` }));
+        publish(pack(manifest, { "init.lua": `return '${manifest.version}'` }));
       await put({ name: "util", version: "1.0.0" });
       await put({ name: "util", version: "1.5.0" });
       await put({ name: "util", version: "2.0.0" });
@@ -301,14 +311,80 @@ describe("PackageService", () => {
     });
   });
 
+  describe("ownership", () => {
+    const lib = (v: string) => pack(meta(v), { "init.lua": `return '${v}'` });
+
+    it("claims a new name for the first authenticated publisher", async () => {
+      await publish(lib("1.0.0"));
+      expect(await registry.getMaintainers("example")).toEqual([
+        { userId: OWNER.userId, role: "owner" },
+      ]);
+      expect(await service.maintained(OWNER.userId)).toEqual([
+        { name: "example", role: "owner" },
+      ]);
+    });
+
+    it("rejects a publish to somebody else's package with 403", async () => {
+      await publish(lib("1.0.0"));
+      await expect(publish(lib("1.1.0"), OTHER)).rejects.toMatchObject({ status: 403 });
+      // Ownership is untouched and the version was never recorded.
+      expect(await registry.getMaintainers("example")).toEqual([
+        { userId: OWNER.userId, role: "owner" },
+      ]);
+      await expect(service.getVersion("example", "1.1.0")).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("lets an added maintainer publish new versions", async () => {
+      await publish(lib("1.0.0"));
+      registry.addMaintainer("example", OTHER.userId);
+      const pkg = await publish(lib("1.1.0"), OTHER);
+      expect(pkg["dist-tags"].latest).toBe("1.1.0");
+      // Publishing as a maintainer never reassigns ownership.
+      expect(await registry.getMaintainers("example")).toEqual([
+        { userId: OWNER.userId, role: "owner" },
+        { userId: OTHER.userId, role: "maintainer" },
+      ]);
+    });
+
+    it("rejects reserved names with 403 unless the actor is an admin", async () => {
+      registry.reserve("chung");
+      const manifest: PackageVersionMetadata = { name: "chung", version: "1.0.0" };
+      await expect(publish(pack(manifest, { "init.lua": "x" }))).rejects.toMatchObject({
+        status: 403,
+      });
+      // The rejection happened before any blob write.
+      expect(await service.list()).toEqual([]);
+
+      const pkg = await publish(pack(manifest, { "init.lua": "x" }), ADMIN);
+      expect(pkg.name).toBe("chung");
+    });
+
+    it("enforces maintainership in the store as the race backstop", async () => {
+      // Bypass the service pre-flight and hit the store directly, as a racing
+      // request that passed pre-flight before losing the ownership claim would.
+      await publish(lib("1.0.0"));
+      const entry = (await service.get("example")).versions["1.0.0"]!;
+      await expect(
+        registry.addVersion({
+          name: "example",
+          entry: { ...entry, version: "9.9.9" },
+          tarballKey: "k",
+          bundleKey: "b",
+          distTags: { latest: "9.9.9" },
+          publishedBy: OTHER.userId,
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+    });
+  });
+
   it("serves the bootstrap installer from the latest cpm package", async () => {
     await expect(service.readInstaller()).rejects.toMatchObject({ status: 404 });
 
     const cpm = (version: string): PackageVersionMetadata => ({ name: "cpm", version });
-    await service.publish(
+    await publish(
       pack(cpm("0.1.0"), { "bin/cpm.lua": "print('cpm')", "install.lua": "-- installer v0.1.0" }),
     );
-    await service.publish(
+    await publish(
       pack(cpm("0.2.0"), { "bin/cpm.lua": "print('cpm')", "install.lua": "-- installer v0.2.0" }),
     );
     expect(text(await service.readInstaller())).toBe("-- installer v0.2.0");

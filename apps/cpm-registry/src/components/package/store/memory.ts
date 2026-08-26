@@ -1,15 +1,35 @@
 import type { Package } from "@/components/package/schemas";
-import type { AddVersionInput, RegistryStore, BlobStore } from "@/components/package/store/types";
-import { ConflictError } from "@/errors";
+import type {
+  AddVersionInput,
+  BlobStore,
+  MaintainedPackage,
+  Maintainer,
+  MaintainerRole,
+  RegistryStore,
+} from "@/components/package/store/types";
+import { ConflictError, ForbiddenError } from "@/errors";
 
 /**
  * In-memory {@link RegistryStore} used by the service unit tests. It mirrors the
  * atomicity contract of the D1 store (duplicate version -> `ConflictError`,
+ * non-maintainer publish -> `ForbiddenError`, first publish claims ownership,
  * original author preserved) without needing a real database, so the tests are
  * fast and portable.
  */
 export class InMemoryRegistryStore implements RegistryStore {
   private readonly packages = new Map<string, Package>();
+  private readonly maintainers = new Map<string, Maintainer[]>();
+  private readonly reserved = new Set<string>();
+
+  /** Test helper mirroring a row in `reserved_names`. */
+  reserve(name: string): void {
+    this.reserved.add(name);
+  }
+
+  /** Test helper mirroring a maintainer row added out of band. */
+  addMaintainer(name: string, userId: string, role: MaintainerRole = "maintainer"): void {
+    this.maintainers.set(name, [...(this.maintainers.get(name) ?? []), { userId, role }]);
+  }
 
   async list(): Promise<Package[]> {
     return Array.from(this.packages.values(), clone);
@@ -20,7 +40,36 @@ export class InMemoryRegistryStore implements RegistryStore {
     return pkg ? clone(pkg) : null;
   }
 
-  async addVersion({ name, author, entry, distTags }: AddVersionInput): Promise<Package> {
+  async getMaintainers(name: string): Promise<Maintainer[]> {
+    return [...(this.maintainers.get(name) ?? [])];
+  }
+
+  async isReserved(name: string): Promise<boolean> {
+    return this.reserved.has(name);
+  }
+
+  async packagesByMaintainer(userId: string): Promise<MaintainedPackage[]> {
+    return Array.from(this.maintainers.entries())
+      .flatMap(([name, rows]) => rows.filter((m) => m.userId === userId).map((m) => ({ name, role: m.role })))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async addVersion({
+    name,
+    author,
+    entry,
+    distTags,
+    publishedBy,
+  }: AddVersionInput): Promise<Package> {
+    // Same order as the D1 batch: claim ownership on first publish, then the
+    // maintainer guard (403 outranks 409 so nothing leaks to outsiders), then
+    // version immutability.
+    const held = this.maintainers.get(name) ?? [];
+    if (held.length === 0) {
+      this.maintainers.set(name, [{ userId: publishedBy, role: "owner" }]);
+    } else if (!held.some((m) => m.userId === publishedBy)) {
+      throw new ForbiddenError(`You are not a maintainer of "${name}"`);
+    }
     const existing = this.packages.get(name);
     if (existing?.versions[entry.version]) {
       throw new ConflictError(
