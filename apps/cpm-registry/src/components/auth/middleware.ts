@@ -65,18 +65,30 @@ export async function resolveActor(headers: Headers, gateway: AuthGateway): Prom
 }
 
 /**
- * Route middleware: require an authenticated actor, optionally holding the
- * given scope, and expose it as `c.get("actor")`. Thrown errors are mapped to
- * JSend 401/403 by the `onError` handler in `index.ts`.
+ * Route middleware: require an authenticated actor (any credential, no
+ * particular scope) and expose it as `c.get("actor")`. Thrown errors are
+ * mapped to JSend 401 by the `onError` handler in `index.ts`.
  */
-export function requireScope(scope?: Scope): MiddlewareHandler<AppEnv> {
+export function requireActor(): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
     const actor = await resolveActor(c.req.raw.headers, betterAuthGateway(c.env));
     if (!actor) throw new UnauthorizedError("Authentication required");
-    if (scope && !actor.scopes.includes(scope)) {
-      throw new ForbiddenError(`Missing the ${scope} scope`);
-    }
     c.set("actor", actor);
     await next();
   };
+}
+
+/**
+ * Route middleware: {@link requireActor}, plus the actor must hold the given
+ * scope (403 otherwise).
+ */
+export function requireActorScope(scope: Scope): MiddlewareHandler<AppEnv> {
+  const authenticated = requireActor();
+  return (c, next) =>
+    authenticated(c, () => {
+      if (!c.get("actor").scopes.includes(scope)) {
+        throw new ForbiddenError(`Missing the ${scope} scope`);
+      }
+      return next();
+    });
 }

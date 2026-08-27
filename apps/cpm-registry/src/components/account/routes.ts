@@ -1,7 +1,7 @@
 import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import { SCOPES, type AppEnv } from "@/components/auth/actor";
-import { requireScope } from "@/components/auth/middleware";
+import { requireActor } from "@/components/auth/middleware";
 import { PackageService } from "@/components/package/service";
 import { D1RegistryStore } from "@/components/package/store/d1";
 import { R2BlobStore } from "@/components/package/store/r2";
@@ -35,7 +35,7 @@ export function registerAccountRoutes(app: App): void {
       summary: "Who am I",
       description:
         "Returns the authenticated identity behind the supplied credential: a publish token (`Authorization: Bearer cpm_...`) or a browser session. Useful as a token smoke test in CI and tooling.",
-      middleware: [requireScope()] as const,
+      middleware: [requireActor()] as const,
       security: [{ publishToken: [] }],
       responses: {
         200: jsonSuccess(actorSchema, "The authenticated actor"),
@@ -59,7 +59,7 @@ export function registerAccountRoutes(app: App): void {
       path: "/me/packages",
       summary: "List my packages",
       description: "Returns the packages the authenticated user owns or maintains.",
-      middleware: [requireScope()] as const,
+      middleware: [requireActor()] as const,
       security: [{ publishToken: [] }],
       responses: {
         200: jsonSuccess(maintainedPackagesSchema, "Maintained packages"),

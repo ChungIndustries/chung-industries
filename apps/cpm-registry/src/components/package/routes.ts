@@ -2,7 +2,7 @@ import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
 import type { AppEnv } from "@/components/auth/actor";
-import { requireScope } from "@/components/auth/middleware";
+import { requireActorScope } from "@/components/auth/middleware";
 import {
   packageSchema,
   packageVersionSchema,
@@ -154,7 +154,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/packages",
       summary: "Publish package version",
       description: `Creates a package if missing, or adds a new version to an existing one. Requires a publish token (\`Authorization: Bearer cpm_...\`); the first authenticated publish of a new name claims ownership, and later versions may only be published by its maintainers. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; the \`cpm.json\` at the tarball root is the package metadata. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
-      middleware: [requireScope("publish")] as const,
+      middleware: [requireActorScope("publish")] as const,
       security: [{ publishToken: [] }],
       request: {
         body: {
