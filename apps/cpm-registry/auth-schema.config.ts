@@ -3,8 +3,8 @@
  * Worker. The CLI runs in Node and cannot reach a D1 binding, so schema SQL is
  * generated against an in-memory SQLite database instead; D1 is SQLite, so the
  * emitted DDL is valid as a committed `migrations/` file. The plugin set here
- * MUST mirror `src/auth.ts`, or the generated tables will drift from what the
- * Worker expects at runtime.
+ * MUST mirror `src/components/auth/instance.ts`, or the generated tables will
+ * drift from what the Worker expects at runtime.
  *
  * Usage: pnpm dlx auth generate --config auth-schema.config.ts --output migrations/0003_auth.sql -y
  */
