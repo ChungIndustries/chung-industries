@@ -30,16 +30,16 @@ Fixed constraints:
 
 ## 2. Decisions at a glance
 
-| # | Decision | Short reason |
-|---|----------|--------------|
-| 1 | One identity system serves both surfaces, with two credential types | The authorization check is identical for a browser session and a publish token; only credential resolution differs |
-| 2 | **Better Auth** for authentication (sessions, GitHub OAuth, publish tokens) | Runs on workerd, native D1 support since 1.5, GitHub OAuth + API keys + device flow are exactly the roadmap |
-| 3 | **Authorization stays hand-rolled** in the registry's own tables | Package ownership is domain logic. No auth library models "who may publish `turtle-utils`" |
-| 4 | Auth state lives in the **same D1 database** as the registry | One binding, and the ownership check can share a transaction with the version insert |
-| 5 | Publish credential is a **long-lived bearer token**, hashed at rest, publish-scoped by default | Mirrors npm granular tokens; works identically for CI, a terminal, and any future in-game client |
-| 6 | **First publish wins** the name, recorded in a `package_maintainers` ACL with exactly one owner | Simplest rule that is also npm's rule; multi-maintainer support falls out of the same table |
-| 7 | Token onboarding is **paste-a-token**; the **RFC 8628 device flow** is parked unless in-game publishing ships | The shipped client has no publish command (updated 2026-08-27), so today's consumers are CI secrets and real terminals, where pasting is the normal thing |
-| 8 | The account/token UI is **deferred**; any interim surface is a minimal stopgap, and the real UI ships later as **its own app** (not `apps/web`, not folded into the Worker) | Decided 2026-08-27. Building UI is explicitly not part of this phase; the API is designed so a browser is only strictly needed for the GitHub redirect and token display |
+| #   | Decision                                                                                                                                                                    | Short reason                                                                                                                                                             |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | One identity system serves both surfaces, with two credential types                                                                                                         | The authorization check is identical for a browser session and a publish token; only credential resolution differs                                                       |
+| 2   | **Better Auth** for authentication (sessions, GitHub OAuth, publish tokens)                                                                                                 | Runs on workerd, native D1 support since 1.5, GitHub OAuth + API keys + device flow are exactly the roadmap                                                              |
+| 3   | **Authorization stays hand-rolled** in the registry's own tables                                                                                                            | Package ownership is domain logic. No auth library models "who may publish `turtle-utils`"                                                                               |
+| 4   | Auth state lives in the **same D1 database** as the registry                                                                                                                | One binding, and the ownership check can share a transaction with the version insert                                                                                     |
+| 5   | Publish credential is a **long-lived bearer token**, hashed at rest, publish-scoped by default                                                                              | Mirrors npm granular tokens; works identically for CI, a terminal, and any future in-game client                                                                         |
+| 6   | **First publish wins** the name, recorded in a `package_maintainers` ACL with exactly one owner                                                                             | Simplest rule that is also npm's rule; multi-maintainer support falls out of the same table                                                                              |
+| 7   | Token onboarding is **paste-a-token**; the **RFC 8628 device flow** is parked unless in-game publishing ships                                                               | The shipped client has no publish command (updated 2026-08-27), so today's consumers are CI secrets and real terminals, where pasting is the normal thing                |
+| 8   | The account/token UI is **deferred**; any interim surface is a minimal stopgap, and the real UI ships later as **its own app** (not `apps/web`, not folded into the Worker) | Decided 2026-08-27. Building UI is explicitly not part of this phase; the API is designed so a browser is only strictly needed for the GitHub redirect and token display |
 
 ## 3. The two surfaces
 
@@ -99,7 +99,7 @@ at implementation time, this library moves fast):
   `Record<string, string[]>`, rate limiting, metadata, and remaining/refill counters. `verifyApiKey`
   takes the key plus the permissions to require. This is a very close fit for npm-style publish
   tokens, including the scope model.
-- **Bearer plugin** is a different thing: it lets a *session token* be sent as a bearer header instead
+- **Bearer plugin** is a different thing: it lets a _session token_ be sent as a bearer header instead
   of a cookie. The docs explicitly warn to use it only where cookies are impossible. We do not need it
   if publish tokens are API keys. Do not enable it just because the CLI sends `Authorization: Bearer`.
 - **Device authorization plugin** implements RFC 8628: `POST /device/code` returns `device_code`,
@@ -164,7 +164,7 @@ them locally against a JWKS cached in KV, so the steady-state cost is a signatur
 trip. The real objections are different:
 
 - They authenticate; they still do not own package ownership. We write section 8 either way.
-- Machine-to-machine tokens are a paid tier almost everywhere, and they are the *main* credential here.
+- Machine-to-machine tokens are a paid tier almost everywhere, and they are the _main_ credential here.
 - Lock-in on the one part of the system whose data model is entirely ours, for a hobby-scale Minecraft
   package registry, on a stack with no per-request revenue.
 - An external dependency that can be down while D1 and R2 are up.
@@ -188,7 +188,7 @@ option above wins:
 - **KV** as an optional cache for token verification, to keep the hot publish path off D1.
   Premature at current volume; note it and move on.
 - **WAF rate limiting rules**, or Better Auth's own rate limiter, on publish and token creation.
-- `@cloudflare/workers-oauth-provider` exists but solves the inverse problem (making a Worker *be* an
+- `@cloudflare/workers-oauth-provider` exists but solves the inverse problem (making a Worker _be_ an
   OAuth provider, as MCP servers do). Not what we need.
 
 ### 4.7 Recommendation
@@ -332,14 +332,14 @@ before anyone else can race for it (the wipe and the token flip happen in the sa
 
 `package_maintainers` holds one `owner` and zero or more `maintainer` rows.
 
-| Action | owner | maintainer |
-|---|---|---|
-| Publish a new version | yes | yes |
-| Set a dist-tag | yes | yes |
-| Deprecate | yes | yes |
-| Add or remove a maintainer | yes | no |
-| Transfer ownership | yes | no |
-| Remove the package | yes | no |
+| Action                     | owner | maintainer |
+| -------------------------- | ----- | ---------- |
+| Publish a new version      | yes   | yes        |
+| Set a dist-tag             | yes   | yes        |
+| Deprecate                  | yes   | yes        |
+| Add or remove a maintainer | yes   | no         |
+| Transfer ownership         | yes   | no         |
+| Remove the package         | yes   | no         |
 
 Maintainers are added by user handle, and the target must already have an account. No email invites.
 
@@ -411,17 +411,17 @@ against the in-memory store exactly as it is today.
 
 Machine surface, JSend, part of `openapi.yaml`:
 
-| Method | Path | Auth | Notes |
-|---|---|---|---|
-| `POST` | `/packages` | bearer, `publish` scope | now `401` / `403` |
-| `GET` | `/me` | bearer or session | whoami: user handle, token scopes, expiry; also how CI smoke-tests its token |
-| `GET` | `/me/packages` | bearer or session | packages the actor maintains |
-| `PUT` | `/packages/{name}/dist-tags/{tag}` | bearer, `publish` scope | maintainers only |
-| `POST` | `/packages/{name}/deprecate` | bearer, `publish` scope | maintainers only |
-| `POST` | `/packages/{name}/maintainers` | session, or bearer with `manage` | owner only |
-| `DELETE` | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only |
-| `POST` | `/packages/{name}/transfer` | session, or bearer with `manage` | owner nominates |
-| `POST` | `/packages/{name}/transfer/accept` | session | nominee accepts |
+| Method   | Path                                    | Auth                             | Notes                                                                        |
+| -------- | --------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------- |
+| `POST`   | `/packages`                             | bearer, `publish` scope          | now `401` / `403`                                                            |
+| `GET`    | `/me`                                   | bearer or session                | whoami: user handle, token scopes, expiry; also how CI smoke-tests its token |
+| `GET`    | `/me/packages`                          | bearer or session                | packages the actor maintains                                                 |
+| `PUT`    | `/packages/{name}/dist-tags/{tag}`      | bearer, `publish` scope          | maintainers only                                                             |
+| `POST`   | `/packages/{name}/deprecate`            | bearer, `publish` scope          | maintainers only                                                             |
+| `POST`   | `/packages/{name}/maintainers`          | session, or bearer with `manage` | owner only                                                                   |
+| `DELETE` | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only                                                                   |
+| `POST`   | `/packages/{name}/transfer`             | session, or bearer with `manage` | owner nominates                                                              |
+| `POST`   | `/packages/{name}/transfer/accept`      | session                          | nominee accepts                                                              |
 
 Reads stay **public and unauthenticated**: `GET /packages`, `GET /packages/{name}`, the tarball and
 bundle downloads, and also `POST /resolve` and `GET /install` (added by the client work, 2026-08).
@@ -549,7 +549,8 @@ export const requireScope =
   async (c, next) => {
     const actor = await resolveActor(c); // bearer token first, then session cookie
     if (!actor) throw new UnauthorizedError("Authentication required");
-    if (!actor.scopes.includes(scope)) throw new ForbiddenError(`Token is missing the ${scope} scope`);
+    if (!actor.scopes.includes(scope))
+      throw new ForbiddenError(`Token is missing the ${scope} scope`);
     c.set("actor", actor);
     await next();
   };
@@ -630,11 +631,11 @@ in a URL.
 
 ### 10.3 Scopes
 
-| Scope | Grants | Default? |
-|---|---|---|
-| `publish` | Create versions and set dist-tags for packages the user maintains | yes |
-| `manage` | Add and remove maintainers, transfer, remove | no |
-| `admin` | Reserved-name overrides, registry-wide operations | no, humans only |
+| Scope     | Grants                                                            | Default?        |
+| --------- | ----------------------------------------------------------------- | --------------- |
+| `publish` | Create versions and set dist-tags for packages the user maintains | yes             |
+| `manage`  | Add and remove maintainers, transfer, remove                      | no              |
+| `admin`   | Reserved-name overrides, registry-wide operations                 | no, humans only |
 
 Reads need no scope. A publish token is publish-only unless the user deliberately widens it, so the
 blast radius of the expected leak is "someone publishes a bad version of a package you maintain",
@@ -679,7 +680,7 @@ better-auth 1.6.25 with `@better-auth/api-key` 1.6.25:
   2820 KiB (449 KiB gzip). Comfortably under the Worker limit.
 - **`better-auth/minimal` does NOT work with the native D1 binding**: it bundles smaller
   (352 KiB gzip) and typechecks, but throws `BetterAuthError: Direct database connection requires
-  Kysely` at runtime, because D1-native support rides on the Kysely path minimal tree-shakes away.
+Kysely` at runtime, because D1-native support rides on the Kysely path minimal tree-shakes away.
   Use the full entry point (chosen), or minimal plus the Drizzle adapter (a new dependency, not
   worth it at this size).
 - **Schema generation works**, with one correction to this document: the standalone

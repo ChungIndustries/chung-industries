@@ -1,5 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
+import type { Actor } from "@/components/auth/actor";
 import {
   MAX_EXTRACTED_BYTES,
   buildBundle,
@@ -24,7 +25,6 @@ import {
   tarballPath,
 } from "@/components/package/store/types";
 import { pickLatest } from "@/components/package/version";
-import type { Actor } from "@/components/auth/actor";
 import {
   BadRequestError,
   ConflictError,

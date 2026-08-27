@@ -113,9 +113,9 @@ describe("PackageService", () => {
     await expect(publish(tgz({ "init.lua": "return {}" }))).rejects.toMatchObject({
       status: 400,
     });
-    await expect(
-      publish(tgz({ "cpm.json": "not json", "init.lua": "x" })),
-    ).rejects.toMatchObject({ status: 400 });
+    await expect(publish(tgz({ "cpm.json": "not json", "init.lua": "x" }))).rejects.toMatchObject({
+      status: 400,
+    });
     await expect(
       publish(tgz({ "cpm.json": '{"name":"example"}', "init.lua": "x" })),
     ).rejects.toMatchObject({ status: 400 });
@@ -319,9 +319,7 @@ describe("PackageService", () => {
       expect(await registry.getMaintainers("example")).toEqual([
         { userId: OWNER.userId, role: "owner" },
       ]);
-      expect(await service.maintained(OWNER.userId)).toEqual([
-        { name: "example", role: "owner" },
-      ]);
+      expect(await service.maintained(OWNER.userId)).toEqual([{ name: "example", role: "owner" }]);
     });
 
     it("rejects a publish to somebody else's package with 403", async () => {

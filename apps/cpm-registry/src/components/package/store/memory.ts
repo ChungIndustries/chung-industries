@@ -50,7 +50,9 @@ export class InMemoryRegistryStore implements RegistryStore {
 
   async packagesByMaintainer(userId: string): Promise<MaintainedPackage[]> {
     return Array.from(this.maintainers.entries())
-      .flatMap(([name, rows]) => rows.filter((m) => m.userId === userId).map((m) => ({ name, role: m.role })))
+      .flatMap(([name, rows]) =>
+        rows.filter((m) => m.userId === userId).map((m) => ({ name, role: m.role })),
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 

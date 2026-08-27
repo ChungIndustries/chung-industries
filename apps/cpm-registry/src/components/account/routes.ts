@@ -45,7 +45,10 @@ export function registerAccountRoutes(app: App): void {
     }),
     (c) => {
       const { userId, via, scopes } = c.get("actor");
-      return c.json({ status: "success" as const, data: { userId, via, scopes: [...scopes] } }, 200);
+      return c.json(
+        { status: "success" as const, data: { userId, via, scopes: [...scopes] } },
+        200,
+      );
     },
   );
 
