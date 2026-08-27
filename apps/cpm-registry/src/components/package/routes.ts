@@ -1,6 +1,8 @@
 import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
+import type { AppEnv } from "@/components/auth/actor";
+import { requireActorScope } from "@/components/auth/middleware";
 import {
   packageSchema,
   packageVersionSchema,
@@ -13,8 +15,8 @@ import { R2BlobStore } from "@/components/package/store/r2";
 import { BadRequestError, PayloadTooLargeError } from "@/errors";
 import { jsonFail, jsonSuccess, serverError } from "@/jsend";
 
-type App = OpenAPIHono<{ Bindings: Env }>;
-type Ctx = Context<{ Bindings: Env }>;
+type App = OpenAPIHono<AppEnv>;
+type Ctx = Context<AppEnv>;
 
 function serviceFor(env: Env): PackageService {
   return new PackageService(new D1RegistryStore(env.DB), new R2BlobStore(env.BUCKET));
@@ -151,7 +153,9 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description: `Creates a package if missing, or adds a new version to an existing one. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; the \`cpm.json\` at the tarball root is the package metadata. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
+      description: `Creates a package if missing, or adds a new version to an existing one. Requires a publish token (\`Authorization: Bearer cpm_...\`); the first authenticated publish of a new name claims ownership, and later versions may only be published by its maintainers. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; the \`cpm.json\` at the tarball root is the package metadata. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
+      middleware: [requireActorScope("publish")] as const,
+      security: [{ publishToken: [] }],
       request: {
         body: {
           required: true,
@@ -171,6 +175,8 @@ export function registerPackageRoutes(app: App): void {
       responses: {
         201: jsonSuccess(packageSchema, "Published"),
         400: jsonFail("Invalid request"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not allowed to publish this package"),
         409: jsonFail("Version already published"),
         413: jsonFail("Tarball too large"),
         500: serverError,
@@ -178,7 +184,7 @@ export function registerPackageRoutes(app: App): void {
     }),
     async (c) => {
       const data = await parsePublishForm(c.req.valid("form"));
-      const pkg = await serviceFor(c.env).publish(data);
+      const pkg = await serviceFor(c.env).publish(c.get("actor"), data);
       return c.json({ status: "success" as const, data: pkg }, 201);
     },
   );

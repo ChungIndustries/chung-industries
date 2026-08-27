@@ -20,6 +20,18 @@ export class BadRequestError extends RegistryError {
   }
 }
 
+export class UnauthorizedError extends RegistryError {
+  constructor(message: string) {
+    super(401, message);
+  }
+}
+
+export class ForbiddenError extends RegistryError {
+  constructor(message: string) {
+    super(403, message);
+  }
+}
+
 export class NotFoundError extends RegistryError {
   constructor(message: string) {
     super(404, message);

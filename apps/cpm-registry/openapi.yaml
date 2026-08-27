@@ -11,7 +11,15 @@ tags:
     description: Endpoints for browsing and retrieving cpm packages.
   - name: Bootstrap
     description: Getting cpm onto a fresh computer.
+  - name: Account
+    description: The authenticated user and their packages.
 components:
+  securitySchemes:
+    publishToken:
+      type: http
+      scheme: bearer
+      description: "A cpm publish token, created from the registry account page. Send
+        as `Authorization: Bearer cpm_...`"
   schemas:
     Package:
       type: object
@@ -178,6 +186,28 @@ components:
       required:
         - dependencies
       additionalProperties: false
+    Actor:
+      type: object
+      properties:
+        userId:
+          type: string
+        via:
+          type: string
+          enum:
+            - token
+            - session
+        scopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - publish
+              - manage
+              - admin
+      required:
+        - userId
+        - via
+        - scopes
   parameters: {}
 paths:
   /packages:
@@ -232,13 +262,18 @@ paths:
         - Packages
       summary: Publish package version
       description: "Creates a package if missing, or adds a new version to an existing
-        one. Published versions are immutable: re-publishing an existing version
-        returns 409. Send the tarball file as `tarball` in multipart/form-data;
-        the `cpm.json` at the tarball root is the package metadata. The tarball
-        must be a gzipped tar of the package files at its root (no wrapping
-        directory), with relative forward-slash paths, at most 5 MiB compressed
-        (rejected with 413 above that) and 512 KiB extracted; the registry
-        derives the client-facing bundle from it."
+        one. Requires a publish token (`Authorization: Bearer cpm_...`); the
+        first authenticated publish of a new name claims ownership, and later
+        versions may only be published by its maintainers. Published versions
+        are immutable: re-publishing an existing version returns 409. Send the
+        tarball file as `tarball` in multipart/form-data; the `cpm.json` at the
+        tarball root is the package metadata. The tarball must be a gzipped tar
+        of the package files at its root (no wrapping directory), with relative
+        forward-slash paths, at most 5 MiB compressed (rejected with 413 above
+        that) and 512 KiB extracted; the registry derives the client-facing
+        bundle from it."
+      security:
+        - publishToken: []
       requestBody:
         required: true
         content:
@@ -269,6 +304,50 @@ paths:
                   - data
         "400":
           description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "403":
+          description: Not allowed to publish this package
           content:
             application/json:
               schema:
@@ -828,6 +907,154 @@ paths:
                 example: -- cpm installer
         "404":
           description: cpm has not been published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /me:
+    get:
+      tags:
+        - Account
+      summary: Who am I
+      description: "Returns the authenticated identity behind the supplied credential:
+        a publish token (`Authorization: Bearer cpm_...`) or a browser session.
+        Useful as a token smoke test in CI and tooling."
+      security:
+        - publishToken: []
+      responses:
+        "200":
+          description: The authenticated actor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/Actor"
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /me/packages:
+    get:
+      tags:
+        - Account
+      summary: List my packages
+      description: Returns the packages the authenticated user owns or maintains.
+      security:
+        - publishToken: []
+      responses:
+        "200":
+          description: Maintained packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    type: object
+                    properties:
+                      packages:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            role:
+                              type: string
+                              enum:
+                                - owner
+                                - maintainer
+                          required:
+                            - name
+                            - role
+                    required:
+                      - packages
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
           content:
             application/json:
               schema:

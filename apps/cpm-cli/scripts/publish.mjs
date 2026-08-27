@@ -18,7 +18,17 @@ if (!process.env.CPM_REGISTRY_URL) {
   );
   process.exit(1);
 }
+// Publishing requires a publish-scoped registry token (created from the
+// registry account page by the cpm package's owner). Same no-fallback rule.
+if (!process.env.CPM_REGISTRY_TOKEN) {
+  console.error(
+    "CPM_REGISTRY_TOKEN is not set. Create a publish token on the registry " +
+      "account page (the release workflow supplies it from the repository secret of the same name).",
+  );
+  process.exit(1);
+}
 const registry = process.env.CPM_REGISTRY_URL.replace(/\/+$/, "");
+const token = process.env.CPM_REGISTRY_TOKEN;
 
 const tarball = await readFile(join(root, "dist", filename));
 
@@ -27,7 +37,11 @@ const tarball = await readFile(join(root, "dist", filename));
 const form = new FormData();
 form.append("tarball", new File([tarball], filename, { type: "application/gzip" }));
 
-const response = await fetch(`${registry}/packages`, { method: "POST", body: form });
+const response = await fetch(`${registry}/packages`, {
+  method: "POST",
+  headers: { authorization: `Bearer ${token}` },
+  body: form,
+});
 const text = await response.text();
 
 let body = text;

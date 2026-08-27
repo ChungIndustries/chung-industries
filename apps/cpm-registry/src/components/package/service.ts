@@ -1,5 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
+import type { Actor } from "@/components/auth/actor";
 import {
   MAX_EXTRACTED_BYTES,
   buildBundle,
@@ -24,7 +25,13 @@ import {
   tarballPath,
 } from "@/components/package/store/types";
 import { pickLatest } from "@/components/package/version";
-import { BadRequestError, ConflictError, NotFoundError, PayloadTooLargeError } from "@/errors";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  PayloadTooLargeError,
+} from "@/errors";
 
 /**
  * Upper bound on a published tarball, 5 MiB. Real ComputerCraft Lua packages
@@ -89,7 +96,7 @@ export class PackageService {
     return entry;
   }
 
-  async publish(data: Uint8Array): Promise<Package> {
+  async publish(actor: Actor, data: Uint8Array): Promise<Package> {
     if (data.byteLength === 0) {
       throw new BadRequestError("Tarball data is missing");
     }
@@ -114,7 +121,20 @@ export class PackageService {
       );
     }
 
+    // Authorization pre-flight, before any blob write so a rejected publish
+    // stores nothing and the caller gets a specific message. The guarded
+    // inserts in the store are the atomic backstop for anything racing past
+    // these reads (docs/cpm-registry-auth-design.md, section 8.4).
+    if ((await this.registry.isReserved(metadata.name)) && !actor.scopes.includes("admin")) {
+      throw new ForbiddenError(`Package name "${metadata.name}" is reserved`);
+    }
     const existing = await this.registry.get(metadata.name);
+    if (existing) {
+      const maintainers = await this.registry.getMaintainers(metadata.name);
+      if (!maintainers.some((m) => m.userId === actor.userId)) {
+        throw new ForbiddenError(`You are not a maintainer of "${metadata.name}"`);
+      }
+    }
     // Published versions are immutable. Reject before any write so the stored
     // tarball is never clobbered; the store's primary key is the atomic backstop
     // for a concurrent publish that slips past this check.
@@ -159,7 +179,13 @@ export class PackageService {
       tarballKey: tarKey,
       bundleKey: bunKey,
       distTags: { ...existing?.["dist-tags"], latest },
+      publishedBy: actor.userId,
     });
+  }
+
+  /** Packages the given user maintains, for `GET /me/packages`. */
+  maintainedBy(userId: string) {
+    return this.registry.packagesByMaintainer(userId);
   }
 
   async readTarball(name: string, version: string): Promise<Uint8Array> {

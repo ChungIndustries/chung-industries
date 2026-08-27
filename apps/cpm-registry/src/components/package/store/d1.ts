@@ -1,11 +1,14 @@
 import type { Package, PackageVersion } from "@/components/package/schemas";
 import {
   type AddVersionInput,
+  type MaintainedPackage,
+  type Maintainer,
+  type MaintainerRole,
   type RegistryStore,
   bundlePath,
   tarballPath,
 } from "@/components/package/store/types";
-import { ConflictError } from "@/errors";
+import { ConflictError, ForbiddenError } from "@/errors";
 
 interface PackageRow {
   name: string;
@@ -77,8 +80,16 @@ export class D1RegistryStore implements RegistryStore {
     tarballKey,
     bundleKey,
     distTags,
+    publishedBy,
   }: AddVersionInput): Promise<Package> {
     const now = Date.now();
+    // Maintainership is enforced INSIDE the transaction: statement 1 claims
+    // ownership only when the package has no maintainers yet (first publish),
+    // and statements 2+ only take effect when the publisher holds a
+    // maintainer row. A losing racer or a non-maintainer therefore inserts
+    // zero version rows, detected below and surfaced as 403; the version
+    // primary key stays the 409 backstop for duplicate versions.
+    const isMaintainer = `EXISTS (SELECT 1 FROM package_maintainers WHERE package_name = ?1 AND user_id = ?2)`;
     const statements: D1PreparedStatement[] = [
       // Preserve the original author on re-publish: only set it on first insert.
       this.db
@@ -86,14 +97,22 @@ export class D1RegistryStore implements RegistryStore {
           "INSERT INTO packages (name, author, created_at) VALUES (?, ?, ?) ON CONFLICT(name) DO NOTHING",
         )
         .bind(name, author ?? null, now),
-      // No ON CONFLICT: a duplicate (package_name, version) violates the primary
-      // key, which is exactly how immutability is enforced.
       this.db
         .prepare(
-          "INSERT INTO versions (package_name, version, author, dependencies, shasum, integrity, tarball_key, bundle_sha256, bundle_size, bundle_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          `INSERT INTO package_maintainers (package_name, user_id, role, added_at)
+           SELECT ?1, ?2, 'owner', ?3
+           WHERE NOT EXISTS (SELECT 1 FROM package_maintainers WHERE package_name = ?1)`,
+        )
+        .bind(name, publishedBy, now),
+      this.db
+        .prepare(
+          `INSERT INTO versions (package_name, version, author, dependencies, shasum, integrity, tarball_key, bundle_sha256, bundle_size, bundle_key, published_by, created_at)
+           SELECT ?1, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?2, ?12
+           WHERE ${isMaintainer}`,
         )
         .bind(
           name,
+          publishedBy,
           entry.version,
           entry.author ?? null,
           entry.dependencies ? JSON.stringify(entry.dependencies) : null,
@@ -110,15 +129,20 @@ export class D1RegistryStore implements RegistryStore {
       statements.push(
         this.db
           .prepare(
-            "INSERT INTO dist_tags (package_name, tag, version) VALUES (?, ?, ?) ON CONFLICT(package_name, tag) DO UPDATE SET version = excluded.version",
+            // Guarded like the version insert so a rejected publish can never
+            // move dist-tags. The WHERE also disambiguates the upsert parse.
+            `INSERT INTO dist_tags (package_name, tag, version)
+             SELECT ?1, ?3, ?4 WHERE ${isMaintainer}
+             ON CONFLICT(package_name, tag) DO UPDATE SET version = excluded.version`,
           )
-          .bind(name, tag, version),
+          .bind(name, publishedBy, tag, version),
       );
     }
 
+    let results: D1Result[];
     try {
       // D1 runs a batch as a single atomic transaction.
-      await this.db.batch(statements);
+      results = await this.db.batch(statements);
     } catch (err) {
       if (isUniqueConstraintError(err)) {
         throw new ConflictError(
@@ -127,10 +151,39 @@ export class D1RegistryStore implements RegistryStore {
       }
       throw err;
     }
+    if ((results[2]?.meta.changes ?? 0) === 0) {
+      throw new ForbiddenError(`You are not a maintainer of "${name}"`);
+    }
 
     const pkg = await this.get(name);
     if (!pkg) throw new Error(`Package "${name}" missing immediately after publish`);
     return pkg;
+  }
+
+  async getMaintainers(name: string): Promise<Maintainer[]> {
+    const { results } = await this.db
+      .prepare("SELECT user_id, role FROM package_maintainers WHERE package_name = ?")
+      .bind(name)
+      .all<{ user_id: string; role: MaintainerRole }>();
+    return results.map((row) => ({ userId: row.user_id, role: row.role }));
+  }
+
+  async isReserved(name: string): Promise<boolean> {
+    const row = await this.db
+      .prepare("SELECT 1 FROM reserved_names WHERE name = ?")
+      .bind(name)
+      .first();
+    return row !== null;
+  }
+
+  async packagesByMaintainer(userId: string): Promise<MaintainedPackage[]> {
+    const { results } = await this.db
+      .prepare(
+        "SELECT package_name, role FROM package_maintainers WHERE user_id = ? ORDER BY package_name",
+      )
+      .bind(userId)
+      .all<{ package_name: string; role: MaintainerRole }>();
+    return results.map((row) => ({ name: row.package_name, role: row.role }));
   }
 }
 
