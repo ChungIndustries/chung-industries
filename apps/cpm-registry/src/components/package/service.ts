@@ -184,7 +184,7 @@ export class PackageService {
   }
 
   /** Packages the given user maintains, for `GET /me/packages`. */
-  maintained(userId: string) {
+  maintainedBy(userId: string) {
     return this.registry.packagesByMaintainer(userId);
   }
 

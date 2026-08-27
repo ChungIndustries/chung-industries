@@ -72,7 +72,7 @@ export function registerAccountRoutes(app: App): void {
         new D1RegistryStore(c.env.DB),
         new R2BlobStore(c.env.BUCKET),
       );
-      const packages = await service.maintained(c.get("actor").userId);
+      const packages = await service.maintainedBy(c.get("actor").userId);
       return c.json({ status: "success" as const, data: { packages } }, 200);
     },
   );
