@@ -319,7 +319,9 @@ describe("PackageService", () => {
       expect(await registry.getMaintainers("example")).toEqual([
         { userId: OWNER.userId, role: "owner" },
       ]);
-      expect(await service.maintainedBy(OWNER.userId)).toEqual([{ name: "example", role: "owner" }]);
+      expect(await service.maintainedBy(OWNER.userId)).toEqual([
+        { name: "example", role: "owner" },
+      ]);
     });
 
     it("rejects a publish to somebody else's package with 403", async () => {
