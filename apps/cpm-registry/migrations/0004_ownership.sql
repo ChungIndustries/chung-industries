@@ -7,6 +7,10 @@
 -- (package_name, user_id), cheap enough to fold into the publish transaction
 -- as a guarded INSERT (see D1RegistryStore.addVersion).
 
+-- FK behaviors are deliberate: `user_id` is authorization and must die with
+-- the account (CASCADE); `added_by` is provenance and merely anonymizes if the
+-- adding account is ever deleted (SET NULL; also NULL for the system-claimed
+-- owner row a first publish creates).
 CREATE TABLE package_maintainers (
   package_name TEXT    NOT NULL,
   user_id      TEXT    NOT NULL,
@@ -15,7 +19,8 @@ CREATE TABLE package_maintainers (
   added_by     TEXT,
   PRIMARY KEY (package_name, user_id),
   FOREIGN KEY (package_name) REFERENCES packages (name) ON DELETE CASCADE,
-  FOREIGN KEY (user_id)      REFERENCES "user" (id)     ON DELETE CASCADE
+  FOREIGN KEY (user_id)      REFERENCES "user" (id)     ON DELETE CASCADE,
+  FOREIGN KEY (added_by)     REFERENCES "user" (id)     ON DELETE SET NULL
 );
 
 CREATE UNIQUE INDEX package_maintainers_single_owner
@@ -39,7 +44,9 @@ INSERT INTO reserved_names (name, reason, created_at) VALUES
 
 -- Append-only record of every state change that is not itself a version
 -- insert. Written from phase 4 onward (maintainer changes, transfers); the
--- table exists now so those migrations stay additive.
+-- table exists now so those migrations stay additive. Deliberately no foreign
+-- keys: an audit log must never be reachable by a cascade, and its rows may
+-- reference users and packages that no longer exist.
 CREATE TABLE audit_events (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   actor_user_id TEXT,
