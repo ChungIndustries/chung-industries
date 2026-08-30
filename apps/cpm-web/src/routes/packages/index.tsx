@@ -12,7 +12,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PackageSearch, Search } from "lucide-react";
 import { useMemo } from "react";
 
-import { PackageCard } from "@/package/components/package-card";
+import { PackageRow } from "@/package/components/package-row";
 import { packagesQueryOptions } from "@/package/queries";
 import { searchPackages } from "@/package/search";
 
@@ -47,9 +47,9 @@ function PackagesPending() {
     <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
       <PageHead />
       <Skeleton className="h-10 w-full" />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-3">
         {Array.from({ length: 6 }, (_, i) => (
-          <Skeleton key={i} className="h-24" />
+          <Skeleton key={i} className="h-12 w-full" />
         ))}
       </div>
     </div>
@@ -105,11 +105,9 @@ function PackagesPage() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="divide-border border-border divide-y border-y">
           {results.map((pkg) => (
-            <li key={pkg.name}>
-              <PackageCard pkg={pkg} />
-            </li>
+            <PackageRow key={pkg.name} pkg={pkg} />
           ))}
         </ul>
       )}
