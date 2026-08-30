@@ -11,18 +11,19 @@ const COMMANDS: [string, string][] = [
 
 export function CommandsTable() {
   return (
-    <Table>
-      <TableBody>
-        {COMMANDS.map(([command, what]) => (
-          <TableRow key={command}>
-            <TableCell className="font-semibold whitespace-nowrap">
-              <span className="text-primary select-none">&gt; </span>
-              {command}
-            </TableCell>
-            <TableCell className="text-muted-foreground">{what}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="border-border bg-card overflow-x-auto rounded-lg border">
+      <Table>
+        <TableBody>
+          {COMMANDS.map(([command, what]) => (
+            <TableRow key={command}>
+              <TableCell className="px-4 py-3 font-mono text-[13px] whitespace-nowrap">
+                {command}
+              </TableCell>
+              <TableCell className="text-muted-foreground px-4 py-3">{what}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

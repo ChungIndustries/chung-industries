@@ -9,11 +9,11 @@ export function PackageCard({ pkg }: { pkg: Package }) {
     <Link
       to="/packages/$name"
       params={{ name: pkg.name }}
-      className="group focus-visible:ring-ring block focus-visible:ring-2 focus-visible:outline-none"
+      className="group focus-visible:ring-ring block h-full rounded-lg focus-visible:ring-2 focus-visible:outline-none"
     >
-      <Card className="group-hover:border-primary h-full transition-all group-hover:-translate-y-0.5 group-hover:shadow-[0_0_22px_rgb(242_178_51/0.12)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
+      <Card className="group-hover:border-brand/60 h-full transition-[border-color,box-shadow] group-hover:shadow-sm">
         <CardHeader>
-          <CardTitle className="font-display text-primary font-normal break-all">
+          <CardTitle className="group-hover:text-brand font-mono text-base break-all">
             {pkg.name}
           </CardTitle>
           <CardDescription className="flex flex-wrap gap-x-4">

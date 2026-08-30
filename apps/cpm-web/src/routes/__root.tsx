@@ -43,7 +43,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_ORIGIN },
       { name: "twitter:card", content: "summary" },
-      { name: "theme-color", content: "#0b0c0f" },
+      { name: "theme-color", content: "#17191e" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
@@ -51,7 +51,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Silkscreen&display=swap",
       },
       { rel: "stylesheet", href: appCss },
     ],
@@ -80,27 +80,28 @@ function RootComponent() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-border bg-background/90 sticky top-0 z-10 border-b backdrop-blur-sm">
-        <div className="mx-auto flex h-15 w-full max-w-5xl items-center justify-between gap-4 px-6">
-          <Link to="/" className="font-display text-primary flex items-baseline text-xl">
-            cpm
-            <span
-              className="animate-blink bg-primary ml-0.5 inline-block h-4 w-2.5 self-center motion-reduce:animate-none"
-              aria-hidden="true"
-            />
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
+          <Link to="/" className="flex items-center gap-2.5" aria-label="cpm home">
+            <span className="bg-brand text-screen font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">
+              cpm
+            </span>
+            <span className="text-muted-foreground hidden text-sm sm:inline">
+              the ComputerCraft package manager
+            </span>
           </Link>
-          <nav className="flex gap-6 text-sm" aria-label="Site">
+          <nav className="flex gap-6 text-sm font-medium" aria-label="Site">
             <Link
               to="/packages"
-              className="text-muted-foreground hover:text-primary"
-              activeProps={{ className: "text-primary" }}
+              className="text-muted-foreground hover:text-foreground"
+              activeProps={{ className: "text-foreground" }}
             >
-              packages
+              Packages
             </Link>
-            <a href={DOCS_URL} className="text-muted-foreground hover:text-primary">
-              api docs
+            <a href={DOCS_URL} className="text-muted-foreground hover:text-foreground">
+              Docs
             </a>
-            <a href={GITHUB_URL} className="text-muted-foreground hover:text-primary">
-              github
+            <a href={GITHUB_URL} className="text-muted-foreground hover:text-foreground">
+              GitHub
             </a>
           </nav>
         </div>
@@ -111,17 +112,17 @@ function RootComponent() {
       <footer className="border-border border-t">
         <div className="text-muted-foreground mx-auto flex w-full max-w-5xl flex-wrap justify-between gap-4 px-6 py-7 text-sm">
           <span>
-            <a href="https://chungindustries.com" className="hover:text-primary">
+            <a href="https://chungindustries.com" className="hover:text-foreground">
               ChungIndustries
             </a>
             : recreating the internet inside Minecraft
           </span>
           <span>
-            <a href={DOCS_URL} className="hover:text-primary">
+            <a href={DOCS_URL} className="hover:text-foreground">
               registry API
             </a>{" "}
             ·{" "}
-            <a href={GITHUB_URL} className="hover:text-primary">
+            <a href={GITHUB_URL} className="hover:text-foreground">
               source
             </a>
           </span>
@@ -139,7 +140,7 @@ function NotFound() {
           <EmptyMedia variant="icon">
             <FileQuestion />
           </EmptyMedia>
-          <EmptyTitle className="font-display">404</EmptyTitle>
+          <EmptyTitle>404</EmptyTitle>
           <EmptyDescription>This page does not exist.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>

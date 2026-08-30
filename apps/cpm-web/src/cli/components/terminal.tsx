@@ -1,55 +1,48 @@
 import { cn } from "@workspace/ui/lib/utils";
 import type { ReactNode } from "react";
 
+function Prompt({ children }: { children?: ReactNode }) {
+  return (
+    <>
+      <span className="text-screen-yellow">&gt; </span>
+      {children}
+    </>
+  );
+}
+
+/* CraftOS greets with its version line, then prompts in yellow. */
 const LINES: { text: ReactNode; className?: string }[] = [
+  { text: "CraftOS 1.9", className: "text-screen-yellow" },
+  { text: <Prompt>wget run registry.cpm.chungindustries.com/install</Prompt> },
+  { text: "Connecting to registry...", className: "text-screen-muted" },
+  { text: "cpm installed. Run `cpm` to get started.", className: "text-screen-green" },
+  { text: <Prompt>cpm install mail</Prompt> },
+  { text: "+ mail (and 2 dependencies) installed.", className: "text-screen-green" },
   {
     text: (
-      <>
-        <span className="text-primary">&gt;</span> wget run registry.cpm.chungindustries.com/install
-      </>
-    ),
-  },
-  { text: "Connecting to registry...", className: "text-muted-foreground" },
-  { text: "cpm installed. Run `cpm` to get started.", className: "text-lime" },
-  {
-    text: (
-      <>
-        <span className="text-primary">&gt;</span> cpm install mail
-      </>
-    ),
-  },
-  { text: "+ mail (and 2 dependencies) installed.", className: "text-lime" },
-  {
-    text: (
-      <>
-        <span className="text-primary">&gt;</span>{" "}
-        <span className="animate-blink bg-foreground -mb-0.5 inline-block h-4 w-2 motion-reduce:animate-none" />
-      </>
+      <Prompt>
+        <span className="bg-screen-foreground animate-blink -mb-0.5 inline-block h-4 w-2 motion-reduce:animate-none" />
+      </Prompt>
     ),
   },
 ];
 
 /** Per-line reveal delays in seconds, staged like real terminal output. */
-const DELAYS = [0.3, 1.5, 2.1, 3.2, 4.2, 4.8];
+const DELAYS = [0, 0.7, 1.8, 2.4, 3.4, 4.4, 5];
 
-/** A CC:Tweaked advanced computer running the cpm bootstrap, line by line. */
+/**
+ * A CC:Tweaked advanced computer running the cpm bootstrap: the gold casing
+ * as the bezel, CraftOS colours on the screen.
+ */
 export function Terminal() {
   return (
     <div
-      className="border-border bg-screen border shadow-[0_0_0_6px_#1a1508,0_0_0_7px_#4a3b15,0_0_60px_rgb(242_178_51/0.14),0_24px_60px_rgb(0_0_0/0.55)]"
+      className="border-brand-dark/40 bg-brand max-w-full rounded-xl border p-2 shadow-lg"
       role="img"
       aria-label="A ComputerCraft terminal installing cpm"
     >
-      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-xs">
-        <span>CraftOS 1.9</span>
-        <span className="flex gap-1.5" aria-hidden="true">
-          <span className="bg-destructive/70 size-2" />
-          <span className="bg-primary/70 size-2" />
-          <span className="bg-lime/70 size-2" />
-        </span>
-      </div>
       <div
-        className="min-h-52 px-4 py-4 text-[13.5px] leading-loose shadow-[inset_0_0_48px_rgb(127_204_25/0.05)]"
+        className="bg-screen text-screen-foreground [scrollbar-width:thin] overflow-x-auto rounded-md px-4 py-3.5 font-mono text-[13px] leading-7"
         aria-hidden="true"
       >
         {LINES.map((line, index) => (

@@ -9,7 +9,7 @@ import {
 } from "@workspace/ui/components/empty";
 import { Input } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { PackageSearch } from "lucide-react";
+import { PackageSearch, Search } from "lucide-react";
 import { useMemo } from "react";
 
 import { PackageCard } from "@/package/components/package-card";
@@ -33,9 +33,7 @@ export const Route = createFileRoute("/packages/")({
 function PageHead() {
   return (
     <div>
-      <h1 className="font-display text-2xl">
-        <span className="text-primary select-none">&gt; </span>packages
-      </h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Packages</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         Everything in the cpm registry. Install any of these in-game with{" "}
         <code>cpm install &lt;name&gt;</code>.
@@ -48,7 +46,7 @@ function PackagesPending() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
       <PageHead />
-      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-10 w-full" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => (
           <Skeleton key={i} className="h-24" />
@@ -68,12 +66,17 @@ function PackagesPage() {
     <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
       <PageHead />
 
-      <search>
+      <search className="relative block">
+        <Search
+          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+          aria-hidden="true"
+        />
         <Input
           type="search"
           value={q}
-          placeholder="search packages..."
+          placeholder="Search packages"
           aria-label="Search packages"
+          className="bg-card h-10 pl-9"
           onChange={(event) =>
             void navigate({
               search: event.target.value ? { q: event.target.value } : {},
@@ -84,7 +87,7 @@ function PackagesPage() {
       </search>
 
       <p className="text-muted-foreground text-sm" role="status">
-        <span className="text-primary font-semibold">{results.length}</span>{" "}
+        <span className="text-foreground font-semibold">{results.length}</span>{" "}
         {results.length === 1 ? "package" : "packages"}
         {q && ` matching "${q}"`}
       </p>
@@ -95,9 +98,7 @@ function PackagesPage() {
             <EmptyMedia variant="icon">
               <PackageSearch />
             </EmptyMedia>
-            <EmptyTitle className="font-display">
-              {q ? "nothing found" : "nothing here yet"}
-            </EmptyTitle>
+            <EmptyTitle>{q ? "Nothing found" : "Nothing here yet"}</EmptyTitle>
             <EmptyDescription>
               {q ? `No package matches "${q}".` : "Be the first to publish!"}
             </EmptyDescription>

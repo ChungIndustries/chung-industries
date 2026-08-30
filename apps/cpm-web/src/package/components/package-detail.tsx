@@ -21,12 +21,7 @@ export interface PackageDetailProps {
 }
 
 function SectionTitle({ children }: { children: string }) {
-  return (
-    <h2 className="font-display mb-4 text-lg">
-      <span className="text-primary select-none">&gt; </span>
-      {children}
-    </h2>
-  );
+  return <h2 className="mb-4 text-lg font-semibold tracking-tight">{children}</h2>;
 }
 
 function ReadmeSection({ version }: { version: PackageVersion }) {
@@ -34,7 +29,7 @@ function ReadmeSection({ version }: { version: PackageVersion }) {
   if (readme.isPending) {
     return (
       <section>
-        <SectionTitle>readme</SectionTitle>
+        <SectionTitle>README</SectionTitle>
         <Skeleton className="h-40 w-full" />
       </section>
     );
@@ -43,10 +38,10 @@ function ReadmeSection({ version }: { version: PackageVersion }) {
   if (!readme.data) return null;
   return (
     <section>
-      <SectionTitle>readme</SectionTitle>
+      <SectionTitle>README</SectionTitle>
       {/* Package content is untrusted, so the README is rendered as escaped
           plain text rather than converted to HTML. */}
-      <pre className="border-border bg-card max-h-160 overflow-y-auto border p-5 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap">
+      <pre className="border-border bg-card max-h-160 overflow-y-auto rounded-lg border p-5 text-[13px] leading-relaxed break-words whitespace-pre-wrap">
         {readme.data}
       </pre>
     </section>
@@ -63,7 +58,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <nav className="text-muted-foreground mb-6 text-sm" aria-label="Breadcrumb">
-        <Link to="/packages" className="hover:text-primary">
+        <Link to="/packages" className="hover:text-foreground hover:underline">
           packages
         </Link>{" "}
         / {pkg.name}
@@ -71,10 +66,10 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
       </nav>
 
       <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="font-display text-primary text-3xl break-all">{pkg.name}</h1>
-        <span className="text-lg">v{version.version}</span>
+        <h1 className="font-mono text-3xl font-semibold break-all">{pkg.name}</h1>
+        <span className="text-muted-foreground text-lg">v{version.version}</span>
         {tagsFor(pkg["dist-tags"], version.version).map((tag) => (
-          <Badge key={tag} variant="outline" className="border-primary text-primary">
+          <Badge key={tag} variant="secondary">
             {tag}
           </Badge>
         ))}
@@ -86,7 +81,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
           <ReadmeSection version={version} />
 
           <section>
-            <SectionTitle>dependencies</SectionTitle>
+            <SectionTitle>Dependencies</SectionTitle>
             {dependencies.length === 0 ? (
               <p className="text-muted-foreground text-sm">None: this package stands alone.</p>
             ) : (
@@ -99,11 +94,11 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
                     <Link
                       to="/packages/$name"
                       params={{ name: dep }}
-                      className="text-primary hover:underline"
+                      className="text-brand font-mono font-medium hover:underline"
                     >
                       {dep}
                     </Link>
-                    <span className="text-muted-foreground">{range}</span>
+                    <span className="text-muted-foreground font-mono">{range}</span>
                   </li>
                 ))}
               </ul>
@@ -111,7 +106,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
           </section>
 
           <section>
-            <SectionTitle>versions</SectionTitle>
+            <SectionTitle>Versions</SectionTitle>
             <ul>
               {versions.map((v) => (
                 <li
@@ -119,19 +114,19 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
                   className="border-border flex justify-between gap-3 border-b py-2 text-sm first:border-t"
                 >
                   {v === version.version ? (
-                    <span>v{v}</span>
+                    <span className="font-mono">v{v}</span>
                   ) : (
                     <Link
                       to="/packages/$name/$version"
                       params={{ name: pkg.name, version: v }}
-                      className="text-primary hover:underline"
+                      className="text-brand font-mono font-medium hover:underline"
                     >
                       v{v}
                     </Link>
                   )}
                   <span className="flex gap-1.5">
                     {tagsFor(pkg["dist-tags"], v).map((tag) => (
-                      <Badge key={tag} variant="outline" className="border-primary text-primary">
+                      <Badge key={tag} variant="secondary">
                         {tag}
                       </Badge>
                     ))}
@@ -145,9 +140,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
         <aside className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-muted-foreground text-sm font-normal">
-                install
-              </CardTitle>
+              <CardTitle className="text-sm">Install</CardTitle>
             </CardHeader>
             <CardContent>
               <CommandBlock command={install} className="text-xs" />
@@ -155,9 +148,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-muted-foreground text-sm font-normal">
-                metadata
-              </CardTitle>
+              <CardTitle className="text-sm">Metadata</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="text-sm">
@@ -167,7 +158,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
                 <MetaRow label="dependencies">{String(dependencies.length)}</MetaRow>
                 {version.startup && <MetaRow label="runs at boot">{version.startup}</MetaRow>}
                 <MetaRow label="sha-256">
-                  <span className="text-xs" title={version.dist.bundle.sha256}>
+                  <span className="font-mono text-xs" title={version.dist.bundle.sha256}>
                     {version.dist.bundle.sha256.slice(0, 16)}…
                   </span>
                 </MetaRow>
@@ -176,14 +167,14 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
               <p className="text-sm">
                 <a
                   href={`${REGISTRY_ORIGIN}${version.dist.tarball.url}`}
-                  className="text-primary hover:underline"
+                  className="text-brand font-medium hover:underline"
                 >
                   tarball
                 </a>
                 <span className="text-muted-foreground"> · </span>
                 <a
                   href={`${REGISTRY_ORIGIN}${version.dist.bundle.url}`}
-                  className="text-primary hover:underline"
+                  className="text-brand font-medium hover:underline"
                 >
                   bundle
                 </a>

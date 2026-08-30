@@ -20,11 +20,11 @@ export function CommandBlock({ command, className }: { command: string; classNam
   return (
     <div
       className={cn(
-        "flex items-center gap-2 border border-border bg-background py-1 pr-1 pl-3 text-sm",
+        "border-border bg-muted/60 flex items-center gap-2 rounded-md border py-1 pr-1 pl-3 font-mono text-sm",
         className,
       )}
     >
-      <span className="text-primary select-none">&gt;</span>
+      <span className="text-muted-foreground select-none">&gt;</span>
       <code className="flex-1 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] overflow-x-auto py-1 whitespace-nowrap">
         {command}
       </code>
@@ -34,7 +34,7 @@ export function CommandBlock({ command, className }: { command: string; classNam
         onClick={copy}
         aria-label={copied ? "Copied" : `Copy ${command}`}
       >
-        {copied ? <Check className="text-lime" /> : <Copy />}
+        {copied ? <Check className="text-green-500" /> : <Copy />}
       </Button>
     </div>
   );

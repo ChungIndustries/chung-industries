@@ -34,14 +34,14 @@ export const fetchPackages = createServerFn({ method: "GET" }).handler(async () 
 });
 
 export const fetchPackage = createServerFn({ method: "GET" })
-  .inputValidator((name: string) => name)
+  .validator((name: string) => name)
   .handler(async ({ data: name }) => {
     return registryJson<Package>(`/packages/${encodeURIComponent(name)}`);
   });
 
 /** The version's README text, extracted from its published bundle artifact. */
 export const fetchReadme = createServerFn({ method: "GET" })
-  .inputValidator((input: { name: string; version: string }) => input)
+  .validator((input: { name: string; version: string }) => input)
   .handler(async ({ data: { name, version } }) => {
     const path = `/packages/${encodeURIComponent(name)}/${encodeURIComponent(version)}/dist/bundle`;
     // No Accept-Encoding is sent, so the registry serves identity bytes.

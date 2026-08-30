@@ -38,7 +38,7 @@ export function PackageNotFound() {
           <EmptyMedia variant="icon">
             <PackageX />
           </EmptyMedia>
-          <EmptyTitle className="font-display">404</EmptyTitle>
+          <EmptyTitle>404</EmptyTitle>
           <EmptyDescription>The registry has no such package or version.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
