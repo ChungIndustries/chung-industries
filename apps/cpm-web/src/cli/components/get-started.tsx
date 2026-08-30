@@ -29,10 +29,7 @@ const STEPS: Step[] = [
       <>
         <p>
           Anything in the{" "}
-          <Link
-            to="/packages"
-            className="text-foreground decoration-muted-foreground/40 hover:decoration-brand underline underline-offset-4"
-          >
+          <Link to="/packages" className="text-brand font-medium hover:underline">
             package index
           </Link>
           , dependencies included:
@@ -52,7 +49,7 @@ export function GetStarted() {
           {index < STEPS.length - 1 && (
             <span className="bg-border absolute top-10 bottom-2 left-4 w-px" aria-hidden="true" />
           )}
-          <span className="border-border bg-card text-muted-foreground grid size-8 shrink-0 place-items-center rounded-full border font-mono text-sm">
+          <span className="border-brand/25 bg-brand/10 text-brand grid size-8 shrink-0 place-items-center rounded-full border font-mono text-sm">
             {index + 1}
           </span>
           <div className="min-w-0 flex-1 space-y-3 pt-1">

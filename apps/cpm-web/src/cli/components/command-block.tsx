@@ -24,7 +24,7 @@ export function CommandBlock({ command, className }: { command: string; classNam
         className,
       )}
     >
-      <span className="text-muted-foreground select-none">&gt;</span>
+      <span className="text-brand select-none">&gt;</span>
       <code className="flex-1 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] overflow-x-auto py-1 whitespace-nowrap">
         {command}
       </code>
