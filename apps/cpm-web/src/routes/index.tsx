@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Search } from "lucide-react";
+import { ArrowUpRight, Search } from "lucide-react";
 import { Fragment, useState } from "react";
 
 import { CommandsTable } from "@/cli/components/commands-table";
@@ -112,8 +112,12 @@ function LandingPage() {
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
             <h2 className="text-2xl font-semibold tracking-tight">Commands</h2>
-            <a href={DOCS_URL} className="text-brand text-sm font-medium hover:underline">
-              registry API docs
+            <a
+              href={DOCS_URL}
+              className="text-brand inline-flex items-center gap-1 text-sm font-medium hover:underline"
+            >
+              Registry API docs
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </a>
           </div>
           <div className="mt-6">
