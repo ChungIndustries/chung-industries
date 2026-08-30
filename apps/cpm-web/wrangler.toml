@@ -1,13 +1,15 @@
 # Cloudflare Workers configuration for the CPM registry website.
 #
-# A React SPA (built by Vite via @cloudflare/vite-plugin) served as Worker
-# static assets, plus a thin API worker that proxies registry data same-origin
-# over a service binding to the `cpm-registry` Worker. The site therefore needs
-# neither public DNS nor CORS on the registry, and the registry's API contract
-# stays untouched.
+# A TanStack Start app: server-rendered React on the Worker, with registry data
+# fetched in server functions over a service binding to the `cpm-registry`
+# Worker. The site therefore needs neither public DNS nor CORS on the registry,
+# and the registry's API contract stays untouched. Built by Vite via
+# @cloudflare/vite-plugin; `wrangler deploy` follows the build's deploy
+# redirect (.wrangler/deploy/config.json) to the emitted output config.
 name = "cpm-web"
-main = "src/worker/index.ts"
+main = "@tanstack/react-start/server-entry"
 compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
 
 # Custom domains auto-create their DNS record and certificate on deploy; the
 # chungindustries.com zone lives in the same Cloudflare account. Top-level keys
@@ -16,12 +18,6 @@ routes = [{ pattern = "cpm.chungindustries.com", custom_domain = true }]
 
 [observability]
 enabled = true
-
-# Only /api/* reaches the worker script; everything else is served directly
-# from the built assets, with unknown paths falling back to the SPA shell.
-[assets]
-not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
 
 [[services]]
 binding = "REGISTRY"

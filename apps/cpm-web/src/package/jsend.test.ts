@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { RegistryError, unwrapJSend } from "@/package/api";
+import { RegistryError, unwrapJSend } from "@/package/jsend";
 
 describe("unwrapJSend", () => {
   it("returns the data of a success envelope", () => {

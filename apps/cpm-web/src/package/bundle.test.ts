@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type BundleManifest, findReadmePath, parseBundle, readReadme } from "@/worker/bundle";
+import { type BundleManifest, findReadmePath, parseBundle, readReadme } from "@/package/bundle";
 
 /** Builds a bundle container the way the registry does (length-prefixed manifest + blob). */
 function buildBundle(files: Record<string, string>): Uint8Array {

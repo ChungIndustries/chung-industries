@@ -1,8 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { PackageSearch } from "lucide-react";
-import { useMemo } from "react";
-
 import {
   Empty,
   EmptyDescription,
@@ -12,6 +9,8 @@ import {
 } from "@workspace/ui/components/empty";
 import { Input } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { PackageSearch } from "lucide-react";
+import { useMemo } from "react";
 
 import { PackageCard } from "@/package/components/package-card";
 import { packagesQueryOptions } from "@/package/queries";
@@ -26,6 +25,7 @@ export const Route = createFileRoute("/packages/")({
     q: typeof search.q === "string" && search.q !== "" ? search.q : undefined,
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(packagesQueryOptions),
+  head: () => ({ meta: [{ title: "packages | cpm" }] }),
   pendingComponent: PackagesPending,
   component: PackagesPage,
 });
@@ -36,7 +36,7 @@ function PageHead() {
       <h1 className="font-display text-2xl">
         <span className="text-primary select-none">&gt; </span>packages
       </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="text-muted-foreground mt-1 text-sm">
         Everything in the cpm registry. Install any of these in-game with{" "}
         <code>cpm install &lt;name&gt;</code>.
       </p>
@@ -83,8 +83,8 @@ function PackagesPage() {
         />
       </search>
 
-      <p className="text-sm text-muted-foreground" role="status">
-        <span className="font-semibold text-primary">{results.length}</span>{" "}
+      <p className="text-muted-foreground text-sm" role="status">
+        <span className="text-primary font-semibold">{results.length}</span>{" "}
         {results.length === 1 ? "package" : "packages"}
         {q && ` matching "${q}"`}
       </p>

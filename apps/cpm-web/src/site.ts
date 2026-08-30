@@ -1,4 +1,5 @@
-/** External URLs the site links out to. */
+/** The site's own canonical origin, and the external URLs it links out to. */
+export const SITE_ORIGIN = "https://cpm.chungindustries.com";
 export const REGISTRY_ORIGIN = "https://registry.cpm.chungindustries.com";
 export const DOCS_URL = "https://docs.chungindustries.com/cpm-registry";
 export const GITHUB_URL = "https://github.com/ChungIndustries/chung-industries";

@@ -25,7 +25,9 @@ export function CommandBlock({ command, className }: { command: string; classNam
       )}
     >
       <span className="text-primary select-none">&gt;</span>
-      <code className="flex-1 overflow-x-auto py-1 whitespace-nowrap">{command}</code>
+      <code className="flex-1 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] overflow-x-auto py-1 whitespace-nowrap">
+        {command}
+      </code>
       <Button
         variant="ghost"
         size="icon-sm"

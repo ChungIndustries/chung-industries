@@ -6,26 +6,31 @@ Manager, a searchable package index, and per-package detail pages.
 
 ## How it works
 
-A React SPA on the workspace frontend stack (Vite, TanStack Router/Query, Tailwind,
-`@workspace/ui` shadcn components), deployed as Cloudflare Worker static assets via
-`@cloudflare/vite-plugin`. A thin API worker (`src/worker/`) handles `/api/*` only, proxying
-registry data same-origin over a service binding to the `cpm-registry` Worker, so the site needs
-neither public DNS nor CORS on the registry and the registry's API contract stays untouched.
+A TanStack Start app on the workspace frontend stack (React, TanStack Router/Query, Tailwind,
+`@workspace/ui` shadcn components), server-rendered on a Cloudflare Worker via
+`@cloudflare/vite-plugin` (the [official hosting setup](https://tanstack.com/start/latest/docs/framework/react/guide/hosting#cloudflare-workers-official-partner)).
+Registry data is fetched in server functions (`src/package/server.ts`) over a service binding to
+the `cpm-registry` Worker, so the site needs neither public DNS nor CORS on the registry and the
+registry's API contract stays untouched. SSR also gives every page real titles and meta tags via
+route `head()` options.
 
-- Search is an interim client-side filter over `GET /packages` (`src/package/search.ts`); it
+- Search is an interim client-side filter over the full package list (`src/package/search.ts`); it
   should switch to the registry's search endpoint when that lands (issue #85).
-- Package READMEs are extracted from the published bundle artifact (`src/worker/bundle.ts` is the
+- Package READMEs are extracted from the published bundle artifact (`src/package/bundle.ts` is the
   read-side counterpart of the registry's bundle builder) and rendered as escaped plain text,
   since package content is untrusted.
+- `src/cloudflare-workers.d.ts` types the `cloudflare:workers` env import structurally (the full
+  `@cloudflare/workers-types` globals clash with the DOM lib); keep it in sync with the bindings
+  in `wrangler.toml`.
 
 ## Domain structure
 
 Following the workspace convention, each domain lives directly under `src/`:
 
-- `src/package/`: registry packages: types, API fetchers, queries, search, cards and detail views
+- `src/package/`: registry packages: types, server functions, queries, search, bundle parsing,
+  cards and detail views
 - `src/cli/`: the cpm command line: terminal demo, copyable command blocks, command reference
-- `src/routes/`: TanStack Router file routes; `src/integrations/`: third-party client setup
-- `src/worker/`: the `/api/*` Cloudflare Worker (proxy + README extraction)
+- `src/routes/`: TanStack Router file routes; `src/router.tsx`: the Start router factory
 
 ## Developing
 

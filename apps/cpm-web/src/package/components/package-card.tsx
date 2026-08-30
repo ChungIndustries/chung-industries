@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-
 import { Card, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 
 import type { Package } from "@/package/types";
@@ -10,11 +9,11 @@ export function PackageCard({ pkg }: { pkg: Package }) {
     <Link
       to="/packages/$name"
       params={{ name: pkg.name }}
-      className="group block focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group focus-visible:ring-ring block focus-visible:ring-2 focus-visible:outline-none"
     >
-      <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:border-primary group-hover:shadow-[0_0_22px_rgb(242_178_51/0.12)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
+      <Card className="group-hover:border-primary h-full transition-all group-hover:-translate-y-0.5 group-hover:shadow-[0_0_22px_rgb(242_178_51/0.12)] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">
         <CardHeader>
-          <CardTitle className="font-display font-normal break-all text-primary">
+          <CardTitle className="font-display text-primary font-normal break-all">
             {pkg.name}
           </CardTitle>
           <CardDescription className="flex flex-wrap gap-x-4">

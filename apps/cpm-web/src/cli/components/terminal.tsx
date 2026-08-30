@@ -23,7 +23,7 @@ const LINES: { text: ReactNode; className?: string }[] = [
     text: (
       <>
         <span className="text-primary">&gt;</span>{" "}
-        <span className="animate-blink -mb-0.5 inline-block h-4 w-2 bg-foreground motion-reduce:animate-none" />
+        <span className="animate-blink bg-foreground -mb-0.5 inline-block h-4 w-2 motion-reduce:animate-none" />
       </>
     ),
   },
@@ -36,19 +36,22 @@ const DELAYS = [0.3, 1.5, 2.1, 3.2, 4.2, 4.8];
 export function Terminal() {
   return (
     <div
-      className="border border-border bg-background shadow-[0_0_0_6px_#1a1508,0_0_0_7px_#3c3011,0_24px_60px_rgb(0_0_0/0.5)]"
+      className="border-border bg-screen border shadow-[0_0_0_6px_#1a1508,0_0_0_7px_#4a3b15,0_0_60px_rgb(242_178_51/0.14),0_24px_60px_rgb(0_0_0/0.55)]"
       role="img"
       aria-label="A ComputerCraft terminal installing cpm"
     >
-      <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+      <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-xs">
         <span>CraftOS 1.9</span>
         <span className="flex gap-1.5" aria-hidden="true">
-          <span className="size-2 bg-destructive/70" />
-          <span className="size-2 bg-primary/70" />
-          <span className="size-2 bg-lime/70" />
+          <span className="bg-destructive/70 size-2" />
+          <span className="bg-primary/70 size-2" />
+          <span className="bg-lime/70 size-2" />
         </span>
       </div>
-      <div className="min-h-52 px-4 py-4 text-[13.5px] leading-loose" aria-hidden="true">
+      <div
+        className="min-h-52 px-4 py-4 text-[13.5px] leading-loose shadow-[inset_0_0_48px_rgb(127_204_25/0.05)]"
+        aria-hidden="true"
+      >
         {LINES.map((line, index) => (
           <p
             key={index}

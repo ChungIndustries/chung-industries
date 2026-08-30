@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-
 import { Badge } from "@workspace/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import type { ReactNode } from "react";
 
 import { CommandBlock } from "@/cli/components/command-block";
 import { readmeQueryOptions } from "@/package/queries";
@@ -23,7 +22,7 @@ export interface PackageDetailProps {
 
 function SectionTitle({ children }: { children: string }) {
   return (
-    <h2 className="mb-4 font-display text-lg">
+    <h2 className="font-display mb-4 text-lg">
       <span className="text-primary select-none">&gt; </span>
       {children}
     </h2>
@@ -47,7 +46,7 @@ function ReadmeSection({ version }: { version: PackageVersion }) {
       <SectionTitle>readme</SectionTitle>
       {/* Package content is untrusted, so the README is rendered as escaped
           plain text rather than converted to HTML. */}
-      <pre className="max-h-160 overflow-y-auto border border-border bg-card p-5 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap">
+      <pre className="border-border bg-card max-h-160 overflow-y-auto border p-5 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap">
         {readme.data}
       </pre>
     </section>
@@ -63,7 +62,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <nav className="mb-6 text-sm text-muted-foreground" aria-label="Breadcrumb">
+      <nav className="text-muted-foreground mb-6 text-sm" aria-label="Breadcrumb">
         <Link to="/packages" className="hover:text-primary">
           packages
         </Link>{" "}
@@ -72,7 +71,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
       </nav>
 
       <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="font-display text-3xl break-all text-primary">{pkg.name}</h1>
+        <h1 className="font-display text-primary text-3xl break-all">{pkg.name}</h1>
         <span className="text-lg">v{version.version}</span>
         {tagsFor(pkg["dist-tags"], version.version).map((tag) => (
           <Badge key={tag} variant="outline" className="border-primary text-primary">
@@ -80,7 +79,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
           </Badge>
         ))}
       </div>
-      {version.author && <p className="mt-1 text-sm text-muted-foreground">by {version.author}</p>}
+      {version.author && <p className="text-muted-foreground mt-1 text-sm">by {version.author}</p>}
 
       <div className="mt-8 grid grid-cols-1 items-start gap-10 md:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="space-y-9">
@@ -89,13 +88,13 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
           <section>
             <SectionTitle>dependencies</SectionTitle>
             {dependencies.length === 0 ? (
-              <p className="text-sm text-muted-foreground">None: this package stands alone.</p>
+              <p className="text-muted-foreground text-sm">None: this package stands alone.</p>
             ) : (
               <ul>
                 {dependencies.map(([dep, range]) => (
                   <li
                     key={dep}
-                    className="flex justify-between gap-3 border-b border-border py-2 text-sm first:border-t"
+                    className="border-border flex justify-between gap-3 border-b py-2 text-sm first:border-t"
                   >
                     <Link
                       to="/packages/$name"
@@ -117,7 +116,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
               {versions.map((v) => (
                 <li
                   key={v}
-                  className="flex justify-between gap-3 border-b border-border py-2 text-sm first:border-t"
+                  className="border-border flex justify-between gap-3 border-b py-2 text-sm first:border-t"
                 >
                   {v === version.version ? (
                     <span>v{v}</span>
@@ -146,7 +145,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
         <aside className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-sm font-normal text-muted-foreground">
+              <CardTitle className="font-display text-muted-foreground text-sm font-normal">
                 install
               </CardTitle>
             </CardHeader>
@@ -156,7 +155,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-sm font-normal text-muted-foreground">
+              <CardTitle className="font-display text-muted-foreground text-sm font-normal">
                 metadata
               </CardTitle>
             </CardHeader>
@@ -199,7 +198,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
 
 function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex justify-between gap-3 border-b border-border py-1.5 last:border-0">
+    <div className="border-border flex justify-between gap-3 border-b py-1.5 last:border-0">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="text-right break-all">{children}</dd>
     </div>

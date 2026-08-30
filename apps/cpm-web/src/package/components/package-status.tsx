@@ -1,6 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { PackageX } from "lucide-react";
-
 import { Button } from "@workspace/ui/components/button";
 import {
   Empty,
@@ -11,6 +9,7 @@ import {
   EmptyTitle,
 } from "@workspace/ui/components/empty";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { PackageX } from "lucide-react";
 
 /** Skeleton mirroring the detail page layout while its loader runs. */
 export function PackageDetailPending() {

@@ -1,25 +1,22 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 
-import { PackageNotFoundError } from "@/package/api";
 import { PackageDetail } from "@/package/components/package-detail";
 import { PackageDetailPending, PackageNotFound } from "@/package/components/package-status";
 import { packageQueryOptions, readmeQueryOptions } from "@/package/queries";
 
 export const Route = createFileRoute("/packages/$name/")({
   loader: async ({ context, params }) => {
-    let pkg;
-    try {
-      pkg = await context.queryClient.ensureQueryData(packageQueryOptions(params.name));
-    } catch (error) {
-      if (error instanceof PackageNotFoundError) throw notFound();
-      throw error;
-    }
-    // Warm the README while the page renders; the component handles its absence.
-    void context.queryClient.prefetchQuery(
+    const pkg = await context.queryClient.ensureQueryData(packageQueryOptions(params.name));
+    if (!pkg) throw notFound();
+    // Awaited, not just warmed: the SSR HTML must already contain the README,
+    // or the streamed query data hydrates a different tree than the server
+    // rendered (React #418).
+    await context.queryClient.ensureQueryData(
       readmeQueryOptions(pkg.name, pkg["dist-tags"].latest),
     );
   },
+  head: ({ params }) => ({ meta: [{ title: `${params.name} | cpm` }] }),
   pendingComponent: PackageDetailPending,
   notFoundComponent: PackageNotFound,
   component: PackagePage,
@@ -28,6 +25,7 @@ export const Route = createFileRoute("/packages/$name/")({
 function PackagePage() {
   const { name } = Route.useParams();
   const { data: pkg } = useSuspenseQuery(packageQueryOptions(name));
-  const latest = pkg.versions[pkg["dist-tags"].latest]!;
-  return <PackageDetail pkg={pkg} version={latest} pinned={false} />;
+  // The loader 404s on a missing package, so pkg is present here.
+  const latest = pkg!.versions[pkg!["dist-tags"].latest]!;
+  return <PackageDetail pkg={pkg!} version={latest} pinned={false} />;
 }
