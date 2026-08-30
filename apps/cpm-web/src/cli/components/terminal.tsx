@@ -28,10 +28,7 @@ export function TerminalWindow({
 }) {
   return (
     <div
-      className={cn(
-        "bg-screen border-border max-w-full rounded-lg border shadow-[0_0_70px_-12px_oklch(0.79_0.115_79/0.14)]",
-        className,
-      )}
+      className={cn("bg-card border-border max-w-full rounded-lg border", className)}
       role="img"
       aria-label={label}
     >

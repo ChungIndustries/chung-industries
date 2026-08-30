@@ -76,7 +76,7 @@ function PackagesPage() {
           value={q}
           placeholder="Search packages"
           aria-label="Search packages"
-          className="bg-card h-10 pl-9"
+          className="bg-card dark:bg-card h-10 pl-9"
           onChange={(event) =>
             void navigate({
               search: event.target.value ? { q: event.target.value } : {},

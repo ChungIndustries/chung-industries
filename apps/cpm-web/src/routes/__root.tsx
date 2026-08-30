@@ -82,7 +82,7 @@ function RootComponent() {
       <header className="border-border bg-background/75 sticky top-0 z-10 border-b backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
           <Link to="/" aria-label="cpm home">
-            <span className="bg-brand text-screen font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">
+            <span className="bg-brand text-background font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">
               cpm
             </span>
           </Link>

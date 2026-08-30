@@ -20,7 +20,7 @@ export function CommandBlock({ command, className }: { command: string; classNam
   return (
     <div
       className={cn(
-        "border-border bg-muted/60 flex items-center gap-2 rounded-md border py-1 pr-1 pl-3 font-mono text-sm",
+        "border-border bg-card flex items-center gap-2 rounded-md border py-1 pr-1 pl-3 font-mono text-sm",
         className,
       )}
     >

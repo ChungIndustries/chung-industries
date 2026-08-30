@@ -40,7 +40,7 @@ function HeroSearch() {
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search packages"
           aria-label="Search packages"
-          className="bg-card h-11 pl-10 !text-base"
+          className="bg-card dark:bg-card h-11 pl-10 !text-base"
         />
       </div>
       <Button type="submit" size="lg" className="h-11 px-5">
@@ -84,7 +84,7 @@ function TryPackages() {
 function LandingPage() {
   return (
     <>
-      <section className="border-border border-b bg-[radial-gradient(50%_90%_at_75%_0%,oklch(0.79_0.115_79/0.05),transparent_70%)]">
+      <section className="border-border border-b">
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-12 px-6 py-16 md:grid-cols-[1.1fr_1fr] md:py-24">
           <div>
             <h1 className="text-[2.5rem] leading-[1.08] font-semibold tracking-[-0.025em] text-balance md:text-[3.25rem]">

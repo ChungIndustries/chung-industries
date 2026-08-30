@@ -16,9 +16,8 @@
   /* The advanced computer's gold, tempered so it accents rather than shouts. */
   --color-brand: oklch(0.79 0.115 79);
 
-  /* The terminal: CraftOS colours on an elevated surface, matching the
-     cards and inputs rather than sitting darker than the page. */
-  --color-screen: #1a1a1a;
+  /* The terminal text: CraftOS colours. The terminal surface itself is the
+     shared card colour, so it matches the inputs exactly. */
   --color-screen-foreground: oklch(0.93 0.004 100);
   --color-screen-yellow: oklch(0.79 0.115 79);
   --color-screen-green: oklch(0.76 0.16 132);
