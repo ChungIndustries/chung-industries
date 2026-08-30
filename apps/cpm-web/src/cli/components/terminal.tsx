@@ -31,18 +31,18 @@ const LINES: { text: ReactNode; className?: string }[] = [
 const DELAYS = [0, 0.7, 1.8, 2.4, 3.4, 4.4, 5];
 
 /**
- * A CC:Tweaked advanced computer running the cpm bootstrap: the gold casing
- * as the bezel, CraftOS colours on the screen.
+ * A CC:Tweaked computer running the cpm bootstrap. The frame stays quiet;
+ * the CraftOS colours are the identity.
  */
 export function Terminal() {
   return (
     <div
-      className="border-brand-dark/40 bg-brand max-w-full rounded-xl border p-2 shadow-lg"
+      className="bg-screen border-brand/25 max-w-full rounded-lg border shadow-md"
       role="img"
       aria-label="A ComputerCraft terminal installing cpm"
     >
       <div
-        className="bg-screen text-screen-foreground [scrollbar-width:thin] overflow-x-auto rounded-md px-4 py-3.5 font-mono text-[13px] leading-7"
+        className="text-screen-foreground [scrollbar-width:thin] overflow-x-auto px-4 py-3.5 font-mono text-[13px] leading-7"
         aria-hidden="true"
       >
         {LINES.map((line, index) => (

@@ -1,5 +1,3 @@
-import { Table, TableBody, TableCell, TableRow } from "@workspace/ui/components/table";
-
 /** The `cpm` client's commands, mirrored from apps/cpm-cli/README.md. */
 const COMMANDS: [string, string][] = [
   ["cpm install <name>[@<version|range|tag>]", "Install packages and their dependencies"],
@@ -11,19 +9,15 @@ const COMMANDS: [string, string][] = [
 
 export function CommandsTable() {
   return (
-    <div className="border-border bg-card overflow-x-auto rounded-lg border">
-      <Table>
-        <TableBody>
-          {COMMANDS.map(([command, what]) => (
-            <TableRow key={command}>
-              <TableCell className="px-4 py-3 font-mono text-[13px] whitespace-nowrap">
-                {command}
-              </TableCell>
-              <TableCell className="text-muted-foreground px-4 py-3">{what}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <dl className="divide-border border-border divide-y border-y">
+      {COMMANDS.map(([command, what]) => (
+        <div key={command} className="grid gap-x-8 gap-y-1 py-3 sm:grid-cols-[minmax(0,24rem)_1fr]">
+          <dt className="[scrollbar-width:thin] overflow-x-auto font-mono text-[13px] font-medium whitespace-nowrap">
+            {command}
+          </dt>
+          <dd className="text-muted-foreground text-sm">{what}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

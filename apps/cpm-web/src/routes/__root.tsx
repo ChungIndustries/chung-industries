@@ -81,12 +81,9 @@ function RootComponent() {
     <div className="flex min-h-screen flex-col">
       <header className="border-border bg-background/90 sticky top-0 z-10 border-b backdrop-blur-sm">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
-          <Link to="/" className="flex items-center gap-2.5" aria-label="cpm home">
+          <Link to="/" aria-label="cpm home">
             <span className="bg-brand text-screen font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">
               cpm
-            </span>
-            <span className="text-muted-foreground hidden text-sm sm:inline">
-              the ComputerCraft package manager
             </span>
           </Link>
           <nav className="flex gap-6 text-sm font-medium" aria-label="Site">
