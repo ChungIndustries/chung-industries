@@ -5,7 +5,7 @@ name: Lua
 on:
   pull_request:
     branches: [main]
-    paths: ["apps/cpm-cli/**", ".github/workflows/lua.yml"]
+    paths: ["apps/cpm-cli/**", "packages/cli/**", ".github/workflows/lua.yml"]
 
 permissions:
   contents: read
@@ -29,13 +29,23 @@ jobs:
       - name: Install Luacheck
         run: luarocks install luacheck
 
-      - name: Luacheck
+      - name: Luacheck (cpm-cli)
         working-directory: apps/cpm-cli
         run: luacheck src
+
+      - name: Luacheck (cli)
+        working-directory: packages/cli
+        run: luacheck src tests
+
+      # The cli library is pure Lua, so its tests run under the plain interpreter
+      # installed above; no CC:Tweaked emulator involved.
+      - name: Test (cli)
+        working-directory: packages/cli
+        run: lua tests/run.lua
 
       - name: StyLua (check)
         uses: JohnnyMorganz/stylua-action@479972f01e665acfcba96ada452c36608bdbbb5e # v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
-          args: --check apps/cpm-cli/src
+          args: --check apps/cpm-cli/src packages/cli/src packages/cli/tests

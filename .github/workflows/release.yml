@@ -34,6 +34,7 @@ jobs:
     outputs:
       cpm-registry-version: ${{ steps.released.outputs.cpm-registry-version }}
       cpm-cli-version: ${{ steps.released.outputs.cpm-cli-version }}
+      cli-version: ${{ steps.released.outputs.cli-version }}
       docs-version: ${{ steps.released.outputs.docs-version }}
     steps:
       - name: Checkout main (post-merge)
@@ -142,16 +143,43 @@ jobs:
       project: docs
     secrets: inherit
 
-  # Publishing cpm to the registry rides the release train too: a release that
-  # includes cpm-cli builds the tarball and uploads it. Ordered after the
-  # registry deploy so a release shipping both never publishes against the old
-  # Worker; the !failure() guard (not the default success()) lets it run when
-  # the deploy was skipped because the release had no registry changes. The
-  # registry rejects re-publishes of an existing version with a 409, which the
-  # publish script treats as success, so recovery dispatches are idempotent.
+  # Registry packages ride the release train too: a release that includes a Lua
+  # package builds its tarball and uploads it. Ordered after the registry deploy
+  # so a release shipping both never publishes against the old Worker; the
+  # !failure() guards (not the default success()) let each job run when earlier
+  # ones were skipped because the release did not include them. The registry
+  # rejects re-publishes of an existing version with a 409, which the publish
+  # scripts treat as success, so recovery dispatches are idempotent.
+  publish-cli:
+    name: Publish cli to the registry
+    needs: [release, deploy-cpm-registry]
+    if: ${{ !failure() && !cancelled() && needs.release.outputs.cli-version != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Always publish from main, matching the deploy workflows.
+          ref: main
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build tarball
+        run: pnpm --filter cli build
+
+      - name: Publish to the registry
+        env:
+          CPM_REGISTRY_URL: ${{ vars.CPM_REGISTRY_URL }}
+          CPM_REGISTRY_TOKEN: ${{ secrets.CPM_REGISTRY_TOKEN }}
+        run: pnpm --filter cli publish:registry
+
+  # Ordered after publish-cli: cpm depends on the cli package, so a release
+  # shipping both must never make a cpm installable before the cli version its
+  # manifest ranges over exists in the registry.
   publish-cpm-cli:
     name: Publish cpm to the registry
-    needs: [release, deploy-cpm-registry]
+    needs: [release, deploy-cpm-registry, publish-cli]
     if: ${{ !failure() && !cancelled() && needs.release.outputs.cpm-cli-version != '' }}
     runs-on: ubuntu-latest
     steps:

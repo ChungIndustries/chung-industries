@@ -249,7 +249,7 @@ wget run https://registry.cpm.chungindustries.com/install
 ```
 
 - New registry endpoint `GET /install` serves the installer as plain Lua (`Content-Type: text/plain`). No auth, aggressively cacheable with a short TTL (it changes on cpm releases).
-- The installer is a small, dependency-free, single-file Lua script that: checks `http` is enabled, fetches the `cpm` package's own bundle via `/resolve` + `/packages/cpm/{v}/dist/bundle` (cpm is published as a normal package named `cpm`), verifies, installs it into the same `/cpm/` layout, then delegates the rest (shims, `/startup/50_cpm.lua`, shell path, require hook) to the freshly extracted package's own `store.lua` so `cpm` works immediately in the current session without reboot.
+- The installer is a small, dependency-free, single-file Lua script that: checks `http` is enabled, resolves cpm's pinned dependency closure via `POST /resolve` (cpm is published as a normal package named `cpm`), downloads and installs every package in it (the client requires its dependencies, such as the `cli` library, up front, so a partial bootstrap could not run), then delegates the rest (shims, `/startup/50_cpm.lua`, shell path, require hook) to the freshly extracted cpm package's own `store.lua` so `cpm` works immediately in the current session without reboot. It trusts HTTPS for this first hop instead of verifying digests; the installed client verifies every bundle from then on.
 - Self-update is then just `cpm update cpm`: cpm is a package like any other, so the bootstrap path never needs to be special-cased again.
 - The installer file itself is a build artifact of the client repo (section 7) embedded into or fetched by the Worker at deploy time.
 
@@ -295,9 +295,10 @@ cpm remove <name> ...
 cpm update [<name> ...]
 cpm list                     installed packages and versions
 cpm search [<query>]         from GET /packages (client-side filter for now)
+cpm help [<command>]
 ```
 
-Kept deliberately npm-shaped. `publish` is intentionally absent from the in-game client: publishing happens from real machines (see open questions).
+Kept deliberately npm-shaped. Since 2026-08-30 the commands are declared through the shared `cli` package (`packages/cli`, published to the registry and cpm's first dependency); help and usage text are generated from those declarations. `publish` is intentionally absent from the in-game client: publishing happens from real machines (see open questions).
 
 ---
 
