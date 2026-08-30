@@ -25,6 +25,7 @@
     "@tanstack/react-start": "^1.168.49",
     "@workspace/ui": "workspace:*",
     "lucide-react": "^1.23.0",
+    "motion": "^13.1.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "semver": "^7.7.4"

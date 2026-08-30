@@ -3,14 +3,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Search } from "lucide-react";
-import type { ReactNode } from "react";
 import { Fragment, useState } from "react";
 
-import { CommandBlock } from "@/cli/components/command-block";
 import { CommandsTable } from "@/cli/components/commands-table";
+import { GetStarted } from "@/cli/components/get-started";
 import { Terminal } from "@/cli/components/terminal";
 import { packagesQueryOptions } from "@/package/queries";
-import { DOCS_URL, INSTALL_COMMAND } from "@/site";
+import { DOCS_URL } from "@/site";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -82,16 +81,6 @@ function TryPackages() {
   );
 }
 
-function Step({ index, title, children }: { index: string; title: string; children: ReactNode }) {
-  return (
-    <div className="border-border space-y-2.5 border-t pt-5">
-      <div className="text-brand font-mono text-xs">{index}</div>
-      <h3 className="font-medium">{title}</h3>
-      <div className="text-muted-foreground space-y-3 text-sm">{children}</div>
-    </div>
-  );
-}
-
 function LandingPage() {
   return (
     <>
@@ -114,24 +103,8 @@ function LandingPage() {
 
       <section id="get-started" className="mx-auto max-w-5xl scroll-mt-20 px-6 py-16 md:py-20">
         <h2 className="text-2xl font-semibold tracking-tight">Get started</h2>
-        <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-10">
-          <Step index="01" title="Craft a computer">
-            <p>Any computer in a world with HTTP enabled will do.</p>
-          </Step>
-          <Step index="02" title="Bootstrap cpm">
-            <p>Run the installer straight off the registry:</p>
-            <CommandBlock command={INSTALL_COMMAND} className="text-xs" />
-          </Step>
-          <Step index="03" title="Install packages">
-            <p>
-              Anything in the{" "}
-              <Link to="/packages" className="text-brand font-medium hover:underline">
-                package index
-              </Link>
-              , dependencies included:
-            </p>
-            <CommandBlock command="cpm install <name>" className="text-xs" />
-          </Step>
+        <div className="mt-8">
+          <GetStarted />
         </div>
       </section>
 
