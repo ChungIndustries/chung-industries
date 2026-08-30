@@ -29,7 +29,7 @@ export function TerminalWindow({
   return (
     <div
       className={cn(
-        "bg-screen border-border max-w-full rounded-lg border shadow-[0_0_70px_-12px_oklch(0.82_0.145_79/0.2)]",
+        "bg-screen border-border max-w-full rounded-lg border shadow-[0_0_70px_-12px_oklch(0.79_0.115_79/0.14)]",
         className,
       )}
       role="img"

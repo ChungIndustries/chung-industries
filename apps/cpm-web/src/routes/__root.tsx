@@ -43,7 +43,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_ORIGIN },
       { name: "twitter:card", content: "summary" },
-      { name: "theme-color", content: "#0d0d0d" },
+      { name: "theme-color", content: "#0f0f0f" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },

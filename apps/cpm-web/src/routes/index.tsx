@@ -69,7 +69,7 @@ function TryPackages() {
               <Link
                 to="/packages/$name"
                 params={{ name }}
-                className="text-brand font-mono hover:underline"
+                className="text-foreground font-mono underline-offset-4 hover:underline"
               >
                 {name}
               </Link>
@@ -84,7 +84,7 @@ function TryPackages() {
 function LandingPage() {
   return (
     <>
-      <section className="border-border border-b bg-[radial-gradient(50%_90%_at_75%_0%,oklch(0.82_0.145_79/0.06),transparent_70%)]">
+      <section className="border-border border-b bg-[radial-gradient(50%_90%_at_75%_0%,oklch(0.79_0.115_79/0.05),transparent_70%)]">
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-12 px-6 py-16 md:grid-cols-[1.1fr_1fr] md:py-24">
           <div>
             <h1 className="text-[2.5rem] leading-[1.08] font-semibold tracking-[-0.025em] text-balance md:text-[3.25rem]">
@@ -112,7 +112,7 @@ function LandingPage() {
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
             <h2 className="text-2xl font-semibold tracking-tight">Commands</h2>
-            <a href={DOCS_URL} className="text-brand text-sm font-medium hover:underline">
+            <a href={DOCS_URL} className="text-muted-foreground hover:text-foreground text-sm">
               registry API docs
             </a>
           </div>
