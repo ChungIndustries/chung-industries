@@ -43,7 +43,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_ORIGIN },
       { name: "twitter:card", content: "summary" },
-      { name: "theme-color", content: "#17191e" },
+      { name: "theme-color", content: "#0d0d0d" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
@@ -79,7 +79,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 function RootComponent() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-border bg-background/90 sticky top-0 z-10 border-b backdrop-blur-sm">
+      <header className="border-border bg-background/75 sticky top-0 z-10 border-b backdrop-blur-xl">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
           <Link to="/" aria-label="cpm home">
             <span className="bg-brand text-screen font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">

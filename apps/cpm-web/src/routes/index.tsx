@@ -98,10 +98,10 @@ function LandingPage() {
       <section className="border-border border-b bg-[radial-gradient(50%_90%_at_75%_0%,oklch(0.82_0.145_79/0.06),transparent_70%)]">
         <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-12 px-6 py-16 md:grid-cols-[1.1fr_1fr] md:py-24">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-balance md:text-[2.75rem] md:leading-[1.15]">
+            <h1 className="text-[2.5rem] leading-[1.08] font-semibold tracking-[-0.025em] text-balance md:text-[3.25rem]">
               The package manager for ComputerCraft
             </h1>
-            <p className="text-muted-foreground mt-4 max-w-md text-lg">
+            <p className="text-muted-foreground mt-5 max-w-md text-base">
               Lua packages, programs, and their dependencies on any CC:Tweaked computer, one in-game
               command away.
             </p>

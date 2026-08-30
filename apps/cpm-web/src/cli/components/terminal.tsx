@@ -37,7 +37,7 @@ const DELAYS = [0, 0.7, 1.8, 2.4, 3.4, 4.4, 5];
 export function Terminal() {
   return (
     <div
-      className="bg-screen border-brand/25 max-w-full rounded-lg border shadow-md"
+      className="bg-screen border-border max-w-full rounded-lg border shadow-[0_0_70px_-12px_oklch(0.82_0.145_79/0.2)]"
       role="img"
       aria-label="A ComputerCraft terminal installing cpm"
     >
