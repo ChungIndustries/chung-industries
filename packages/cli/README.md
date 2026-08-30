@@ -37,12 +37,12 @@ The whole library is a single file (`src/init.lua`) on purpose: consumers load i
 
 ## Tooling
 
-| Task                           | Command                                                                                                           |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| Build `dist/cli-<version>.tgz` | `nx build cli`                                                                                                    |
-| Publish to the registry        | `nx publish:registry cli` (`CPM_REGISTRY_URL` is the target and required)                                         |
-| Test                           | `nx test:lua cli` (plain Lua, no CC:Tweaked runtime needed)                                                       |
-| Lint                           | `nx lint:lua cli` (needs [luacheck](https://github.com/lunarmodules/luacheck))                                    |
-| Format                         | `nx format:lua cli` / `nx format:lua:check cli` (needs [StyLua](https://github.com/JohnnyMorganz/StyLua))         |
+| Task                           | Command                                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Build `dist/cli-<version>.tgz` | `nx build cli`                                                                                            |
+| Publish to the registry        | `nx publish:registry cli` (`CPM_REGISTRY_URL` is the target and required)                                 |
+| Test                           | `nx test:lua cli` (plain Lua, no CC:Tweaked runtime needed)                                               |
+| Lint                           | `nx lint:lua cli` (needs [luacheck](https://github.com/lunarmodules/luacheck))                            |
+| Format                         | `nx format:lua cli` / `nx format:lua:check cli` (needs [StyLua](https://github.com/JohnnyMorganz/StyLua)) |
 
 Luacheck, StyLua, and the tests are not part of the Node toolchain, so they run in the dedicated Lua workflow (`.github/workflows/lua.yml`) rather than the monorepo-wide `nx affected -t lint` lane.
