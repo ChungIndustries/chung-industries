@@ -1,0 +1,10 @@
+# Wrangler local state (miniflare cache, observability traces)
+.wrangler/
+
+# Local dev secrets for `wrangler dev`
+.dev.vars
+.dev.vars.*
+
+# Local env overrides & secrets
+.env.local
+.env.*.local
