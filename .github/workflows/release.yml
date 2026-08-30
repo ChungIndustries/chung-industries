@@ -34,6 +34,7 @@ jobs:
     outputs:
       cpm-registry-version: ${{ steps.released.outputs.cpm-registry-version }}
       cpm-cli-version: ${{ steps.released.outputs.cpm-cli-version }}
+      cpm-web-version: ${{ steps.released.outputs.cpm-web-version }}
       docs-version: ${{ steps.released.outputs.docs-version }}
     steps:
       - name: Checkout main (post-merge)
@@ -131,6 +132,15 @@ jobs:
     uses: ./.github/workflows/deploy-worker.yml
     with:
       project: cpm-registry
+    secrets: inherit
+
+  deploy-cpm-web:
+    name: Deploy CPM Website
+    needs: release
+    if: needs.release.outputs.cpm-web-version != ''
+    uses: ./.github/workflows/deploy-worker.yml
+    with:
+      project: cpm-web
     secrets: inherit
 
   deploy-docs:

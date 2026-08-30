@@ -19,6 +19,7 @@ on:
         type: choice
         options:
           - cpm-registry
+          - cpm-web
           - docs
 
 # The deploy talks to Cloudflare, not GitHub; the token only needs to read the repo.

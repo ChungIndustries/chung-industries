@@ -1,0 +1,86 @@
+@import "@workspace/ui/styles/globals.css";
+
+/*
+ * Site theme: a CC:Tweaked advanced computer. The site is dark-only (index.html
+ * pins class="dark"), with the advanced-computer gold as the primary color,
+ * a monospace body over a pixel display font, sharp corners, and a faint
+ * CRT scanline overlay. Everything else styles through the shadcn tokens so
+ * the @workspace/ui components pick the theme up unmodified.
+ */
+
+@theme {
+  --font-sans: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: "Silkscreen", "IBM Plex Mono", monospace;
+
+  --color-gold: oklch(0.8 0.14 78);
+  --color-gold-muted: oklch(0.55 0.1 78);
+  --color-lime: oklch(0.78 0.2 132);
+
+  --animate-blink: blink 1.1s steps(1) infinite;
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+}
+
+.dark {
+  --background: oklch(0.16 0.008 262);
+  --foreground: oklch(0.84 0.01 130);
+  --card: oklch(0.21 0.01 262);
+  --card-foreground: oklch(0.84 0.01 130);
+  --popover: oklch(0.21 0.01 262);
+  --popover-foreground: oklch(0.84 0.01 130);
+  --primary: oklch(0.8 0.14 78);
+  --primary-foreground: oklch(0.2 0.03 78);
+  --secondary: oklch(0.26 0.012 262);
+  --secondary-foreground: oklch(0.92 0.01 130);
+  --muted: oklch(0.26 0.012 262);
+  --muted-foreground: oklch(0.62 0.012 250);
+  --accent: oklch(0.26 0.012 262);
+  --accent-foreground: oklch(0.92 0.01 130);
+  --border: oklch(0.31 0.012 262);
+  --input: oklch(0.31 0.012 262);
+  --ring: oklch(0.8 0.14 78);
+  --radius: 0rem;
+}
+
+/* Terminal-style staged output: lines flip visible after their delay. */
+@keyframes reveal {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+
+body {
+  position: relative;
+}
+
+/* The CRT: fixed scanlines plus a whisper of vignette over everything. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgb(0 0 0 / 0.14) 0px,
+      rgb(0 0 0 / 0.14) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(130% 100% at 50% 45%, transparent 62%, rgb(0 0 0 / 0.35) 100%);
+  opacity: 0.55;
+}
+
+::selection {
+  background: var(--color-gold);
+  color: oklch(0.2 0.03 78);
+}

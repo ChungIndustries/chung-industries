@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cpm-registry",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "cpm-registry", "dev"],
+      "port": 8787
+    },
+    {
+      "name": "cpm-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "cpm-web", "dev"],
+      "port": 5173
+    }
+  ]
+}
