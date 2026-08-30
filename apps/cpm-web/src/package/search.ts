@@ -1,6 +1,6 @@
 import semver from "semver";
 
-import type { Package } from "@/package/types";
+import type { Package } from "@/package/schemas";
 
 /**
  * Interim client-side search: the index page loads the full package list and

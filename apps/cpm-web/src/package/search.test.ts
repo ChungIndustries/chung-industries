@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { Package } from "@/package/schemas";
 import { formatBytes, searchPackages, sortVersionsDesc, tagsFor } from "@/package/search";
-import type { Package } from "@/package/types";
 
 function pkg(name: string, author?: string): Package {
   return { name, author, "dist-tags": { latest: "1.0.0" }, versions: {} };

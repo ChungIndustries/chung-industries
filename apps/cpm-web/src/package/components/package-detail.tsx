@@ -8,8 +8,8 @@ import type { ReactNode } from "react";
 
 import { CommandBlock } from "@/cli/components/command-block";
 import { readmeQueryOptions } from "@/package/queries";
+import type { Package, PackageVersion } from "@/package/schemas";
 import { formatBytes, sortVersionsDesc, tagsFor } from "@/package/search";
-import type { Package, PackageVersion } from "@/package/types";
 import { REGISTRY_ORIGIN } from "@/site";
 
 export interface PackageDetailProps {

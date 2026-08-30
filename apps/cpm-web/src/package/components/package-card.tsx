@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Card, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 
-import type { Package } from "@/package/types";
+import type { Package } from "@/package/schemas";
 
 export function PackageCard({ pkg }: { pkg: Package }) {
   const versionCount = Object.keys(pkg.versions).length;

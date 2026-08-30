@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
+import { z } from "zod";
 
 import { readReadme } from "@/package/bundle";
 import { type JSend, RegistryError, unwrapJSend } from "@/package/jsend";
-import type { Package } from "@/package/types";
+import { packageSchema } from "@/package/schemas";
 
 /**
  * Server functions fetching registry data over the REGISTRY service binding.
@@ -26,17 +27,25 @@ async function registryJson<T>(path: string): Promise<T | null> {
   return unwrapJSend(body);
 }
 
+/** A response that fails its schema is the registry breaking its contract. */
+function parseRegistry<T>(schema: z.ZodType<T>, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) throw new RegistryError("The registry returned an unexpected shape");
+  return result.data;
+}
+
 export const fetchPackages = createServerFn({ method: "GET" }).handler(async () => {
-  const data = await registryJson<{ packages: Package[] }>("/packages");
+  const data = await registryJson<unknown>("/packages");
   // /packages never 404s; a null here would be a contract violation.
   if (data === null) throw new RegistryError("Package list unavailable");
-  return data.packages;
+  return parseRegistry(z.object({ packages: z.array(packageSchema) }), data).packages;
 });
 
 export const fetchPackage = createServerFn({ method: "GET" })
   .validator((name: string) => name)
   .handler(async ({ data: name }) => {
-    return registryJson<Package>(`/packages/${encodeURIComponent(name)}`);
+    const data = await registryJson<unknown>(`/packages/${encodeURIComponent(name)}`);
+    return data === null ? null : parseRegistry(packageSchema, data);
   });
 
 /** The version's README text, extracted from its published bundle artifact. */
