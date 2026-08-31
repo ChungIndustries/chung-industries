@@ -1,6 +1,6 @@
 {
   "name": "cpm-web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Website for the official CPM registry: browse, search, and learn how to install cpm packages.",
   "author": "chrille0313",
