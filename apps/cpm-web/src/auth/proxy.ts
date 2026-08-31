@@ -23,9 +23,7 @@ const REGISTRY = "https://cpm-registry";
 export async function toRegistryAuthRequest(request: Request): Promise<Request> {
   const url = new URL(request.url);
   const body =
-    request.method === "GET" || request.method === "HEAD"
-      ? undefined
-      : await request.arrayBuffer();
+    request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
   return new Request(`${REGISTRY}${url.pathname}${url.search}`, {
     method: request.method,
     headers: request.headers,

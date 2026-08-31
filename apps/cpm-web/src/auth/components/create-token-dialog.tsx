@@ -1,4 +1,5 @@
 import { useForm } from "@tanstack/react-form";
+import { useCopyToClipboard } from "@workspace/hooks/use-copy-to-clipboard";
 import { Button } from "@workspace/ui/components/button";
 import {
   Dialog,
@@ -19,7 +20,6 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { useCopyToClipboard } from "@workspace/hooks/use-copy-to-clipboard";
 import { Check, Copy, Plus } from "lucide-react";
 import { useState } from "react";
 
@@ -76,8 +76,8 @@ export function CreateTokenDialog() {
             <DialogHeader>
               <DialogTitle>New publish token</DialogTitle>
               <DialogDescription>
-                Mint one token per machine that publishes, named after the machine, so revoking
-                one never breaks another.
+                Mint one token per machine that publishes, named after the machine, so revoking one
+                never breaks another.
               </DialogDescription>
             </DialogHeader>
             <form
@@ -172,7 +172,11 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
           aria-label="Copy token"
           onClick={() => void copy(token)}
         >
-          {copied ? <Check className="text-screen-green" aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          {copied ? (
+            <Check className="text-screen-green" aria-hidden="true" />
+          ) : (
+            <Copy aria-hidden="true" />
+          )}
         </Button>
       </div>
       <p className="text-muted-foreground text-sm">

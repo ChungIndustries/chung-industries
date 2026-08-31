@@ -32,7 +32,9 @@ export const Route = createFileRoute("/signin")({
     error: typeof search.error === "string" && search.error !== "" ? search.error : undefined,
   }),
   beforeLoad: async ({ context, search }) => {
-    const session = await context.queryClient.ensureQueryData(sessionQueryOptions).catch(() => null);
+    const session = await context.queryClient
+      .ensureQueryData(sessionQueryOptions)
+      .catch(() => null);
     if (session) throw redirect({ href: search.redirect ?? "/account" });
   },
   head: () => ({ meta: [{ title: "sign in | cpm" }] }),

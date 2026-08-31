@@ -8,7 +8,9 @@ import { myPackagesQueryOptions, sessionQueryOptions, tokensQueryOptions } from 
 
 export const Route = createFileRoute("/account")({
   beforeLoad: async ({ context, location }) => {
-    const session = await context.queryClient.ensureQueryData(sessionQueryOptions).catch(() => null);
+    const session = await context.queryClient
+      .ensureQueryData(sessionQueryOptions)
+      .catch(() => null);
     if (!session) {
       throw redirect({ to: "/signin", search: { redirect: location.pathname } });
     }

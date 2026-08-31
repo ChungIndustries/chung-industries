@@ -750,6 +750,7 @@ Resolved 2026-08-27:
    `/account` (profile, maintained packages, token mint/reveal-once/revoke); its SSR reads the
    session by forwarding the cookie over the same binding. The GitHub OAuth App callback moves to
    `https://cpm.chungindustries.com/auth/callback/github` accordingly.
+
 3. **Scoped names: no. Names stay flat**, first-publish-wins. `nameParam`, `tarballKey`, and client
    name parsing keep their current shapes. This is the explicit no.
 4. **Handles: seeded from the GitHub login at signup, immutable thereafter.** Maintainer references
