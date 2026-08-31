@@ -1,0 +1,60 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Source for public/og.png: the hero in miniature. Left, the gold brand
+       tile, headline, subline, and search bar; right, a CraftOS terminal
+       running the full bootstrap-and-install script.
+       Regenerate with @resvg/resvg-js (loadSystemFonts: false) against the
+       Google Fonts TTFs for Silkscreen, IBM Plex Sans 400/600, and
+       IBM Plex Mono, then write the 1200x630 render to public/og.png. -->
+  <defs>
+    <pattern id="dither-a" width="16" height="5" patternUnits="userSpaceOnUse">
+      <rect width="8" height="5" fill="#e2b25f"/>
+    </pattern>
+    <pattern id="dither-b" width="16" height="5" patternUnits="userSpaceOnUse">
+      <rect x="8" width="8" height="5" fill="#e2b25f" opacity="0.4"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0f0f0f"/>
+
+  <!-- Brand tile -->
+  <rect x="84" y="128" width="142" height="72" rx="6" fill="#e2b25f"/>
+  <text x="155" y="177" text-anchor="middle" font-family="Silkscreen" font-size="40" fill="#111318">cpm</text>
+
+  <!-- Headline -->
+  <text x="84" y="282" font-family="IBM Plex Sans" font-weight="600" font-size="48" letter-spacing="-1.2" fill="#e7e7e7">The package manager</text>
+  <text x="84" y="340" font-family="IBM Plex Sans" font-weight="600" font-size="48" letter-spacing="-1.2" fill="#e7e7e7">for ComputerCraft</text>
+
+  <!-- Subline -->
+  <text x="84" y="386" font-family="IBM Plex Sans" font-size="20" fill="#a4a4a4">Lua packages, programs, and their dependencies,</text>
+  <text x="84" y="416" font-family="IBM Plex Sans" font-size="20" fill="#a4a4a4">one in-game command away.</text>
+
+  <!-- Search bar -->
+  <rect x="84" y="452" width="312" height="52" rx="8" fill="#1a1a1a" stroke="#2d2d2d" stroke-width="2"/>
+  <g stroke="#a4a4a4" stroke-width="2" fill="none" stroke-linecap="round">
+    <circle cx="112" cy="476" r="7"/>
+    <line x1="117.5" y1="481.5" x2="123" y2="487"/>
+  </g>
+  <text x="138" y="484" font-family="IBM Plex Sans" font-size="18" fill="#a4a4a4">Search packages</text>
+  <rect x="404" y="452" width="104" height="52" rx="8" fill="#e2b25f"/>
+  <text x="456" y="484" text-anchor="middle" font-family="IBM Plex Sans" font-weight="600" font-size="17" fill="#2a2008">Search</text>
+
+  <!-- Terminal window -->
+  <rect x="596" y="178" width="520" height="260" rx="10" fill="#1a1a1a" stroke="#2d2d2d" stroke-width="2"/>
+  <line x1="597" y1="218" x2="1115" y2="218" stroke="#2d2d2d" stroke-width="2"/>
+  <rect x="620" y="193" width="10" height="10" fill="#ff5f57"/>
+  <rect x="638" y="193" width="10" height="10" fill="#febc2e"/>
+  <rect x="656" y="193" width="10" height="10" fill="#28c840"/>
+  <text x="678" y="203" font-family="Silkscreen" font-size="11" fill="#94938e">CraftOS 1.9</text>
+
+  <text x="620" y="246" font-family="IBM Plex Mono" font-size="15" fill="#e2b25f">&gt; <tspan fill="#ecebe7">wget run registry.cpm.chungindustries.com/install</tspan></text>
+  <text x="620" y="278" font-family="IBM Plex Mono" font-size="15" fill="#94938e">Connecting to registry...</text>
+  <text x="620" y="310" font-family="IBM Plex Mono" font-size="15" fill="#8cc551">cpm installed. Run `cpm` to get started.</text>
+  <text x="620" y="342" font-family="IBM Plex Mono" font-size="15" fill="#e2b25f">&gt; <tspan fill="#ecebe7">cpm install quarry</tspan></text>
+  <text x="620" y="374" font-family="IBM Plex Mono" font-size="15" fill="#8cc551">+ quarry (and 2 dependencies) installed.</text>
+  <text x="620" y="406" font-family="IBM Plex Mono" font-size="15" fill="#e2b25f">&gt;</text>
+  <rect x="638" y="393" width="8" height="16" fill="#ecebe7"/>
+
+  <!-- Gold pixel rule along the bottom edge -->
+  <rect x="0" y="620" width="1200" height="5" fill="url(#dither-a)"/>
+  <rect x="0" y="625" width="1200" height="5" fill="url(#dither-b)"/>
+</svg>

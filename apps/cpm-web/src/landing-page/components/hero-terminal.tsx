@@ -10,10 +10,10 @@ const SCRIPT: ScriptLine[] = [
     className: "text-screen-green",
     pause: 0.7,
   },
-  { kind: "command", text: "cpm install mail" },
+  { kind: "command", text: "cpm install quarry" },
   {
     kind: "output",
-    text: "+ mail (and 2 dependencies) installed.",
+    text: "+ quarry (and 2 dependencies) installed.",
     className: "text-screen-green",
     pause: 0.5,
   },
