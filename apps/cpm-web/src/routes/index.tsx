@@ -108,7 +108,7 @@ function LandingPage() {
         </div>
       </section>
 
-      <section className="border-border border-t">
+      <section id="commands" className="border-border scroll-mt-20 border-t">
         <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
             <h2 className="text-2xl font-semibold tracking-tight">Commands</h2>

@@ -16,7 +16,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@workspace/ui/components/empty";
-import { AlertCircle, BookOpen, FileQuestion, Package } from "lucide-react";
+import { AlertCircle, ArrowUpRight, BookOpen, FileQuestion, Package } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { GithubIcon } from "@/components/icons";
@@ -77,6 +77,15 @@ function RootDocument({ children }: { children: ReactNode }) {
   );
 }
 
+function FooterExternalLink({ href, children }: { href: string; children: string }) {
+  return (
+    <a href={href} className="hover:text-foreground inline-flex items-center gap-1">
+      {children}
+      <ArrowUpRight className="size-3" aria-hidden="true" />
+    </a>
+  );
+}
+
 function RootComponent() {
   return (
     <div className="flex min-h-screen flex-col">
@@ -117,22 +126,62 @@ function RootComponent() {
         <Outlet />
       </main>
       <footer className="border-border border-t">
-        <div className="text-muted-foreground mx-auto flex w-full max-w-5xl flex-wrap justify-between gap-4 px-6 py-7 text-sm">
-          <span>
+        <div className="mx-auto w-full max-w-5xl px-6 py-12">
+          <div className="flex flex-col justify-between gap-10 sm:flex-row">
+            <div className="max-w-xs space-y-3">
+              <Link to="/" aria-label="cpm home" className="inline-block">
+                <span className="bg-brand text-background font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">
+                  cpm
+                </span>
+              </Link>
+              <p className="text-muted-foreground text-sm">
+                The package manager for ComputerCraft.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-8 sm:gap-20">
+              <nav aria-label="Site pages">
+                <h3 className="mb-3 text-sm font-medium">Site</h3>
+                <ul className="text-muted-foreground space-y-2 text-sm">
+                  <li>
+                    <Link to="/packages" className="hover:text-foreground">
+                      Packages
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/" hash="get-started" className="hover:text-foreground">
+                      Get started
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/" hash="commands" className="hover:text-foreground">
+                      Commands
+                    </Link>
+                  </li>
+                </ul>
+              </nav>
+              <nav aria-label="External resources">
+                <h3 className="mb-3 text-sm font-medium">Resources</h3>
+                <ul className="text-muted-foreground space-y-2 text-sm">
+                  <li>
+                    <FooterExternalLink href={DOCS_URL}>Registry API</FooterExternalLink>
+                  </li>
+                  <li>
+                    <FooterExternalLink href={GITHUB_URL}>GitHub</FooterExternalLink>
+                  </li>
+                  <li>
+                    <FooterExternalLink href="https://tweaked.cc">CC:Tweaked</FooterExternalLink>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          </div>
+          <p className="border-border text-muted-foreground mt-10 border-t pt-6 text-xs">
+            A{" "}
             <a href="https://chungindustries.com" className="hover:text-foreground">
               ChungIndustries
-            </a>
-            : recreating the internet inside Minecraft
-          </span>
-          <span>
-            <a href={DOCS_URL} className="hover:text-foreground">
-              registry API
             </a>{" "}
-            ·{" "}
-            <a href={GITHUB_URL} className="hover:text-foreground">
-              source
-            </a>
-          </span>
+            project: recreating the internet inside Minecraft.
+          </p>
         </div>
       </footer>
     </div>
