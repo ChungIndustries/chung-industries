@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import type { ReactNode } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { CommandBlock } from "@/cli/components/command-block";
 import { readmeQueryOptions } from "@/package/queries";
@@ -47,11 +49,11 @@ function ReadmeSection({ version }: { version: PackageVersion }) {
   return (
     <section>
       <SectionTitle>README</SectionTitle>
-      {/* Package content is untrusted, so the README is rendered as escaped
-          plain text rather than converted to HTML. */}
-      <pre className="border-border bg-card max-h-160 overflow-y-auto rounded-lg border p-5 text-[13px] leading-relaxed break-words whitespace-pre-wrap">
-        {readme.data}
-      </pre>
+      {/* Package content is untrusted; react-markdown never injects raw HTML
+          from the source, so markdown is safe to render. */}
+      <div className="border-border bg-card prose prose-sm prose-invert prose-a:text-brand prose-pre:bg-background prose-pre:border-border prose-pre:border max-h-160 max-w-none overflow-y-auto rounded-lg border p-6">
+        <Markdown remarkPlugins={[remarkGfm]}>{readme.data}</Markdown>
+      </div>
     </section>
   );
 }

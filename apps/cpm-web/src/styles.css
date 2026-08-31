@@ -1,4 +1,5 @@
 @import "@workspace/ui/styles/globals.css";
+@plugin "@tailwindcss/typography";
 
 /*
  * Site theme: a clean, dark registry site set in the IBM Plex family, with
