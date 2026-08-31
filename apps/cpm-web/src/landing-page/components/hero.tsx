@@ -10,22 +10,25 @@ import { type CSSProperties, Fragment, useState } from "react";
 import { Terminal } from "@/landing-page/components/terminal";
 import { packagesQueryOptions } from "@/package/queries";
 
-/** A trail of pixels rising off the terminal's top-right corner. */
+/**
+ * Sparks off the terminal's top-right corner: hugging the frame so they read
+ * as emitted by the machine, not floating free.
+ */
 const PARTICLES: { className: string; style: CSSProperties }[] = [
   {
-    className: "bg-brand/50 -top-2 right-9 size-2",
+    className: "bg-brand/50 -top-1 -right-1 size-2",
     style: { "--drift": "6s", "--drift-delay": "0s" } as CSSProperties,
   },
   {
-    className: "bg-brand/35 -top-6 right-14 size-1.5",
+    className: "bg-brand/35 -top-4 -right-3 size-1.5",
     style: { "--drift": "7.5s", "--drift-delay": "-2s" } as CSSProperties,
   },
   {
-    className: "bg-brand/25 -top-10 right-10 size-1",
+    className: "bg-brand/25 -top-7 -right-1 size-1",
     style: { "--drift": "9s", "--drift-delay": "-4.5s" } as CSSProperties,
   },
   {
-    className: "bg-brand/20 -top-4 right-20 size-1",
+    className: "bg-brand/20 -top-3 right-3 size-1",
     style: { "--drift": "8s", "--drift-delay": "-1s" } as CSSProperties,
   },
 ];
