@@ -61,12 +61,9 @@ function DependenciesTab({ dependencies }: { dependencies: [string, string][] })
     return <p className="text-muted-foreground text-sm">None: this package stands alone.</p>;
   }
   return (
-    <ul>
+    <ul className="divide-border divide-y">
       {dependencies.map(([dep, range]) => (
-        <li
-          key={dep}
-          className="border-border flex justify-between gap-3 border-b py-2 text-sm first:border-t"
-        >
+        <li key={dep} className="flex justify-between gap-3 py-2 text-sm">
           <Link
             to="/packages/$name"
             params={{ name: dep }}
@@ -84,12 +81,9 @@ function DependenciesTab({ dependencies }: { dependencies: [string, string][] })
 function VersionsTab({ pkg, current }: { pkg: Package; current: string }) {
   const versions = sortVersionsDesc(Object.keys(pkg.versions));
   return (
-    <ul>
+    <ul className="divide-border divide-y">
       {versions.map((v) => (
-        <li
-          key={v}
-          className="border-border flex items-center justify-between gap-3 border-b py-2 text-sm first:border-t"
-        >
+        <li key={v} className="flex items-center justify-between gap-3 py-2 text-sm">
           <span className="flex items-center gap-2">
             {v === current ? (
               <>
