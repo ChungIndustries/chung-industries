@@ -1,28 +1,21 @@
 import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@workspace/ui/components/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { PackageSearch, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { PackageRow } from "@/package/components/package-row";
+import { PackagesHead } from "@/package/components/packages-head";
+import { PackagesPending } from "@/package/components/packages-pending";
+import { PackagesResults } from "@/package/components/packages-results";
+import { PackagesSearch } from "@/package/components/packages-search";
 import { packagesQueryOptions } from "@/package/queries";
 import { searchPackages } from "@/package/search";
 
-interface PackagesSearch {
+interface PackagesSearchParams {
   q?: string;
 }
 
 export const Route = createFileRoute("/packages/")({
-  validateSearch: (search: Record<string, unknown>): PackagesSearch => ({
+  validateSearch: (search: Record<string, unknown>): PackagesSearchParams => ({
     q: typeof search.q === "string" && search.q !== "" ? search.q : undefined,
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(packagesQueryOptions),
@@ -30,32 +23,6 @@ export const Route = createFileRoute("/packages/")({
   pendingComponent: PackagesPending,
   component: PackagesPage,
 });
-
-function PageHead() {
-  return (
-    <div>
-      <h1 className="font-display text-xl">Packages</h1>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Everything in the cpm registry. Install any of these in-game with{" "}
-        <code>cpm install &lt;name&gt;</code>.
-      </p>
-    </div>
-  );
-}
-
-function PackagesPending() {
-  return (
-    <div className="mx-auto max-w-5xl px-6 pt-8 pb-12">
-      <PageHead />
-      <Skeleton className="mt-6 h-10 w-full" />
-      <div className="mt-4 space-y-3">
-        {Array.from({ length: 6 }, (_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function PackagesPage() {
   const { q = "" } = Route.useSearch();
@@ -85,56 +52,16 @@ function PackagesPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 pt-8 pb-12">
-      <PageHead />
-
-      <search className="mt-6 block">
-        <InputGroup className="bg-card dark:bg-card h-10">
-          <InputGroupAddon>
-            <Search aria-hidden="true" />
-          </InputGroupAddon>
-          <InputGroupInput
-            type="search"
-            value={query}
-            placeholder="Search packages"
-            aria-label="Search packages"
-            onChange={(event) => {
-              setQuery(event.target.value);
-              syncPending.current = true;
-              syncUrl(event.target.value);
-            }}
-          />
-        </InputGroup>
-      </search>
-
-      <div className="mt-4">
-        <p className="text-muted-foreground border-border border-b pb-2.5 text-sm" role="status">
-          <span className="text-foreground font-semibold">{results.length}</span>{" "}
-          {results.length === 1 ? "package" : "packages"}
-          {query && ` matching "${query}"`}
-        </p>
-
-        {results.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <PackageSearch />
-              </EmptyMedia>
-              <EmptyTitle className="font-display text-base">
-                {query ? "Nothing found" : "Nothing here yet"}
-              </EmptyTitle>
-              <EmptyDescription>
-                {query ? `No package matches "${query}".` : "Be the first to publish!"}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <ul className="divide-border border-border divide-y border-b">
-            {results.map((pkg) => (
-              <PackageRow key={pkg.name} pkg={pkg} />
-            ))}
-          </ul>
-        )}
-      </div>
+      <PackagesHead />
+      <PackagesSearch
+        query={query}
+        onQueryChange={(value) => {
+          setQuery(value);
+          syncPending.current = true;
+          syncUrl(value);
+        }}
+      />
+      <PackagesResults results={results} query={query} />
     </div>
   );
 }
