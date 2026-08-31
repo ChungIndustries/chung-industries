@@ -28,7 +28,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_ORIGIN },
-      { name: "twitter:card", content: "summary" },
+      { property: "og:image", content: `${SITE_ORIGIN}/og.png` },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:image:alt",
+        content: "cpm, the package manager for ComputerCraft, with a terminal installing it",
+      },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#0f0f0f" },
     ],
     links: [
