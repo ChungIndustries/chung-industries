@@ -23,7 +23,7 @@ export function PackageRow({ pkg }: { pkg: Package }) {
         </span>
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <span className="text-foreground">v{pkg["dist-tags"].latest}</span>
-          <Separator orientation="vertical" className="h-3.5 self-center" />
+          <Separator orientation="vertical" className="my-1" />
           <span>
             {versionCount} {versionCount === 1 ? "version" : "versions"}
           </span>

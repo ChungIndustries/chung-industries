@@ -14,7 +14,7 @@ import { PackageX } from "lucide-react";
 /** Skeleton mirroring the detail page layout while its loader runs. */
 export function PackageDetailPending() {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-6 pt-8 pb-12">
       <Skeleton className="mb-6 h-5 w-40" />
       <Skeleton className="h-9 w-64" />
       <Skeleton className="mt-2 h-4 w-32" />

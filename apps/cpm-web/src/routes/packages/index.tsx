@@ -45,7 +45,7 @@ function PageHead() {
 
 function PackagesPending() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
+    <div className="mx-auto max-w-5xl space-y-6 px-6 pt-8 pb-12">
       <PageHead />
       <Skeleton className="h-10 w-full" />
       <div className="space-y-3">
@@ -84,7 +84,7 @@ function PackagesPage() {
   const results = useMemo(() => searchPackages(packages, query), [packages, query]);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
+    <div className="mx-auto max-w-5xl space-y-6 px-6 pt-8 pb-12">
       <PageHead />
 
       <search>
