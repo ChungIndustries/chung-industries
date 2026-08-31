@@ -55,7 +55,7 @@ export function TerminalWindow({
 const TYPE_SPEED = 0.045;
 const PROMPT_PAUSE = 0.35;
 
-type ScriptLine =
+export type ScriptLine =
   | { kind: "command"; text: string }
   | { kind: "output"; text: string; className?: string; pause?: number }
   | { kind: "prompt" };
@@ -80,12 +80,12 @@ const SCRIPT: ScriptLine[] = [
   { kind: "prompt" },
 ];
 
-/* Lay the script out on a timeline: a command line holds an idle cursor for
+/* Lay a script out on a timeline: a command line holds an idle cursor for
    PROMPT_PAUSE, types for length * TYPE_SPEED, then yields; an output line
    holds for its pause before the next line lands. */
-const TIMELINE = (() => {
+function toTimeline(script: ScriptLine[]) {
   let clock = 0.5;
-  return SCRIPT.map((line) => {
+  return script.map((line) => {
     const at = clock;
     let duration = 0;
     if (line.kind === "command") {
@@ -96,7 +96,7 @@ const TIMELINE = (() => {
     }
     return { line, at, duration };
   });
-})();
+}
 
 function TypedCommand({ text, at, duration }: { text: string; at: number; duration: number }) {
   return (
@@ -120,32 +120,37 @@ function TypedCommand({ text, at, duration }: { text: string; at: number; durati
   );
 }
 
+/** A script played inside a TerminalWindow: typed commands, popped output. */
+export function TerminalScript({ script }: { script: ScriptLine[] }) {
+  return toTimeline(script).map(({ line, at, duration }, index) => (
+    <p
+      key={index}
+      className={cn(
+        "m-0 animate-[reveal_0s_both] whitespace-nowrap motion-reduce:animate-none",
+        line.kind === "output" && line.className,
+      )}
+      style={{ animationDelay: `${at}s` }}
+    >
+      {line.kind === "command" && (
+        <Prompt>
+          <TypedCommand text={line.text} at={at} duration={duration} />
+        </Prompt>
+      )}
+      {line.kind === "output" && line.text}
+      {line.kind === "prompt" && (
+        <Prompt>
+          <Cursor />
+        </Prompt>
+      )}
+    </p>
+  ));
+}
+
 /** The hero terminal: a CC:Tweaked computer running the cpm bootstrap. */
 export function Terminal() {
   return (
     <TerminalWindow label="A ComputerCraft terminal installing cpm">
-      {TIMELINE.map(({ line, at, duration }, index) => (
-        <p
-          key={index}
-          className={cn(
-            "m-0 animate-[reveal_0s_both] whitespace-nowrap motion-reduce:animate-none",
-            line.kind === "output" && line.className,
-          )}
-          style={{ animationDelay: `${at}s` }}
-        >
-          {line.kind === "command" && (
-            <Prompt>
-              <TypedCommand text={line.text} at={at} duration={duration} />
-            </Prompt>
-          )}
-          {line.kind === "output" && line.text}
-          {line.kind === "prompt" && (
-            <Prompt>
-              <Cursor />
-            </Prompt>
-          )}
-        </p>
-      ))}
+      <TerminalScript script={SCRIPT} />
     </TerminalWindow>
   );
 }

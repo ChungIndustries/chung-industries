@@ -1,32 +1,43 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@workspace/ui/components/empty";
-import { FileQuestion } from "lucide-react";
 
+import { TerminalScript, TerminalWindow } from "@/landing-page/components/terminal";
+
+/**
+ * The 404 as a CraftOS session: the missing path is typed at the prompt and
+ * the shell answers the way CC:Tweaked answers an unknown command.
+ */
 export function NotFound() {
+  const pathname = useLocation({ select: (location) => location.pathname });
+
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <Empty className="border-none">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <FileQuestion />
-          </EmptyMedia>
-          <EmptyTitle className="font-display">404</EmptyTitle>
-          <EmptyDescription>This page does not exist.</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button asChild>
-            <Link to="/packages">Browse packages</Link>
-          </Button>
-        </EmptyContent>
-      </Empty>
+    <div className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col items-center justify-center px-6 py-16 text-center">
+      <h1 className="font-display text-brand text-6xl [text-shadow:0.09em_0.09em_0_color-mix(in_oklab,var(--color-brand)_30%,transparent)]">
+        404
+      </h1>
+      <TerminalWindow
+        label={`A ComputerCraft terminal reporting that ${pathname} does not exist`}
+        className="mt-8 w-full text-left"
+      >
+        <TerminalScript
+          script={[
+            { kind: "command", text: pathname },
+            { kind: "output", text: "No such program", className: "text-screen-red" },
+            { kind: "prompt" },
+          ]}
+        />
+      </TerminalWindow>
+      <p className="text-muted-foreground mt-6 text-sm">
+        This page does not exist. Perhaps it was uninstalled.
+      </p>
+      <div className="mt-6 flex gap-3">
+        <Button variant="outline" asChild>
+          <Link to="/">Go home</Link>
+        </Button>
+        <Button asChild>
+          <Link to="/packages">Browse packages</Link>
+        </Button>
+      </div>
     </div>
   );
 }
