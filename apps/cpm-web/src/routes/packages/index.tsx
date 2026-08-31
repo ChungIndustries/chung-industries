@@ -1,3 +1,4 @@
+import { useDebouncedCallback } from "@tanstack/react-pacer";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -10,7 +11,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PackageSearch, Search } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PackageRow } from "@/package/components/package-row";
 import { packagesQueryOptions } from "@/package/queries";
@@ -60,7 +61,27 @@ function PackagesPage() {
   const { q = "" } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { data: packages } = useSuspenseQuery(packagesQueryOptions);
-  const results = useMemo(() => searchPackages(packages, q), [packages, q]);
+
+  // The list filters instantly from local state; only the URL sync is
+  // debounced, so typing does not hammer history.replaceState (and, once
+  // search moves to the registry, does not hammer the API either).
+  const [query, setQuery] = useState(q);
+  const syncPending = useRef(false);
+  const syncUrl = useDebouncedCallback(
+    (value: string) => {
+      syncPending.current = false;
+      void navigate({ search: value ? { q: value } : {}, replace: true });
+    },
+    { wait: 300 },
+  );
+
+  // Adopt external URL changes (back/forward navigation), but never clobber
+  // input typed while a sync is still pending.
+  useEffect(() => {
+    if (!syncPending.current) setQuery(q);
+  }, [q]);
+
+  const results = useMemo(() => searchPackages(packages, query), [packages, query]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
@@ -73,15 +94,14 @@ function PackagesPage() {
           </InputGroupAddon>
           <InputGroupInput
             type="search"
-            value={q}
+            value={query}
             placeholder="Search packages"
             aria-label="Search packages"
-            onChange={(event) =>
-              void navigate({
-                search: event.target.value ? { q: event.target.value } : {},
-                replace: true,
-              })
-            }
+            onChange={(event) => {
+              setQuery(event.target.value);
+              syncPending.current = true;
+              syncUrl(event.target.value);
+            }}
           />
         </InputGroup>
       </search>
@@ -89,7 +109,7 @@ function PackagesPage() {
       <p className="text-muted-foreground text-sm" role="status">
         <span className="text-foreground font-semibold">{results.length}</span>{" "}
         {results.length === 1 ? "package" : "packages"}
-        {q && ` matching "${q}"`}
+        {query && ` matching "${query}"`}
       </p>
 
       {results.length === 0 ? (
@@ -98,9 +118,9 @@ function PackagesPage() {
             <EmptyMedia variant="icon">
               <PackageSearch />
             </EmptyMedia>
-            <EmptyTitle>{q ? "Nothing found" : "Nothing here yet"}</EmptyTitle>
+            <EmptyTitle>{query ? "Nothing found" : "Nothing here yet"}</EmptyTitle>
             <EmptyDescription>
-              {q ? `No package matches "${q}".` : "Be the first to publish!"}
+              {query ? `No package matches "${query}".` : "Be the first to publish!"}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
