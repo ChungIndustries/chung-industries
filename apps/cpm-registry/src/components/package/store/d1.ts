@@ -13,16 +13,19 @@ import { ConflictError, ForbiddenError } from "@/errors";
 interface PackageRow {
   name: string;
   author: string | null;
+  created_at: number;
 }
 interface VersionRow {
   package_name: string;
   version: string;
+  description: string | null;
   author: string | null;
   dependencies: string | null;
   shasum: string;
   integrity: string;
   bundle_sha256: string;
   bundle_size: number;
+  created_at: number;
 }
 interface TagRow {
   package_name: string;
@@ -30,9 +33,9 @@ interface TagRow {
   version: string;
 }
 
-const SELECT_PACKAGES = "SELECT name, author FROM packages";
+const SELECT_PACKAGES = "SELECT name, author, created_at FROM packages";
 const SELECT_VERSIONS =
-  "SELECT package_name, version, author, dependencies, shasum, integrity, bundle_sha256, bundle_size FROM versions";
+  "SELECT package_name, version, description, author, dependencies, shasum, integrity, bundle_sha256, bundle_size, created_at FROM versions";
 const SELECT_TAGS = "SELECT package_name, tag, version FROM dist_tags";
 
 /** D1-backed package index. Metadata only; tarball bytes live in R2. */
@@ -106,14 +109,15 @@ export class D1RegistryStore implements RegistryStore {
         .bind(name, publishedBy, now),
       this.db
         .prepare(
-          `INSERT INTO versions (package_name, version, author, dependencies, shasum, integrity, tarball_key, bundle_sha256, bundle_size, bundle_key, published_by, created_at)
-           SELECT ?1, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?2, ?12
+          `INSERT INTO versions (package_name, version, description, author, dependencies, shasum, integrity, tarball_key, bundle_sha256, bundle_size, bundle_key, published_by, created_at)
+           SELECT ?1, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?2, ?13
            WHERE ${isMaintainer}`,
         )
         .bind(
           name,
           publishedBy,
           entry.version,
+          entry.description ?? null,
           entry.author ?? null,
           entry.dependencies ? JSON.stringify(entry.dependencies) : null,
           entry.dist.tarball.shasum,
@@ -193,6 +197,7 @@ function assemble(pkg: PackageRow, versions: VersionRow[], tags: TagRow[]): Pack
     versionsMap[v.version] = {
       name: pkg.name,
       version: v.version,
+      ...(v.description ? { description: v.description } : {}),
       ...(v.author ? { author: v.author } : {}),
       ...(v.dependencies
         ? { dependencies: JSON.parse(v.dependencies) as Record<string, string> }
@@ -209,6 +214,7 @@ function assemble(pkg: PackageRow, versions: VersionRow[], tags: TagRow[]): Pack
           size: v.bundle_size,
         },
       },
+      createdAt: new Date(v.created_at).toISOString(),
     };
   }
   const distTags: Record<string, string> = {};
@@ -216,6 +222,7 @@ function assemble(pkg: PackageRow, versions: VersionRow[], tags: TagRow[]): Pack
   return {
     name: pkg.name,
     ...(pkg.author ? { author: pkg.author } : {}),
+    createdAt: new Date(pkg.created_at).toISOString(),
     "dist-tags": distTags as Package["dist-tags"],
     versions: versionsMap,
   };

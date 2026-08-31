@@ -2,7 +2,7 @@
   "name": "cpm-cli",
   "version": "0.0.2",
   "private": true,
-  "description": "The cpm package manager client for CC:Tweaked computers, published to the registry as the cpm package.",
+  "description": "The cpm package manager client for CC:Tweaked computers.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",

@@ -31,6 +31,11 @@ components:
         author:
           type: string
           example: chungindustries
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-01-15T12:00:00.000Z
+          description: First-publish timestamp, ISO 8601 UTC
         dist-tags:
           $ref: "#/components/schemas/DistTags"
         versions:
@@ -40,6 +45,7 @@ components:
           example:
             1.0.0:
               name: example
+              description: Example utilities for CC:Tweaked computers
               author: chungindustries
               version: 1.0.0
               dependencies:
@@ -53,8 +59,10 @@ components:
                   url: /packages/example/1.0.0/dist/bundle
                   sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
                   size: 4096
+              createdAt: 2026-01-15T12:00:00.000Z
       required:
         - name
+        - createdAt
         - dist-tags
         - versions
       additionalProperties: false
@@ -85,6 +93,12 @@ components:
           type: string
           example: 1.0.0
           description: Semantic version string
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          example: Example utilities for CC:Tweaked computers
+          description: Short user-facing summary of what the package does
         author:
           type: string
           example: chungindustries
@@ -158,18 +172,26 @@ components:
             - bundle
           additionalProperties: false
           description: Distribution artifacts, one entry per artifact kind
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-01-15T12:00:00.000Z
+          description: Publish timestamp, ISO 8601 UTC
       required:
         - name
         - version
         - dist
+        - createdAt
       additionalProperties: false
       example:
         name: example
+        description: Example utilities for CC:Tweaked computers
         author: chungindustries
         version: 1.0.0
         dependencies:
           cc-http: ^1.2.0
         dist: *a1
+        createdAt: 2026-01-15T12:00:00.000Z
     ResolveRequest:
       type: object
       properties:

@@ -19,6 +19,9 @@ export function PackageHeader({ pkg, version }: { pkg: Package; version: Package
           ))}
         </div>
       </div>
+      {version.description && (
+        <p className="text-muted-foreground mt-2 max-w-prose">{version.description}</p>
+      )}
       {version.author && <p className="text-muted-foreground mt-1 text-sm">by {version.author}</p>}
     </header>
   );

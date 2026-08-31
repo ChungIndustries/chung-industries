@@ -1,14 +1,33 @@
 import { describe, expect, it } from "vitest";
 
 import type { Package } from "@/package/schemas";
-import { formatBytes, searchPackages, sortVersionsDesc, tagsFor } from "@/package/search";
+import {
+  formatBytes,
+  formatTimeAgo,
+  searchPackages,
+  sortVersionsDesc,
+  tagsFor,
+} from "@/package/search";
 
-function pkg(name: string, author?: string): Package {
-  return { name, author, "dist-tags": { latest: "1.0.0" }, versions: {} };
+function pkg(name: string, author?: string, description?: string): Package {
+  const dist = {
+    tarball: { url: "", shasum: "", integrity: "" },
+    bundle: { url: "", sha256: "", size: 0 },
+  };
+  return {
+    name,
+    author,
+    "dist-tags": { latest: "1.0.0" },
+    versions: { "1.0.0": { name, version: "1.0.0", description, dist } },
+  };
 }
 
 describe("searchPackages", () => {
-  const packages = [pkg("zeta"), pkg("cc-http", "chungindustries"), pkg("mail", "alice")];
+  const packages = [
+    pkg("zeta"),
+    pkg("cc-http", "chungindustries"),
+    pkg("mail", "alice", "Send letters between computers"),
+  ];
 
   it("returns everything alphabetically for an empty query", () => {
     expect(searchPackages(packages, "").map((p) => p.name)).toEqual(["cc-http", "mail", "zeta"]);
@@ -20,6 +39,10 @@ describe("searchPackages", () => {
 
   it("matches author substrings", () => {
     expect(searchPackages(packages, "alice").map((p) => p.name)).toEqual(["mail"]);
+  });
+
+  it("matches the latest version's description", () => {
+    expect(searchPackages(packages, "letters").map((p) => p.name)).toEqual(["mail"]);
   });
 
   it("trims the query", () => {
@@ -56,6 +79,24 @@ describe("tagsFor", () => {
 
   it("returns nothing for an untagged version", () => {
     expect(tagsFor(distTags, "0.1.0")).toEqual([]);
+  });
+});
+
+describe("formatTimeAgo", () => {
+  const now = Date.parse("2026-09-01T12:00:00.000Z");
+  const ago = (seconds: number) => new Date(now - seconds * 1000).toISOString();
+
+  it("picks the largest whole unit, npm style", () => {
+    expect(formatTimeAgo(ago(30), now)).toBe("just now");
+    expect(formatTimeAgo(ago(90), now)).toBe("1 minute ago");
+    expect(formatTimeAgo(ago(5 * 3600), now)).toBe("5 hours ago");
+    expect(formatTimeAgo(ago(3 * 24 * 3600), now)).toBe("3 days ago");
+    expect(formatTimeAgo(ago(70 * 24 * 3600), now)).toBe("2 months ago");
+    expect(formatTimeAgo(ago(800 * 24 * 3600), now)).toBe("2 years ago");
+  });
+
+  it("never renders a future publish date (clock skew) as upcoming", () => {
+    expect(formatTimeAgo(ago(-120), now)).toBe("just now");
   });
 });
 

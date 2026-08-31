@@ -47,8 +47,8 @@ export const INSTALLER_FILE = "install.lua";
 /**
  * The in-package manifest and authoring-side source of truth: every tarball
  * must carry a `cpm.json` at its root declaring name, version, and (optionally)
- * author and dependencies, so artifacts are self-describing and can never
- * disagree with their registry entry.
+ * description, author, and dependencies, so artifacts are self-describing and
+ * can never disagree with their registry entry.
  */
 export const MANIFEST_FILE = "cpm.json";
 
@@ -150,7 +150,8 @@ export class PackageService {
     const { shasum, integrity } = computeDigests(data);
     const tarKey = tarballKey(metadata.name, shasum);
     const bunKey = bundleKey(metadata.name, bundleSha256);
-    const entry: PackageVersion = {
+    // `createdAt` is stamped by the store, so the entry built here has none.
+    const entry: Omit<PackageVersion, "createdAt"> = {
       ...metadata,
       dist: {
         tarball: { url: tarballPath(metadata.name, metadata.version), shasum, integrity },

@@ -60,7 +60,7 @@ src/
   install.lua      self-contained bootstrap installer served at GET /install
 ```
 
-`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, author, dependencies }) generated at build time from the workspace versions so they have one source of truth (the `cli` range tracks `packages/cc/cli`). The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
+`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, description, author, dependencies }) generated at build time from `package.json` so version and description have one source of truth (the `cli` range tracks `packages/cc/cli`). The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
 
 ## Tooling
 

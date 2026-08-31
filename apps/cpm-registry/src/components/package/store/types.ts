@@ -3,8 +3,11 @@ import type { Package, PackageVersion } from "@/components/package/schemas";
 export interface AddVersionInput {
   name: string;
   author?: string;
-  /** The fully-formed version entry, including its computed `dist`. */
-  entry: PackageVersion;
+  /**
+   * The fully-formed version entry, including its computed `dist`. The store
+   * stamps `createdAt` itself at insert, so the input carries none.
+   */
+  entry: Omit<PackageVersion, "createdAt">;
   /** R2 object key where the tarball bytes are stored. */
   tarballKey: string;
   /** R2 object key where the derived bundle bytes are stored. */
