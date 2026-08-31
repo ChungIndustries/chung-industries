@@ -1,21 +1,12 @@
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 
 /** A copyable shell command, rendered as a terminal prompt line. */
 export function CommandBlock({ command, className }: { command: string; className?: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard access denied; the text stays selectable by hand.
-    }
-  }
+  const { copied, copy } = useCopyToClipboard();
 
   return (
     <div
@@ -31,7 +22,7 @@ export function CommandBlock({ command, className }: { command: string; classNam
       <Button
         variant="ghost"
         size="icon-sm"
-        onClick={copy}
+        onClick={() => copy(command)}
         aria-label={copied ? "Copied" : `Copy ${command}`}
       >
         {copied ? <Check className="text-green-500" /> : <Copy />}
