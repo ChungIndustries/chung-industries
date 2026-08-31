@@ -20,16 +20,14 @@ export function ErrorBoundary({ error }: { error: Error }) {
           <EmptyMedia variant="icon">
             <AlertCircle />
           </EmptyMedia>
-          <EmptyTitle>Something went wrong</EmptyTitle>
+          <EmptyTitle className="font-display text-base">Something went wrong</EmptyTitle>
           <EmptyDescription>
             {import.meta.env.DEV ? error.message : "The registry is not answering right now."}
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <div className="flex gap-3">
-            <Button className="pixel-btn" onClick={() => router.invalidate()}>
-              Try again
-            </Button>
+            <Button onClick={() => router.invalidate()}>Try again</Button>
             <Button variant="outline" asChild>
               <Link to="/">Go home</Link>
             </Button>

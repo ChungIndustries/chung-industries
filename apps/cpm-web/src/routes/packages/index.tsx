@@ -118,7 +118,9 @@ function PackagesPage() {
             <EmptyMedia variant="icon">
               <PackageSearch />
             </EmptyMedia>
-            <EmptyTitle>{query ? "Nothing found" : "Nothing here yet"}</EmptyTitle>
+            <EmptyTitle className="font-display text-base">
+              {query ? "Nothing found" : "Nothing here yet"}
+            </EmptyTitle>
             <EmptyDescription>
               {query ? `No package matches "${query}".` : "Be the first to publish!"}
             </EmptyDescription>

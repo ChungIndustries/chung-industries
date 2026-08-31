@@ -5,10 +5,30 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Search } from "lucide-react";
-import { Fragment, useState } from "react";
+import { type CSSProperties, Fragment, useState } from "react";
 
 import { Terminal } from "@/landing-page/components/terminal";
 import { packagesQueryOptions } from "@/package/queries";
+
+/** A trail of pixels rising off the terminal's top-right corner. */
+const PARTICLES: { className: string; style: CSSProperties }[] = [
+  {
+    className: "bg-brand/50 -top-2 right-9 size-2",
+    style: { "--drift": "6s", "--drift-delay": "0s" } as CSSProperties,
+  },
+  {
+    className: "bg-brand/35 -top-6 right-14 size-1.5",
+    style: { "--drift": "7.5s", "--drift-delay": "-2s" } as CSSProperties,
+  },
+  {
+    className: "bg-brand/25 -top-10 right-10 size-1",
+    style: { "--drift": "9s", "--drift-delay": "-4.5s" } as CSSProperties,
+  },
+  {
+    className: "bg-brand/20 -top-4 right-20 size-1",
+    style: { "--drift": "8s", "--drift-delay": "-1s" } as CSSProperties,
+  },
+];
 
 function HeroSearch() {
   const navigate = useNavigate();
@@ -37,7 +57,7 @@ function HeroSearch() {
           className="!text-base"
         />
       </InputGroup>
-      <Button type="submit" size="lg" className="pixel-btn h-11 px-5">
+      <Button type="submit" size="lg" className="h-11 px-5">
         Search
       </Button>
     </form>
@@ -85,7 +105,7 @@ export function Hero() {
     <section>
       <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-12 px-6 py-16 md:grid-cols-[1.1fr_minmax(0,1fr)] md:py-24">
         <div>
-          <h1 className="text-[2.5rem] leading-[1.08] font-semibold tracking-[-0.025em] text-balance md:text-[3.25rem]">
+          <h1 className="font-display text-[1.75rem] leading-[1.2] text-balance md:text-[2.25rem]">
             The package manager for ComputerCraft
           </h1>
           <p className="text-muted-foreground mt-5 max-w-md text-base">
@@ -96,10 +116,16 @@ export function Hero() {
           <TryPackages />
         </div>
         <div className="relative">
-          {/* Pixel particles drifting off the machine. */}
-          <span className="bg-brand/40 absolute -top-5 right-10 size-2" aria-hidden="true" />
-          <span className="bg-brand/25 absolute -top-9 right-16 size-1.5" aria-hidden="true" />
-          <span className="bg-brand/15 absolute -top-3 right-4 size-1" aria-hidden="true" />
+          {/* Pixel particles rising off the machine's corner, biggest and
+              brightest nearest the terminal, fading as they climb. */}
+          {PARTICLES.map((particle, index) => (
+            <span
+              key={index}
+              className={`pixel-particle absolute ${particle.className}`}
+              style={particle.style}
+              aria-hidden="true"
+            />
+          ))}
           <Terminal />
         </div>
       </div>

@@ -42,7 +42,7 @@ export function PackageNotFound() {
           <EmptyDescription>The registry has no such package or version.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button asChild className="pixel-btn">
+          <Button asChild>
             <Link to="/packages">Browse packages</Link>
           </Button>
         </EmptyContent>
