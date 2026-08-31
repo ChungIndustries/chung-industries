@@ -82,8 +82,8 @@ function TryPackages() {
 
 export function Hero() {
   return (
-    <section className="border-border border-b">
-      <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-12 px-6 py-16 md:grid-cols-[1.1fr_1fr] md:py-24">
+    <section>
+      <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-12 px-6 py-16 md:grid-cols-[1.1fr_minmax(0,1fr)] md:py-24">
         <div>
           <h1 className="text-[2.5rem] leading-[1.08] font-semibold tracking-[-0.025em] text-balance md:text-[3.25rem]">
             The package manager for ComputerCraft
@@ -97,6 +97,7 @@ export function Hero() {
         </div>
         <Terminal />
       </div>
+      <div className="pixel-rule" aria-hidden="true" />
     </section>
   );
 }
