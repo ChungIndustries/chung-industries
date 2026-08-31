@@ -9,8 +9,9 @@ export function SiteHeader() {
   return (
     <header className="border-border bg-background/75 sticky top-0 z-10 border-b backdrop-blur-xl">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
-        <Link to="/" aria-label="cpm home">
+        <Link to="/" aria-label="cpm home" className="flex items-center gap-2">
           <BrandMark />
+          <span className="text-muted-foreground font-mono text-sm">registry</span>
         </Link>
         <nav className="flex gap-6 text-sm font-medium" aria-label="Site">
           <Link
