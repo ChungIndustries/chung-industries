@@ -1,8 +1,7 @@
+import { useCopyToClipboard } from "@workspace/hooks/use-copy-to-clipboard";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
 import { Check, Copy } from "lucide-react";
-
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 
 /** A copyable shell command, rendered as a terminal prompt line. */
 export function CommandBlock({ command, className }: { command: string; className?: string }) {
