@@ -12,7 +12,7 @@ export function ErrorBoundary({ error }: { error: Error }) {
 
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col items-center justify-center px-6 py-16 text-center">
-      <h1 className="font-display text-brand text-2xl [text-shadow:0.09em_0.09em_0_color-mix(in_oklab,var(--color-brand)_30%,transparent)]">
+      <h1 className="font-display text-2xl [text-shadow:0.09em_0.09em_0_color-mix(in_oklab,var(--color-foreground)_25%,transparent)]">
         Something went wrong
       </h1>
       <TerminalWindow
