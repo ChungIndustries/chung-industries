@@ -45,10 +45,10 @@ function PageHead() {
 
 function PackagesPending() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-6 pt-8 pb-12">
+    <div className="mx-auto max-w-5xl px-6 pt-8 pb-12">
       <PageHead />
-      <Skeleton className="h-10 w-full" />
-      <div className="space-y-3">
+      <Skeleton className="mt-6 h-10 w-full" />
+      <div className="mt-4 space-y-3">
         {Array.from({ length: 6 }, (_, i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
@@ -84,10 +84,10 @@ function PackagesPage() {
   const results = useMemo(() => searchPackages(packages, query), [packages, query]);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-6 pt-8 pb-12">
+    <div className="mx-auto max-w-5xl px-6 pt-8 pb-12">
       <PageHead />
 
-      <search>
+      <search className="mt-6 block">
         <InputGroup className="bg-card dark:bg-card h-10">
           <InputGroupAddon>
             <Search aria-hidden="true" />
@@ -106,8 +106,8 @@ function PackagesPage() {
         </InputGroup>
       </search>
 
-      <div>
-        <p className="text-muted-foreground mb-2 text-sm" role="status">
+      <div className="mt-4">
+        <p className="text-muted-foreground border-border border-b pb-2.5 text-sm" role="status">
           <span className="text-foreground font-semibold">{results.length}</span>{" "}
           {results.length === 1 ? "package" : "packages"}
           {query && ` matching "${query}"`}
@@ -128,7 +128,7 @@ function PackagesPage() {
             </EmptyHeader>
           </Empty>
         ) : (
-          <ul className="divide-border border-border divide-y border-y">
+          <ul className="divide-border border-border divide-y border-b">
             {results.map((pkg) => (
               <PackageRow key={pkg.name} pkg={pkg} />
             ))}
