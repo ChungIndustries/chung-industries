@@ -140,16 +140,16 @@ local function wantsHelp(tokens)
   return false
 end
 
---- Register a command. The spec declares the interface next to its implementation:
+--- Register a command. The spec is a table:
 ---
 --- - `description`: shown by `help <command>`
---- - `arguments`: ordered positional declarations `{ name, hint?, required?, repeated? }`.
----   The parsed value lands in the handler's args table under `name`; `hint` replaces the
----   generated `<name>` in usage text. Only the last argument may be repeated (its value
----   is a list), and a required argument cannot follow an optional one.
---- - `options`: named `--flag` declarations `{ name, hint?, description?, value? }`.
----   With `value = true` the option consumes the next token; otherwise it parses to true.
---- - `handler(args)`: called with all parsed values in one table keyed by name.
+--- - `arguments`: the positional arguments, in order, each `{ name, hint?, required?,
+---   repeated? }`. The parsed value is stored in the handler's `args` table under `name`.
+---   `repeated` is only allowed on the last argument and collects the remaining values
+---   into a list, and a `hint` changes how the argument is written in usage text.
+--- - `options`: the `--flags`, each `{ name, hint?, description?, value? }`. A flag with
+---   `value = true` takes the next word as its value, any other flag becomes `true`.
+--- - `handler(args)`: receives all parsed values in one table, keyed by name.
 function App:command(name, spec)
   declare(type(name) == "string" and name ~= "", "command name must be a non-empty string")
   declare(self.commands[name] == nil, "duplicate command: %s", name)
@@ -254,10 +254,11 @@ function App:printCommandHelp(command)
   end
 end
 
---- Dispatch a program's arguments: call as `app:run(...)` from the program body.
---- No command, `--help`, or `-h` prints the tool help; `--help`/`-h` after a command
---- prints that command's help. Unknown commands, malformed arguments, and handler
---- errors are reported with printError. Returns true when the invocation succeeded.
+--- Pick the command from the program's arguments and run it: call as `app:run(...)`.
+--- No command, `--help`, or `-h` prints the help, and `--help`/`-h` after a command
+--- prints that command's help. Unknown commands, wrong arguments, and errors thrown
+--- by handlers are printed with printError. Returns true when the command ran
+--- without errors.
 function App:run(...)
   local tokens = { ... }
   local name = table.remove(tokens, 1)

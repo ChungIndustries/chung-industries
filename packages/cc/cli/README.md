@@ -27,13 +27,27 @@ app:command("wave", {
 app:run(...)
 ```
 
-## Declarations
+## Commands
 
-- **Arguments** are the positional parameters of a command, declared in order as `{ name, hint?, required?, repeated? }`. The parsed value is passed to the handler as `args[name]`. A `hint` replaces the generated `<name>` in usage text, for example `<name>[@<version|range|tag>]`. Only the last argument can be repeated, which collects the remaining values into a list, and a required argument cannot come after an optional one. A mistake in a declaration raises an error at registration time.
-- **Options** are named flags, declared as `{ name, hint?, description?, value? }` and written `--name` on the command line, in any position. An option with `value = true` takes the next token as its value, any other option parses to `true`, and an option that was not given is `nil`.
-- **`run(...)`** dispatches the program's arguments. Running with no command, `--help`, or `-h` prints the tool help, and `--help` or `-h` after a command prints that command's help. Unknown commands, malformed arguments, and handler errors are reported with `printError` and a usage hint. It returns `true` when the invocation succeeded. A `help [<command>]` command is registered automatically, and a tool can override it with its own.
+Each command is a table:
 
-The library is deliberately a single file, `src/init.lua`. Consumers load it with one `require`, so cpm can swap the installed tree while a program that uses it is still running.
+- `description` is shown by `help <command>`.
+- `arguments` are the positional arguments, in order. Each one needs a `name`, which is the key its parsed value gets in `args`. Add `required = true` to make it mandatory, and `repeated = true` on the last one to collect all remaining values into a list. A `hint` changes how the argument is written in usage text, for example `<name>[@<version|range|tag>]` instead of `<name>`.
+- `options` are the `--flags`, allowed anywhere on the command line. A flag with `value = true` takes the next word as its value (`--dir apps`), any other flag just becomes `true`. Flags that were not typed are `nil`.
+- `handler(args)` receives all parsed values in one table, keyed by name.
+
+A broken table (a repeated argument that is not last, a required argument after an optional one, duplicate names) throws as soon as you register the command.
+
+## Running
+
+`app:run(...)` picks the command from the program's arguments and runs it:
+
+- No command, `--help`, or `-h` prints the help. After a command name, `--help` or `-h` prints that command's help.
+- A `help [<command>]` command is added for you. Register your own to override it.
+- Unknown commands, wrong arguments, and errors thrown by handlers are printed with `printError` plus a usage line.
+- It returns `true` when the command ran without errors.
+
+The whole library is one file, `src/init.lua`, loaded with a single `require`, so cpm can swap the installed tree while a program using it is still running.
 
 ## Tooling
 
