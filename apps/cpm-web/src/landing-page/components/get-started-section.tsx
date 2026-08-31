@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
-import { CommandBlock } from "@/cli/components/command-block";
+import { CommandBlock } from "@/components/command-block";
 import { INSTALL_COMMAND } from "@/site";
 
 interface Step {
@@ -41,7 +41,7 @@ const STEPS: Step[] = [
 ];
 
 /** The install walkthrough as a plain vertical step list. */
-export function GetStarted() {
+function Steps() {
   return (
     <ol className="max-w-2xl">
       {STEPS.map((step, index) => (
@@ -59,5 +59,16 @@ export function GetStarted() {
         </li>
       ))}
     </ol>
+  );
+}
+
+export function GetStartedSection() {
+  return (
+    <section id="get-started" className="mx-auto max-w-5xl scroll-mt-20 px-6 py-16 md:py-20">
+      <h2 className="text-2xl font-semibold tracking-tight">Get started</h2>
+      <div className="mt-8">
+        <Steps />
+      </div>
+    </section>
   );
 }

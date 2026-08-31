@@ -1,3 +1,7 @@
+import { ArrowUpRight } from "lucide-react";
+
+import { DOCS_URL } from "@/site";
+
 /** The `cpm` client's commands, mirrored from apps/cpm-cli/README.md. */
 const COMMANDS: [subcommand: string, args: string, what: string][] = [
   ["install", "<name>[@<version|range|tag>]", "Install packages and their dependencies"],
@@ -7,7 +11,7 @@ const COMMANDS: [subcommand: string, args: string, what: string][] = [
   ["search", "[<query>]", "Find packages in the registry"],
 ];
 
-export function CommandsTable() {
+function CommandsTable() {
   return (
     <dl className="divide-border border-border divide-y border-y">
       {COMMANDS.map(([subcommand, args, what]) => (
@@ -23,5 +27,27 @@ export function CommandsTable() {
         </div>
       ))}
     </dl>
+  );
+}
+
+export function CommandsSection() {
+  return (
+    <section id="commands" className="border-border scroll-mt-20 border-t">
+      <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight">Commands</h2>
+          <a
+            href={DOCS_URL}
+            className="text-brand inline-flex items-center gap-1 text-sm font-medium hover:underline"
+          >
+            Registry API docs
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </a>
+        </div>
+        <div className="mt-6">
+          <CommandsTable />
+        </div>
+      </div>
+    </section>
   );
 }

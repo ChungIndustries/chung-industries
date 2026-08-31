@@ -1,26 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
-import {
-  createRootRouteWithContext,
-  HeadContent,
-  Link,
-  Outlet,
-  Scripts,
-  useRouter,
-} from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@workspace/ui/components/empty";
-import { AlertCircle, FileQuestion } from "lucide-react";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
-import { SiteFooter } from "@/components/footer";
-import { SiteHeader } from "@/components/header";
+import { AppShell } from "@/components/app-shell";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { NotFound } from "@/components/not-found";
 import { SITE_ORIGIN } from "@/site";
 
 import appCss from "@/styles.css?url";
@@ -80,61 +64,8 @@ function RootDocument({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <SiteHeader />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <SiteFooter />
-    </div>
-  );
-}
-
-function NotFound() {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <Empty className="border-none">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <FileQuestion />
-          </EmptyMedia>
-          <EmptyTitle>404</EmptyTitle>
-          <EmptyDescription>This page does not exist.</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button asChild>
-            <Link to="/packages">Browse packages</Link>
-          </Button>
-        </EmptyContent>
-      </Empty>
-    </div>
-  );
-}
-
-function ErrorBoundary({ error }: { error: Error }) {
-  const router = useRouter();
-
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <Empty className="border-none">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <AlertCircle />
-          </EmptyMedia>
-          <EmptyTitle>Something went wrong</EmptyTitle>
-          <EmptyDescription>
-            {import.meta.env.DEV ? error.message : "The registry is not answering right now."}
-          </EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <div className="flex gap-3">
-            <Button onClick={() => router.invalidate()}>Try again</Button>
-            <Button variant="outline" asChild>
-              <Link to="/">Go home</Link>
-            </Button>
-          </div>
-        </EmptyContent>
-      </Empty>
-    </div>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   );
 }

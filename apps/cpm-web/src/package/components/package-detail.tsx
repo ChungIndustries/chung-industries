@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { CommandBlock } from "@/cli/components/command-block";
+import { CommandBlock } from "@/components/command-block";
 import { readmeQueryOptions } from "@/package/queries";
 import type { Package, PackageVersion } from "@/package/schemas";
 import { formatBytes, sortVersionsDesc, tagsFor } from "@/package/search";
