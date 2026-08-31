@@ -50,6 +50,11 @@ export function SiteFooter() {
               <h3 className="mb-3 text-sm font-medium">Resources</h3>
               <ul className="text-muted-foreground space-y-2 text-sm">
                 <li>
+                  <FooterExternalLink href="https://chungindustries.com">
+                    ChungIndustries
+                  </FooterExternalLink>
+                </li>
+                <li>
                   <FooterExternalLink href={DOCS_URL}>Registry API</FooterExternalLink>
                 </li>
                 <li>
@@ -57,11 +62,6 @@ export function SiteFooter() {
                 </li>
                 <li>
                   <FooterExternalLink href="https://tweaked.cc">CC:Tweaked</FooterExternalLink>
-                </li>
-                <li>
-                  <FooterExternalLink href="https://chungindustries.com">
-                    ChungIndustries
-                  </FooterExternalLink>
                 </li>
               </ul>
             </nav>
