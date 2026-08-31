@@ -298,7 +298,7 @@ cpm search [<query>]         from GET /packages (client-side filter for now)
 cpm help [<command>]
 ```
 
-Kept deliberately npm-shaped. Since 2026-08-30 the commands are declared through the shared `cli` package (`packages/cc/cli`, published to the registry and cpm's first dependency); help and usage text are generated from those declarations. `publish` is intentionally absent from the in-game client: publishing happens from real machines (see open questions).
+Kept deliberately npm-shaped. Since 2026-08-30 the commands are declared through the shared `cli` package (`packages/cc/cli`), cpm's first registry dependency, and the help text is generated from those declarations. `publish` is intentionally absent from the in-game client: publishing happens from real machines (see open questions).
 
 ---
 
