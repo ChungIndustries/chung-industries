@@ -1,7 +1,8 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
+import { Suspense } from "react";
 
 import { DependenciesTab } from "@/package/components/dependencies-tab";
-import { ReadmeTab } from "@/package/components/readme-tab";
+import { ReadmeTab, ReadmeTabSkeleton } from "@/package/components/readme-tab";
 import { VersionsTab } from "@/package/components/versions-tab";
 import type { Package, PackageVersion } from "@/package/schemas";
 
@@ -29,7 +30,9 @@ export function PackageTabs({ pkg, version }: { pkg: Package; version: PackageVe
         </TabsTrigger>
       </TabsList>
       <TabsContent value="readme" className="pt-4">
-        <ReadmeTab version={version} />
+        <Suspense fallback={<ReadmeTabSkeleton />}>
+          <ReadmeTab version={version} />
+        </Suspense>
       </TabsContent>
       <TabsContent value="dependencies" className="pt-4">
         <DependenciesTab dependencies={dependencies} />

@@ -9,8 +9,8 @@ export const Route = createFileRoute("/packages/$name/$version")({
   loader: async ({ context, params }) => {
     const pkg = await context.queryClient.ensureQueryData(packageQueryOptions(params.name));
     if (!pkg?.versions[params.version]) throw notFound();
-    // Awaited, not just warmed: see the sibling route's loader comment.
-    await context.queryClient.ensureQueryData(readmeQueryOptions(pkg.name, params.version));
+    // Deliberately not awaited: see the sibling route's loader comment.
+    void context.queryClient.prefetchQuery(readmeQueryOptions(pkg.name, params.version));
   },
   head: ({ params }) => ({ meta: [{ title: `${params.name}@${params.version} | cpm` }] }),
   pendingComponent: PackageDetailPending,

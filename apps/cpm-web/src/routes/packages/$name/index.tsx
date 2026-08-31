@@ -9,12 +9,9 @@ export const Route = createFileRoute("/packages/$name/")({
   loader: async ({ context, params }) => {
     const pkg = await context.queryClient.ensureQueryData(packageQueryOptions(params.name));
     if (!pkg) throw notFound();
-    // Awaited, not just warmed: the SSR HTML must already contain the README,
-    // or the streamed query data hydrates a different tree than the server
-    // rendered (React #418).
-    await context.queryClient.ensureQueryData(
-      readmeQueryOptions(pkg.name, pkg["dist-tags"].latest),
-    );
+    // Deliberately not awaited: the README streams into a Suspense boundary
+    // in the readme tab, so the rest of the page renders without it.
+    void context.queryClient.prefetchQuery(readmeQueryOptions(pkg.name, pkg["dist-tags"].latest));
   },
   head: ({ params }) => ({ meta: [{ title: `${params.name} | cpm` }] }),
   pendingComponent: PackageDetailPending,
