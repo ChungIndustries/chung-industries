@@ -135,11 +135,7 @@ function RootComponent() {
                 </span>
               </Link>
               <p className="text-muted-foreground text-sm">
-                The package manager for ComputerCraft. A{" "}
-                <a href="https://chungindustries.com" className="hover:text-foreground">
-                  ChungIndustries
-                </a>{" "}
-                project.
+                The package manager for ComputerCraft.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-8 sm:gap-20">
@@ -174,6 +170,11 @@ function RootComponent() {
                   </li>
                   <li>
                     <FooterExternalLink href="https://tweaked.cc">CC:Tweaked</FooterExternalLink>
+                  </li>
+                  <li>
+                    <FooterExternalLink href="https://chungindustries.com">
+                      ChungIndustries
+                    </FooterExternalLink>
                   </li>
                 </ul>
               </nav>
