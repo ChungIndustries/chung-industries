@@ -1,5 +1,5 @@
 import { cn } from "@workspace/ui/lib/utils";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export function Prompt({ children }: { children?: ReactNode }) {
   return (
@@ -51,39 +51,93 @@ export function TerminalWindow({
   );
 }
 
-/* The bootstrap story, told line by line. */
-const LINES: { text: ReactNode; className?: string }[] = [
-  { text: <Prompt>wget run registry.cpm.chungindustries.com/install</Prompt> },
-  { text: "Connecting to registry...", className: "text-screen-muted" },
-  { text: "cpm installed. Run `cpm` to get started.", className: "text-screen-green" },
-  { text: <Prompt>cpm install mail</Prompt> },
-  { text: "+ mail (and 2 dependencies) installed.", className: "text-screen-green" },
+/** Seconds per typed character, and the idle-cursor beat before typing. */
+const TYPE_SPEED = 0.045;
+const PROMPT_PAUSE = 0.35;
+
+type ScriptLine =
+  | { kind: "command"; text: string }
+  | { kind: "output"; text: string; className?: string; pause?: number }
+  | { kind: "prompt" };
+
+/* The bootstrap story: commands are typed, responses pop in like in-game. */
+const SCRIPT: ScriptLine[] = [
+  { kind: "command", text: "wget run registry.cpm.chungindustries.com/install" },
+  { kind: "output", text: "Connecting to registry...", className: "text-screen-muted", pause: 0.9 },
   {
-    text: (
-      <Prompt>
-        <Cursor />
-      </Prompt>
-    ),
+    kind: "output",
+    text: "cpm installed. Run `cpm` to get started.",
+    className: "text-screen-green",
+    pause: 0.7,
   },
+  { kind: "command", text: "cpm install mail" },
+  {
+    kind: "output",
+    text: "+ mail (and 2 dependencies) installed.",
+    className: "text-screen-green",
+    pause: 0.5,
+  },
+  { kind: "prompt" },
 ];
 
-/** Per-line reveal delays in seconds, staged like real terminal output. */
-const DELAYS = [0.3, 1.4, 2, 3, 4, 4.6];
+/* Lay the script out on a timeline: a command line holds an idle cursor for
+   PROMPT_PAUSE, types for length * TYPE_SPEED, then yields; an output line
+   holds for its pause before the next line lands. */
+const TIMELINE = (() => {
+  let clock = 0.5;
+  return SCRIPT.map((line) => {
+    const at = clock;
+    let duration = 0;
+    if (line.kind === "command") {
+      duration = line.text.length * TYPE_SPEED;
+      clock = at + PROMPT_PAUSE + duration + 0.4;
+    } else if (line.kind === "output") {
+      clock = at + (line.pause ?? 0.4);
+    }
+    return { line, at, duration };
+  });
+})();
+
+function TypedCommand({ text, at, duration }: { text: string; at: number; duration: number }) {
+  return (
+    <span
+      className="terminal-typed box-content inline-block overflow-hidden align-bottom whitespace-nowrap"
+      style={
+        {
+          "--typed-width": `${text.length}ch`,
+          animation: `typing ${duration}s steps(${text.length}, end) ${at + PROMPT_PAUSE}s both, caret ${PROMPT_PAUSE + duration}s step-end ${at}s both`,
+        } as CSSProperties
+      }
+    >
+      {text}
+    </span>
+  );
+}
 
 /** The hero terminal: a CC:Tweaked computer running the cpm bootstrap. */
 export function Terminal() {
   return (
     <TerminalWindow label="A ComputerCraft terminal installing cpm">
-      {LINES.map((line, index) => (
+      {TIMELINE.map(({ line, at, duration }, index) => (
         <p
           key={index}
           className={cn(
             "m-0 animate-[reveal_0s_both] whitespace-nowrap motion-reduce:animate-none",
-            line.className,
+            line.kind === "output" && line.className,
           )}
-          style={{ animationDelay: `${DELAYS[index]}s` }}
+          style={{ animationDelay: `${at}s` }}
         >
-          {line.text}
+          {line.kind === "command" && (
+            <Prompt>
+              <TypedCommand text={line.text} at={at} duration={duration} />
+            </Prompt>
+          )}
+          {line.kind === "output" && line.text}
+          {line.kind === "prompt" && (
+            <Prompt>
+              <Cursor />
+            </Prompt>
+          )}
         </p>
       ))}
     </TerminalWindow>
