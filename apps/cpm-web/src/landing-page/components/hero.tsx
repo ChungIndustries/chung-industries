@@ -5,46 +5,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Search } from "lucide-react";
-import { type CSSProperties, Fragment, useState } from "react";
+import { Fragment, useState } from "react";
 
 import { Terminal } from "@/landing-page/components/terminal";
 import { packagesQueryOptions } from "@/package/queries";
-
-/**
- * Particles rising off the machine: spread along the terminal's whole top
- * edge, each drifting smoothly up and dissolving like an ember, on offset
- * cycles so the field stays alive without ever getting busy.
- */
-const PARTICLES: { className: string; style: CSSProperties }[] = [
-  {
-    className: "-top-2 left-[6%] size-1.5",
-    style: { "--rise": "7s", "--rise-delay": "0s", "--peak": 0.35, "--climb": "-3rem" },
-  },
-  {
-    className: "-top-1 left-[19%] size-1",
-    style: { "--rise": "9s", "--rise-delay": "-3s", "--peak": 0.25, "--climb": "-2.25rem" },
-  },
-  {
-    className: "-top-2 left-[34%] size-2",
-    style: { "--rise": "6s", "--rise-delay": "-1.5s", "--peak": 0.45, "--climb": "-3.5rem" },
-  },
-  {
-    className: "-top-1 left-[49%] size-1",
-    style: { "--rise": "8s", "--rise-delay": "-5s", "--peak": 0.2, "--climb": "-2rem" },
-  },
-  {
-    className: "-top-2 left-[63%] size-1.5",
-    style: { "--rise": "7.5s", "--rise-delay": "-2.5s", "--peak": 0.3, "--climb": "-3rem" },
-  },
-  {
-    className: "-top-1 left-[78%] size-1",
-    style: { "--rise": "8.5s", "--rise-delay": "-6s", "--peak": 0.25, "--climb": "-2.5rem" },
-  },
-  {
-    className: "-top-2 left-[93%] size-2",
-    style: { "--rise": "6.5s", "--rise-delay": "-4s", "--peak": 0.5, "--climb": "-3.5rem" },
-  },
-].map((particle) => ({ ...particle, style: particle.style as CSSProperties }));
 
 function HeroSearch() {
   const navigate = useNavigate();
@@ -131,17 +95,7 @@ export function Hero() {
           <HeroSearch />
           <TryPackages />
         </div>
-        <div className="relative">
-          {PARTICLES.map((particle, index) => (
-            <span
-              key={index}
-              className={`pixel-particle bg-brand absolute ${particle.className}`}
-              style={particle.style}
-              aria-hidden="true"
-            />
-          ))}
-          <Terminal />
-        </div>
+        <Terminal />
       </div>
       <div className="pixel-rule" aria-hidden="true" />
     </section>

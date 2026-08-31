@@ -85,37 +85,6 @@
   background-image: repeating-linear-gradient(180deg, var(--border) 0 4px, transparent 4px 8px);
 }
 
-/*
- * Pixel particles: squares that spawn along the terminal's top edge, drift
- * smoothly upward, and dissolve like embers. Timing and travel come in per
- * particle via --rise / --rise-delay / --peak / --climb. Under reduced
- * motion the animation never runs and they stay invisible.
- */
-.pixel-particle {
-  opacity: 0;
-  animation: particle-rise var(--rise, 6s) linear var(--rise-delay, 0s) infinite;
-}
-
-@keyframes particle-rise {
-  0% {
-    translate: 0 0;
-    opacity: 0;
-  }
-  15% {
-    opacity: var(--peak, 0.4);
-  }
-  100% {
-    translate: 0 var(--climb, -3rem);
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pixel-particle {
-    animation: none;
-  }
-}
-
 /* Terminal-style staged output: lines flip visible after their delay. */
 @keyframes reveal {
   from {
