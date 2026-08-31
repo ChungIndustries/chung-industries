@@ -20,11 +20,13 @@ const cliPkg = JSON.parse(
   await readFile(join(root, "..", "..", "packages", "cc", "cli", "package.json"), "utf8"),
 );
 
-// cpm.json is generated rather than committed so the versions have a single
-// source of truth: the package.json files, which `nx release` bumps.
+// cpm.json is generated rather than committed so the versions and description
+// have a single source of truth: the package.json files, which `nx release`
+// bumps and repo readers see first.
 const manifest = {
   name: "cpm",
   version: pkg.version,
+  description: pkg.description,
   author: "chungindustries",
   dependencies: { cli: `^${cliPkg.version}` },
 };

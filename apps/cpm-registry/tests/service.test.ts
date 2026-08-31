@@ -101,12 +101,45 @@ describe("PackageService", () => {
 
   it("uses the tarball's cpm.json as the metadata source of truth", async () => {
     // No meta form field at all: everything comes from the manifest.
-    const manifest = meta("1.4.0", { dependencies: { "cc-http": "^1.0.0" } });
+    const manifest = meta("1.4.0", {
+      description: "Example utilities",
+      dependencies: { "cc-http": "^1.0.0" },
+    });
     const pkg = await publish(pack(manifest, { "init.lua": "return {}" }));
 
     expect(pkg.name).toBe("example");
     expect(pkg["dist-tags"].latest).toBe("1.4.0");
+    expect(pkg.versions["1.4.0"]?.description).toBe("Example utilities");
     expect(pkg.versions["1.4.0"]?.dependencies).toEqual({ "cc-http": "^1.0.0" });
+  });
+
+  it("leaves the description absent for manifests without one, and rejects a blank one", async () => {
+    const pkg = await publish(pack(meta("1.0.0"), { "init.lua": "return {}" }));
+    expect(pkg.versions["1.0.0"]?.description).toBeUndefined();
+
+    await expect(
+      publish(pack(meta("1.1.0", { description: "" }), { "init.lua": "return {}" })),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("stamps publish timestamps on the package and each version", async () => {
+    const before = Date.now();
+    const pkg = await publish(pack(meta("1.0.0"), { "init.lua": "return {}" }));
+    const after = Date.now();
+
+    // ISO 8601 strings within the publish window; the package keeps its
+    // first-publish timestamp while each version records its own.
+    for (const stamp of [pkg.createdAt, pkg.versions["1.0.0"]?.createdAt]) {
+      expect(Date.parse(stamp!)).toBeGreaterThanOrEqual(before);
+      expect(Date.parse(stamp!)).toBeLessThanOrEqual(after);
+      expect(stamp).toBe(new Date(Date.parse(stamp!)).toISOString());
+    }
+
+    const again = await publish(pack(meta("1.1.0"), { "init.lua": "return {}" }));
+    expect(again.createdAt).toBe(pkg.createdAt);
+    expect(Date.parse(again.versions["1.1.0"]!.createdAt)).toBeGreaterThanOrEqual(
+      Date.parse(pkg.versions["1.0.0"]!.createdAt),
+    );
   });
 
   it("rejects tarballs without cpm.json or with invalid cpm.json", async () => {

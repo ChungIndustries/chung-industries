@@ -20,13 +20,17 @@ export const bundleDistSchema = z.object({
   size: z.number(),
 });
 
+// The timestamps are required in the registry's contract, but optional here so
+// the site keeps rendering against a registry deployed before they existed.
 export const packageVersionSchema = z.object({
   name: z.string(),
   version: z.string(),
+  description: z.string().optional(),
   author: z.string().optional(),
   dependencies: z.record(z.string(), z.string()).optional(),
   startup: z.string().optional(),
   dist: z.object({ tarball: tarballDistSchema, bundle: bundleDistSchema }),
+  createdAt: z.string().optional(),
 });
 
 export const distTagsSchema = z.object({ latest: z.string() }).catchall(z.string());
@@ -36,6 +40,7 @@ export const packageSchema = z.object({
   author: z.string().optional(),
   "dist-tags": distTagsSchema,
   versions: z.record(z.string(), packageVersionSchema),
+  createdAt: z.string().optional(),
 });
 
 export type TarballDist = z.infer<typeof tarballDistSchema>;

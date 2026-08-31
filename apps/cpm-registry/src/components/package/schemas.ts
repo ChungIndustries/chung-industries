@@ -29,6 +29,18 @@ const packageNameSchema = z
 
 const authorSchema = z.string().optional().openapi({ example: "chungindustries" });
 
+// Capped so the full package index stays cheap to serve and render; the limit
+// is far above what a one-paragraph summary needs.
+const descriptionSchema = z.string().min(1).max(1024).optional().openapi({
+  example: "Example utilities for CC:Tweaked computers",
+  description: "Short user-facing summary of what the package does",
+});
+
+const createdAtSchema = z.iso.datetime().openapi({
+  example: "2026-01-15T12:00:00.000Z",
+  description: "Publish timestamp, ISO 8601 UTC",
+});
+
 // Existence of the referenced file inside the tarball is checked at publish.
 const startupSchema = z.string().min(1).optional().openapi({
   example: "startup.lua",
@@ -128,21 +140,26 @@ export type ResolveRequest = z.infer<typeof resolveRequestSchema>;
 export const packageVersionMetadataSchema = z.strictObject({
   name: packageNameSchema,
   version: semverSchema,
+  description: descriptionSchema,
   author: authorSchema,
   dependencies: dependenciesSchema,
   startup: startupSchema,
 });
 export type PackageVersionMetadata = z.infer<typeof packageVersionMetadataSchema>;
 
+// `createdAt` is assigned by the store at publish, so it is part of the
+// response contract but not of the manifest metadata above.
 export const packageVersionSchema = packageVersionMetadataSchema
-  .extend({ dist: distSchema })
+  .extend({ dist: distSchema, createdAt: createdAtSchema })
   .openapi("PackageVersion", {
     example: {
       name: "example",
+      description: "Example utilities for CC:Tweaked computers",
       author: "chungindustries",
       version: "1.0.0",
       dependencies: { "cc-http": "^1.2.0" },
       dist: exampleDist,
+      createdAt: "2026-01-15T12:00:00.000Z",
     },
   });
 export type PackageVersion = z.infer<typeof packageVersionSchema>;
@@ -160,15 +177,18 @@ export const packageSchema = z
   .strictObject({
     name: packageNameSchema,
     author: authorSchema,
+    createdAt: createdAtSchema.openapi({ description: "First-publish timestamp, ISO 8601 UTC" }),
     "dist-tags": distTagsSchema,
     versions: z.record(semverSchema, packageVersionSchema).openapi({
       example: {
         "1.0.0": {
           name: "example",
+          description: "Example utilities for CC:Tweaked computers",
           author: "chungindustries",
           version: "1.0.0",
           dependencies: { "cc-http": "^1.2.0" },
           dist: exampleDist,
+          createdAt: "2026-01-15T12:00:00.000Z",
         },
       },
     }),

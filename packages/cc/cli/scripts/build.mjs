@@ -14,9 +14,15 @@ const stage = join(dist, "package");
 const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const file = join(dist, `cli-${pkg.version}.tgz`);
 
-// cpm.json is generated rather than committed so the version has a single
-// source of truth: package.json, which `nx release` bumps.
-const manifest = { name: "cli", version: pkg.version, author: "chungindustries" };
+// cpm.json is generated rather than committed so the version and description
+// have a single source of truth: package.json, which `nx release` bumps and
+// repo readers see first.
+const manifest = {
+  name: "cli",
+  version: pkg.version,
+  description: pkg.description,
+  author: "chungindustries",
+};
 
 await rm(stage, { recursive: true, force: true });
 await mkdir(stage, { recursive: true });

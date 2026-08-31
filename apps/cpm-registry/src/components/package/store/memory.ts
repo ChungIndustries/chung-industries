@@ -78,14 +78,17 @@ export class InMemoryRegistryStore implements RegistryStore {
         `Version ${entry.version} of "${name}" is already published and immutable`,
       );
     }
+    // Timestamps are stamped at insert, exactly like the D1 store's `now`.
+    const now = new Date().toISOString();
     const pkg: Package = {
       name,
       ...((existing?.author ?? author) ? { author: existing?.author ?? author } : {}),
+      createdAt: existing?.createdAt ?? now,
       "dist-tags": {
         ...existing?.["dist-tags"],
         ...distTags,
       } as Package["dist-tags"],
-      versions: { ...existing?.versions, [entry.version]: entry },
+      versions: { ...existing?.versions, [entry.version]: { ...entry, createdAt: now } },
     };
     this.packages.set(name, pkg);
     return clone(pkg);
