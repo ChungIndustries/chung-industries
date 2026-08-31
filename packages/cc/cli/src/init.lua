@@ -140,6 +140,19 @@ local function wantsHelp(tokens)
   return false
 end
 
+-- The suffixes that finish `text` to one of `candidates`, the form shell completion
+-- results take. Each carries a trailing space to signal more of the line can follow,
+-- so an exact match yields just the space (mirroring cc.completion.choice).
+local function completeSuffixes(text, candidates)
+  local results = {}
+  for _, candidate in ipairs(candidates) do
+    if #candidate >= #text and candidate:sub(1, #text) == text then
+      results[#results + 1] = candidate:sub(#text + 1) .. " "
+    end
+  end
+  return results
+end
+
 --- Register a command. The spec is a table:
 ---
 --- - `description`: shown by `help <command>`
@@ -254,6 +267,30 @@ function App:printCommandHelp(command)
   end
 end
 
+-- The help command is generated from the declarations themselves, registered on
+-- first run (or first completion) so it lists after the tool's own commands (which
+-- may also override it).
+local function ensureHelpCommand(app)
+  if app.commands.help then
+    return
+  end
+  app:command("help", {
+    description = "Show usage for the tool or for one command",
+    arguments = { { name = "command", hint = "<command>" } },
+    handler = function(args)
+      if args.command == nil then
+        app:printHelp()
+        return
+      end
+      local command = app.commands[args.command]
+      if not command then
+        error("Unknown command: " .. args.command, 0)
+      end
+      app:printCommandHelp(command)
+    end,
+  })
+end
+
 --- Pick the command from the program's arguments and run it: call as `app:run(...)`.
 --- No command, `--help`, or `-h` prints the help, and `--help`/`-h` after a command
 --- prints that command's help. Unknown commands, wrong arguments, and errors thrown
@@ -263,25 +300,7 @@ function App:run(...)
   local tokens = { ... }
   local name = table.remove(tokens, 1)
 
-  -- The help command is generated from the declarations themselves, registered on
-  -- first run so it lists after the tool's own commands (which may also override it).
-  if not self.commands.help then
-    self:command("help", {
-      description = "Show usage for the tool or for one command",
-      arguments = { { name = "command", hint = "<command>" } },
-      handler = function(args)
-        if args.command == nil then
-          self:printHelp()
-          return
-        end
-        local command = self.commands[args.command]
-        if not command then
-          error("Unknown command: " .. args.command, 0)
-        end
-        self:printCommandHelp(command)
-      end,
-    })
-  end
+  ensureHelpCommand(self)
 
   if name == nil or name == "--help" or name == "-h" then
     self:printHelp()
@@ -313,6 +332,42 @@ function App:run(...)
     return false
   end
   return true
+end
+
+--- Build a completer for `shell.setCompletionFunction`, driven by the same
+--- declarations as parsing and help: the first argument completes command names
+--- (including the generated help command) and later arguments starting with `-`
+--- complete the command's `--flags`. Registration must happen before the user
+--- types, so it belongs in a startup file:
+---
+---   shell.setCompletionFunction("tool/bin/tool.lua", app:completionFunction())
+function App:completionFunction()
+  return function(_, index, text, previous)
+    ensureHelpCommand(self)
+    if index == 1 then
+      return completeSuffixes(text, self.order)
+    end
+    if text:sub(1, 1) ~= "-" then
+      return
+    end
+    -- `previous` holds the words before the one being completed with the program
+    -- name first (despite its documented example), so the command is the second
+    -- entry; verified against the shell.complete source and the previous tables
+    -- cc.shell.completion.programWithArgs builds when it delegates.
+    local command = self.commands[previous[2]]
+    if not command then
+      return
+    end
+    local names = {}
+    for position, option in ipairs(command.options) do
+      names[position] = "--" .. option.name
+    end
+    -- run accepts --help after any command (see wantsHelp), so offer it too.
+    if not command.optionsByName.help then
+      names[#names + 1] = "--help"
+    end
+    return completeSuffixes(text, names)
+  end
 end
 
 --- Create an app: `spec.name` is the program name used in usage lines,

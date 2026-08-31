@@ -28,6 +28,7 @@ const manifest = {
   version: pkg.version,
   description: pkg.description,
   author: "chungindustries",
+  startup: "startup.lua",
   dependencies: { cli: `^${cliPkg.version}` },
 };
 
