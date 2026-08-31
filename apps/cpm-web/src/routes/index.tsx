@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
+import { Separator } from "@workspace/ui/components/separator";
 import { ArrowUpRight, Search } from "lucide-react";
 import { Fragment, useState } from "react";
 
@@ -28,21 +29,20 @@ function HeroSearch() {
         void navigate({ to: "/packages", search: query ? { q: query } : {} });
       }}
     >
-      <div className="relative flex-1">
-        <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
-          aria-hidden="true"
-        />
-        <Input
+      <InputGroup className="bg-card dark:bg-card h-11 flex-1">
+        <InputGroupAddon>
+          <Search aria-hidden="true" />
+        </InputGroupAddon>
+        <InputGroupInput
           type="search"
           name="q"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search packages"
           aria-label="Search packages"
-          className="bg-card dark:bg-card h-11 pl-10 !text-base"
+          className="!text-base"
         />
-      </div>
+      </InputGroup>
       <Button type="submit" size="lg" className="h-11 px-5">
         Search
       </Button>
@@ -59,13 +59,13 @@ function TryPackages() {
   const names = (packages.data ?? []).slice(0, 3).map((pkg) => pkg.name);
 
   return (
-    <p className="text-muted-foreground mt-4 h-5 text-sm">
+    <div className="text-muted-foreground mt-4 flex h-5 items-center gap-2 text-sm">
       {names.length > 0 && (
         <>
-          Try:{" "}
+          <span>Try:</span>
           {names.map((name, index) => (
             <Fragment key={name}>
-              {index > 0 && <span aria-hidden="true"> · </span>}
+              {index > 0 && <Separator orientation="vertical" className="h-3 self-center" />}
               <Link
                 to="/packages/$name"
                 params={{ name }}
@@ -77,7 +77,7 @@ function TryPackages() {
           ))}
         </>
       )}
-    </p>
+    </div>
   );
 }
 

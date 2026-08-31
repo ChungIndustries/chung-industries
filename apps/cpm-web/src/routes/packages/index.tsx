@@ -7,7 +7,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@workspace/ui/components/empty";
-import { Input } from "@workspace/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PackageSearch, Search } from "lucide-react";
 import { useMemo } from "react";
@@ -66,24 +66,24 @@ function PackagesPage() {
     <div className="mx-auto max-w-5xl space-y-6 px-6 py-12">
       <PageHead />
 
-      <search className="relative block">
-        <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-          aria-hidden="true"
-        />
-        <Input
-          type="search"
-          value={q}
-          placeholder="Search packages"
-          aria-label="Search packages"
-          className="bg-card dark:bg-card h-10 pl-9"
-          onChange={(event) =>
-            void navigate({
-              search: event.target.value ? { q: event.target.value } : {},
-              replace: true,
-            })
-          }
-        />
+      <search>
+        <InputGroup className="bg-card dark:bg-card h-10">
+          <InputGroupAddon>
+            <Search aria-hidden="true" />
+          </InputGroupAddon>
+          <InputGroupInput
+            type="search"
+            value={q}
+            placeholder="Search packages"
+            aria-label="Search packages"
+            onChange={(event) =>
+              void navigate({
+                search: event.target.value ? { q: event.target.value } : {},
+                replace: true,
+              })
+            }
+          />
+        </InputGroup>
       </search>
 
       <p className="text-muted-foreground text-sm" role="status">

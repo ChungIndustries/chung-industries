@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Separator } from "@workspace/ui/components/separator";
 
 import type { Package } from "@/package/schemas";
 
@@ -20,10 +21,13 @@ export function PackageRow({ pkg }: { pkg: Package }) {
             <span className="text-muted-foreground ml-3 text-sm">by {pkg.author}</span>
           )}
         </span>
-        <span className="text-muted-foreground text-sm">
-          <span className="text-foreground">v{pkg["dist-tags"].latest}</span> · {versionCount}{" "}
-          {versionCount === 1 ? "version" : "versions"}
-        </span>
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <span className="text-foreground">v{pkg["dist-tags"].latest}</span>
+          <Separator orientation="vertical" className="h-3.5 self-center" />
+          <span>
+            {versionCount} {versionCount === 1 ? "version" : "versions"}
+          </span>
+        </div>
       </Link>
     </li>
   );

@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@workspace/ui/components/breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -57,13 +65,35 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <nav className="text-muted-foreground mb-6 text-sm" aria-label="Breadcrumb">
-        <Link to="/packages" className="hover:text-foreground hover:underline">
-          packages
-        </Link>{" "}
-        / {pkg.name}
-        {pinned && ` / ${version.version}`}
-      </nav>
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/packages">packages</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          {pinned ? (
+            <>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/packages/$name" params={{ name: pkg.name }}>
+                    {pkg.name}
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{version.version}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </>
+          ) : (
+            <BreadcrumbItem>
+              <BreadcrumbPage>{pkg.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          )}
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="flex flex-wrap items-baseline gap-3">
         <h1 className="font-mono text-3xl font-semibold break-all">{pkg.name}</h1>
@@ -164,21 +194,21 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
                 </MetaRow>
               </dl>
               <Separator className="my-3" />
-              <p className="text-sm">
+              <div className="flex items-center gap-2 text-sm">
                 <a
                   href={`${REGISTRY_ORIGIN}${version.dist.tarball.url}`}
                   className="text-brand font-medium hover:underline"
                 >
                   tarball
                 </a>
-                <span className="text-muted-foreground"> · </span>
+                <Separator orientation="vertical" className="h-3.5 self-center" />
                 <a
                   href={`${REGISTRY_ORIGIN}${version.dist.bundle.url}`}
                   className="text-brand font-medium hover:underline"
                 >
                   bundle
                 </a>
-              </p>
+              </div>
             </CardContent>
           </Card>
         </aside>
