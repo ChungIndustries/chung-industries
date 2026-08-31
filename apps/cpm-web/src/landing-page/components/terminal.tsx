@@ -16,7 +16,7 @@ export function Cursor() {
   );
 }
 
-/** A Mac-style terminal window dressed as a CC:Tweaked computer screen. */
+/** A terminal window dressed as a CC:Tweaked computer screen. */
 export function TerminalWindow({
   label,
   className,

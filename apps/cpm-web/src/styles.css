@@ -61,9 +61,9 @@
 }
 
 /*
- * A dithered edge: two offset rows of 3px squares in the border colour, the
- * way Minecraft textures fade into each other. Used instead of a plain
- * border at the site's big seams (hero bottom, footer top).
+ * A dithered edge: two offset rows of squares in the border colour, used
+ * instead of a plain border at the site's big seams (hero bottom, footer
+ * top).
  */
 .pixel-rule {
   height: 8px;

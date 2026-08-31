@@ -3,7 +3,7 @@ import { Separator } from "@workspace/ui/components/separator";
 
 import type { Package } from "@/package/schemas";
 
-/** One package in the index: a full-width row, npm style. */
+/** One package in the index, rendered as a full-width row. */
 export function PackageRow({ pkg }: { pkg: Package }) {
   const versionCount = Object.keys(pkg.versions).length;
   return (
