@@ -5,33 +5,10 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Search } from "lucide-react";
-import { type CSSProperties, Fragment, useState } from "react";
+import { Fragment, useState } from "react";
 
 import { Terminal } from "@/landing-page/components/terminal";
 import { packagesQueryOptions } from "@/package/queries";
-
-/**
- * Sparks off the terminal's top-right corner: hugging the frame so they read
- * as emitted by the machine, not floating free.
- */
-const PARTICLES: { className: string; style: CSSProperties }[] = [
-  {
-    className: "bg-brand/50 -top-1 -right-1 size-2",
-    style: { "--drift": "6s", "--drift-delay": "0s" } as CSSProperties,
-  },
-  {
-    className: "bg-brand/35 -top-4 -right-3 size-1.5",
-    style: { "--drift": "7.5s", "--drift-delay": "-2s" } as CSSProperties,
-  },
-  {
-    className: "bg-brand/25 -top-7 -right-1 size-1",
-    style: { "--drift": "9s", "--drift-delay": "-4.5s" } as CSSProperties,
-  },
-  {
-    className: "bg-brand/20 -top-3 right-3 size-1",
-    style: { "--drift": "8s", "--drift-delay": "-1s" } as CSSProperties,
-  },
-];
 
 function HeroSearch() {
   const navigate = useNavigate();
@@ -118,19 +95,7 @@ export function Hero() {
           <HeroSearch />
           <TryPackages />
         </div>
-        <div className="relative">
-          {/* Pixel particles rising off the machine's corner, biggest and
-              brightest nearest the terminal, fading as they climb. */}
-          {PARTICLES.map((particle, index) => (
-            <span
-              key={index}
-              className={`pixel-particle absolute ${particle.className}`}
-              style={particle.style}
-              aria-hidden="true"
-            />
-          ))}
-          <Terminal />
-        </div>
+        <Terminal />
       </div>
       <div className="pixel-rule" aria-hidden="true" />
     </section>

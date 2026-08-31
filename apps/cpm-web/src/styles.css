@@ -85,31 +85,6 @@
   background-image: repeating-linear-gradient(180deg, var(--border) 0 4px, transparent 4px 8px);
 }
 
-/*
- * Pixel particles: little squares drifting gently upward off the hero
- * terminal, Minecraft-particle style. Timing comes in per particle via
- * --drift / --drift-delay.
- */
-.pixel-particle {
-  animation: particle-drift var(--drift, 8s) ease-in-out var(--drift-delay, 0s) infinite;
-}
-
-@keyframes particle-drift {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 0 -8px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pixel-particle {
-    animation: none;
-  }
-}
-
 /* Terminal-style staged output: lines flip visible after their delay. */
 @keyframes reveal {
   from {
