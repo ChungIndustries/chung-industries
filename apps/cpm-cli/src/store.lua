@@ -104,10 +104,12 @@ local function readManifest(name)
   return nil
 end
 
--- A package declaring `startup` in its cpm.json gets a numbered drop-in that runs that file at
--- boot. It sorts after 50_cpm.lua, so /cpm/bin is already on the shell path when it runs. The
--- hook is regenerated on every install and deleted when the field (or the package) goes away.
-local function syncStartupHook(name)
+--- A package declaring `startup` in its cpm.json gets a numbered drop-in that runs that file
+--- at boot. It sorts after 50_cpm.lua, so /cpm/bin is already on the shell path when it runs.
+--- The hook is regenerated on every install and deleted when the field (or the package) goes
+--- away. Returns the hook path when one was written, so installers can also run it for the
+--- current session.
+function store.syncStartupHook(name)
   local manifest = readManifest(name)
   local startup = manifest and manifest.startup
   local hook = startupHookPath(name)
@@ -115,7 +117,7 @@ local function syncStartupHook(name)
     if fs.exists(hook) then
       fs.delete(hook)
     end
-    return
+    return nil
   end
   store.writeFile(
     hook,
@@ -126,6 +128,7 @@ local function syncStartupHook(name)
       "",
     }, "\n")
   )
+  return hook
 end
 
 --- Regenerate the shims for the package currently installed under /cpm/packages/<name>,
@@ -169,7 +172,7 @@ function store.commit(name)
   end
   fs.move(staging, target)
   store.writeShims(name)
-  syncStartupHook(name)
+  store.syncStartupHook(name)
 end
 
 function store.clearStaging(name)

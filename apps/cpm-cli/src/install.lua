@@ -184,8 +184,10 @@ end
 -- The packages are on disk now; cpm's own store.lua (which requires nothing) does the rest:
 -- shims, the startup drop-in, and both live activations, from their single source.
 local store = assert(loadfile(PACKAGES_DIR .. "/cpm/store.lua", nil, _ENV))()
+local startupHooks = {}
 for _, pkg in ipairs(packages) do
   store.writeShims(pkg.name)
+  startupHooks[#startupHooks + 1] = store.syncStartupHook(pkg.name)
 end
 store.writeStartup()
 -- Merged into any existing state so re-running the bootstrap never untracks other packages.
@@ -209,5 +211,21 @@ end
 store.writeFile(store.STATE, textutils.serialiseJSON({ roots = roots, installed = installed }))
 store.ensureShellPath()
 store.ensureRequireHook()
+
+-- Boot runs the startup hooks written above; run them now as well so boot-time behavior
+-- (cpm's shell tab-completion) works in this session too. A failing hook is a warning,
+-- not a failed install: everything is on disk and the next boot retries it.
+for _, hook in ipairs(startupHooks) do
+  local fn, loadErr = loadfile(hook, nil, _ENV)
+  local ok, runErr
+  if fn then
+    ok, runErr = pcall(fn)
+  else
+    ok, runErr = false, loadErr
+  end
+  if not ok then
+    printError("Warning: " .. hook .. " failed: " .. tostring(runErr))
+  end
+end
 
 print("Installed cpm@" .. cpmVersion .. ". Run `cpm help` to get started.")

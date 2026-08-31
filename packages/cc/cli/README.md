@@ -49,6 +49,14 @@ A broken table (a repeated argument that is not last, a required argument after 
 
 The whole library is one file, `src/init.lua`, loaded with a single `require`, so cpm can swap the installed tree while a program using it is still running.
 
+## Tab-completion
+
+`app:completionFunction()` builds a completer for CC:Tweaked's `shell.setCompletionFunction`, driven by the same declarations: the first argument completes command names (including the generated `help`), and later arguments starting with `-` complete the command's `--flags` plus `--help`. The shell only consults completers that are already registered when the user types, so registration belongs in a startup file, keyed by the program's resolved path (absolute, without the leading slash):
+
+```lua
+shell.setCompletionFunction("tool/bin/tool.lua", app:completionFunction())
+```
+
 ## Tooling
 
 | Task                           | Command                                                                                                   |

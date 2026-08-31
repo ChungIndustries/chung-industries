@@ -164,6 +164,38 @@ reset()
 check(app:run("--help") == true, "--help prints the tool help")
 check(contains("Usage:"), "--help output has the usage list")
 
+-- Tab-completion. The completer is called the way shell.complete calls it: the
+-- shell API first (unused here), the argument index, the text being completed,
+-- and the previous words with the program name at [1].
+local complete = newApp():completionFunction()
+local function completions(index, text, previous)
+  local results = complete(nil, index, text, previous)
+  return results and table.concat(results, "|")
+end
+
+check(
+  completions(1, "", { "tool" }) == "add |bump |find |boom |help ",
+  "empty first argument completes every command, help last"
+)
+check(completions(1, "b", { "tool" }) == "ump |oom ", "commands complete by prefix, in order")
+check(completions(1, "add", { "tool" }) == " ", "an exact command match completes to a space")
+check(completions(1, "nope", { "tool" }) == "", "an unmatched command completes to nothing")
+check(
+  completions(2, "--", { "tool", "add" }) == "dir |force |help ",
+  "dashed arguments complete the command's options plus --help"
+)
+check(
+  completions(3, "-", { "tool", "add", "a" }) == "-dir |-force |-help ",
+  "options complete at any later index, from a single dash"
+)
+check(completions(2, "--force", { "tool", "add" }) == " ", "an exact option match completes")
+check(
+  completions(2, "--", { "tool", "bump" }) == "help ",
+  "a command without options offers --help"
+)
+check(completions(2, "", { "tool", "add" }) == nil, "positional values are not completed")
+check(completions(2, "--", { "tool", "nope" }) == nil, "an unknown command completes nothing")
+
 -- Declaration validation.
 local function fails(message, register)
   local ok, err = pcall(register)
