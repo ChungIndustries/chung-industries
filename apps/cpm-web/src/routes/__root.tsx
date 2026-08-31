@@ -137,6 +137,7 @@ function RootComponent() {
               <p className="text-muted-foreground text-sm">
                 The package manager for ComputerCraft.
               </p>
+              <p className="text-muted-foreground text-xs">© 2026 ChungIndustries</p>
             </div>
             <div className="grid grid-cols-2 gap-8 sm:gap-20">
               <nav aria-label="Site pages">
