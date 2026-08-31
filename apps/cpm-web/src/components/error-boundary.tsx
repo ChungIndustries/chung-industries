@@ -1,14 +1,17 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
+import { useState } from "react";
 
 import { TerminalScript, TerminalWindow } from "@/landing-page/components/terminal";
 
 /**
  * The error page as a CraftOS session: the site is a program that just
  * crashed with a classic Lua error, the way a CC:Tweaked program dies.
+ * Rebooting retries the route, and restarts the terminal to match.
  */
 export function ErrorBoundary({ error }: { error: Error }) {
   const router = useRouter();
+  const [bootCount, setBootCount] = useState(0);
 
   return (
     <div className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col items-center justify-center px-6 py-16 text-center">
@@ -20,7 +23,9 @@ export function ErrorBoundary({ error }: { error: Error }) {
         className="mt-8 w-full text-left"
       >
         <TerminalScript
+          key={bootCount}
           script={[
+            { kind: "output", text: "CraftOS 1.9", className: "text-screen-yellow", pause: 0.6 },
             { kind: "command", text: "cpm web" },
             {
               kind: "output",
@@ -38,7 +43,14 @@ export function ErrorBoundary({ error }: { error: Error }) {
         <Button variant="outline" asChild>
           <Link to="/">Go home</Link>
         </Button>
-        <Button onClick={() => router.invalidate()}>Try again</Button>
+        <Button
+          onClick={() => {
+            setBootCount((count) => count + 1);
+            void router.invalidate();
+          }}
+        >
+          Reboot
+        </Button>
       </div>
     </div>
   );
