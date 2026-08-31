@@ -16,11 +16,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@workspace/ui/components/empty";
-import { AlertCircle, ArrowUpRight, BookOpen, FileQuestion, Package } from "lucide-react";
+import { AlertCircle, FileQuestion } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { GithubIcon } from "@/components/icons";
-import { DOCS_URL, GITHUB_URL, SITE_ORIGIN } from "@/site";
+import { SiteFooter } from "@/components/footer";
+import { SiteHeader } from "@/components/header";
+import { SITE_ORIGIN } from "@/site";
 
 import appCss from "@/styles.css?url";
 
@@ -77,112 +78,14 @@ function RootDocument({ children }: { children: ReactNode }) {
   );
 }
 
-function FooterExternalLink({ href, children }: { href: string; children: string }) {
-  return (
-    <a href={href} className="hover:text-foreground inline-flex items-center gap-1">
-      {children}
-      <ArrowUpRight className="size-3" aria-hidden="true" />
-    </a>
-  );
-}
-
 function RootComponent() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-border bg-background/75 sticky top-0 z-10 border-b backdrop-blur-xl">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-6">
-          <Link to="/" aria-label="cpm home">
-            <span className="bg-brand text-background font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">
-              cpm
-            </span>
-          </Link>
-          <nav className="flex gap-6 text-sm font-medium" aria-label="Site">
-            <Link
-              to="/packages"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
-              activeProps={{ className: "text-foreground" }}
-            >
-              <Package className="size-4" aria-hidden="true" />
-              Packages
-            </Link>
-            <a
-              href={DOCS_URL}
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
-            >
-              <BookOpen className="size-4" aria-hidden="true" />
-              Docs
-            </a>
-            <a
-              href={GITHUB_URL}
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
-            >
-              <GithubIcon className="size-4" />
-              GitHub
-            </a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
       <main className="flex-1">
         <Outlet />
       </main>
-      <footer className="border-border border-t">
-        <div className="mx-auto w-full max-w-5xl px-6 py-12">
-          <div className="flex flex-col justify-between gap-10 sm:flex-row">
-            <div className="max-w-xs space-y-3">
-              <Link to="/" aria-label="cpm home" className="inline-block">
-                <span className="bg-brand text-background font-display rounded-sm px-1.5 pt-1 pb-0.5 text-sm leading-none">
-                  cpm
-                </span>
-              </Link>
-              <p className="text-muted-foreground text-sm">
-                The package manager for ComputerCraft.
-              </p>
-              <p className="text-muted-foreground text-xs">© 2026 ChungIndustries</p>
-            </div>
-            <div className="grid grid-cols-2 gap-8 sm:gap-20">
-              <nav aria-label="Site pages">
-                <h3 className="mb-3 text-sm font-medium">Site</h3>
-                <ul className="text-muted-foreground space-y-2 text-sm">
-                  <li>
-                    <Link to="/packages" className="hover:text-foreground">
-                      Packages
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/" hash="get-started" className="hover:text-foreground">
-                      Get started
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/" hash="commands" className="hover:text-foreground">
-                      Commands
-                    </Link>
-                  </li>
-                </ul>
-              </nav>
-              <nav aria-label="External resources">
-                <h3 className="mb-3 text-sm font-medium">Resources</h3>
-                <ul className="text-muted-foreground space-y-2 text-sm">
-                  <li>
-                    <FooterExternalLink href={DOCS_URL}>Registry API</FooterExternalLink>
-                  </li>
-                  <li>
-                    <FooterExternalLink href={GITHUB_URL}>GitHub</FooterExternalLink>
-                  </li>
-                  <li>
-                    <FooterExternalLink href="https://tweaked.cc">CC:Tweaked</FooterExternalLink>
-                  </li>
-                  <li>
-                    <FooterExternalLink href="https://chungindustries.com">
-                      ChungIndustries
-                    </FooterExternalLink>
-                  </li>
-                </ul>
-              </nav>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
