@@ -133,7 +133,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
   return (
     <div className="mx-auto max-w-5xl px-6 pt-6 pb-12">
       <Breadcrumb className="mb-4">
-        <BreadcrumbList>
+        <BreadcrumbList className="gap-1 sm:gap-1.5">
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
               <Link to="/packages">packages</Link>

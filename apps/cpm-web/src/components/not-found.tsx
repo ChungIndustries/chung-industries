@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
+import { House, Package } from "lucide-react";
 
 import { TerminalScript, TerminalWindow } from "@/landing-page/components/terminal";
 
@@ -32,10 +33,16 @@ export function NotFound() {
       </p>
       <div className="mt-6 flex gap-3">
         <Button variant="outline" asChild>
-          <Link to="/">Go home</Link>
+          <Link to="/">
+            <House aria-hidden="true" />
+            Go home
+          </Link>
         </Button>
         <Button asChild>
-          <Link to="/packages">Browse packages</Link>
+          <Link to="/packages">
+            <Package aria-hidden="true" />
+            Browse packages
+          </Link>
         </Button>
       </div>
     </div>

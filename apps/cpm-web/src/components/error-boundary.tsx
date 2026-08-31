@@ -1,5 +1,6 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
+import { House, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 import { TerminalScript, TerminalWindow } from "@/landing-page/components/terminal";
@@ -41,7 +42,10 @@ export function ErrorBoundary({ error }: { error: Error }) {
       </p>
       <div className="mt-6 flex gap-3">
         <Button variant="outline" asChild>
-          <Link to="/">Go home</Link>
+          <Link to="/">
+            <House aria-hidden="true" />
+            Go home
+          </Link>
         </Button>
         <Button
           onClick={() => {
@@ -49,6 +53,7 @@ export function ErrorBoundary({ error }: { error: Error }) {
             void router.invalidate();
           }}
         >
+          <RotateCcw aria-hidden="true" />
           Reboot
         </Button>
       </div>
