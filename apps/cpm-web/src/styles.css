@@ -86,14 +86,14 @@
 }
 
 /*
- * Pixel particles: squares that spawn at the terminal's corner, rise in
- * chunky discrete steps, and dissolve - Minecraft particles, not floating
- * decor. Timing comes in per particle via --rise / --rise-delay / --peak.
- * Under reduced motion the animation never runs and they stay invisible.
+ * Pixel particles: squares that spawn along the terminal's top edge, drift
+ * smoothly upward, and dissolve like embers. Timing and travel come in per
+ * particle via --rise / --rise-delay / --peak / --climb. Under reduced
+ * motion the animation never runs and they stay invisible.
  */
 .pixel-particle {
   opacity: 0;
-  animation: particle-rise var(--rise, 5s) steps(10) var(--rise-delay, 0s) infinite;
+  animation: particle-rise var(--rise, 6s) linear var(--rise-delay, 0s) infinite;
 }
 
 @keyframes particle-rise {
@@ -101,11 +101,11 @@
     translate: 0 0;
     opacity: 0;
   }
-  20% {
-    opacity: var(--peak, 0.5);
+  15% {
+    opacity: var(--peak, 0.4);
   }
   100% {
-    translate: 0 -3rem;
+    translate: 0 var(--climb, -3rem);
     opacity: 0;
   }
 }

@@ -11,24 +11,40 @@ import { Terminal } from "@/landing-page/components/terminal";
 import { packagesQueryOptions } from "@/package/queries";
 
 /**
- * Particles emitted from the terminal's top-right corner: each spawns at the
- * frame, climbs in discrete steps, and dissolves. Staggered cycles keep it
- * sparse - mostly one visible at a time.
+ * Particles rising off the machine: spread along the terminal's whole top
+ * edge, each drifting smoothly up and dissolving like an ember, on offset
+ * cycles so the field stays alive without ever getting busy.
  */
 const PARTICLES: { className: string; style: CSSProperties }[] = [
   {
-    className: "-top-1 -right-1 size-2",
-    style: { "--rise": "5s", "--rise-delay": "0s", "--peak": 0.55 } as CSSProperties,
+    className: "-top-2 left-[6%] size-1.5",
+    style: { "--rise": "7s", "--rise-delay": "0s", "--peak": 0.35, "--climb": "-3rem" },
   },
   {
-    className: "-top-2 right-4 size-1.5",
-    style: { "--rise": "6.5s", "--rise-delay": "-4s", "--peak": 0.35 } as CSSProperties,
+    className: "-top-1 left-[19%] size-1",
+    style: { "--rise": "9s", "--rise-delay": "-3s", "--peak": 0.25, "--climb": "-2.25rem" },
   },
   {
-    className: "-top-1 -right-3 size-1",
-    style: { "--rise": "7s", "--rise-delay": "-2s", "--peak": 0.25 } as CSSProperties,
+    className: "-top-2 left-[34%] size-2",
+    style: { "--rise": "6s", "--rise-delay": "-1.5s", "--peak": 0.45, "--climb": "-3.5rem" },
   },
-];
+  {
+    className: "-top-1 left-[49%] size-1",
+    style: { "--rise": "8s", "--rise-delay": "-5s", "--peak": 0.2, "--climb": "-2rem" },
+  },
+  {
+    className: "-top-2 left-[63%] size-1.5",
+    style: { "--rise": "7.5s", "--rise-delay": "-2.5s", "--peak": 0.3, "--climb": "-3rem" },
+  },
+  {
+    className: "-top-1 left-[78%] size-1",
+    style: { "--rise": "8.5s", "--rise-delay": "-6s", "--peak": 0.25, "--climb": "-2.5rem" },
+  },
+  {
+    className: "-top-2 left-[93%] size-2",
+    style: { "--rise": "6.5s", "--rise-delay": "-4s", "--peak": 0.5, "--climb": "-3.5rem" },
+  },
+].map((particle) => ({ ...particle, style: particle.style as CSSProperties }));
 
 function HeroSearch() {
   const navigate = useNavigate();
