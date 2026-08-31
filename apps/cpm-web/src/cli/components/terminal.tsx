@@ -100,17 +100,23 @@ const TIMELINE = (() => {
 
 function TypedCommand({ text, at, duration }: { text: string; at: number; duration: number }) {
   return (
-    <span
-      className="terminal-typed box-content inline-block overflow-hidden align-bottom whitespace-nowrap"
-      style={
-        {
-          "--typed-width": `${text.length}ch`,
-          animation: `typing ${duration}s steps(${text.length}, end) ${at + PROMPT_PAUSE}s both, caret ${PROMPT_PAUSE + duration}s step-end ${at}s both`,
-        } as CSSProperties
-      }
-    >
-      {text}
-    </span>
+    <>
+      <span
+        className="terminal-typed inline-block overflow-hidden align-bottom whitespace-nowrap"
+        style={
+          {
+            "--typed-width": `${text.length}ch`,
+            animation: `typing ${duration}s steps(${text.length}, end) ${at + PROMPT_PAUSE}s both`,
+          } as CSSProperties
+        }
+      >
+        {text}
+      </span>
+      <span
+        className="bg-screen-foreground -mb-0.5 inline-block h-4 w-2 motion-reduce:hidden"
+        style={{ animation: `caret-hide ${PROMPT_PAUSE + duration}s step-end ${at}s both` }}
+      />
+    </>
   );
 }
 

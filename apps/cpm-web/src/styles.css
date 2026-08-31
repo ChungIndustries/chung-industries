@@ -69,10 +69,9 @@
 }
 
 /*
- * Terminal typing: a command reveals one character per step behind a block
- * caret, while output lines pop in whole. The timeline lives in terminal.tsx;
- * the caret is the border on the width-clipped span, so it rides the typing
- * edge and goes out when the command is done.
+ * Terminal typing: a command reveals one character per step while a block
+ * caret rides the clipped edge in inline flow, then vanishes when the
+ * command is done. The timeline lives in terminal.tsx.
  */
 @keyframes typing {
   from {
@@ -83,17 +82,13 @@
   }
 }
 
-@keyframes caret {
+@keyframes caret-hide {
   from {
-    border-color: var(--color-screen-foreground);
+    opacity: 1;
   }
   to {
-    border-color: transparent;
+    opacity: 0;
   }
-}
-
-.terminal-typed {
-  border-right: 0.6ch solid transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
