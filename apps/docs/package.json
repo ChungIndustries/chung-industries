@@ -24,6 +24,6 @@
     "@total-typescript/tsconfig": "^1.0.4",
     "@workspace/lint-config": "workspace:*",
     "typescript": "^7.0.2",
-    "wrangler": "^4.116.0"
+    "wrangler": "^4.127.0"
   }
 }

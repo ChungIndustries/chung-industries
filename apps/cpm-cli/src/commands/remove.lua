@@ -5,21 +5,23 @@
 local sync = require("cpm.sync")
 local state = require("cpm.state")
 
-return function(args)
-  if #args == 0 then
-    error("usage: cpm remove <name> ...", 0)
-  end
-
-  local current = state.load()
-  for _, name in ipairs(args) do
-    if not current.roots[name] then
-      if current.installed[name] then
-        error(name .. " is a dependency of another package, remove that package instead", 0)
+return {
+  description = "Remove root packages and any dependencies left unused",
+  arguments = {
+    { name = "packages", hint = "<name>", required = true, repeated = true },
+  },
+  handler = function(args)
+    local current = state.load()
+    for _, name in ipairs(args.packages) do
+      if not current.roots[name] then
+        if current.installed[name] then
+          error(name .. " is a dependency of another package, remove that package instead", 0)
+        end
+        error(name .. " is not installed", 0)
       end
-      error(name .. " is not installed", 0)
+      current.roots[name] = nil
     end
-    current.roots[name] = nil
-  end
 
-  sync.apply(current.roots)
-end
+    sync.apply(current.roots)
+  end,
+}

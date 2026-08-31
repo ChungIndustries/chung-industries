@@ -22,6 +22,7 @@ cpm remove <name> ...
 cpm update [<name> ...]      no names updates every root
 cpm list
 cpm search [<query>]
+cpm help [<command>]
 ```
 
 Version resolution happens on the registry (`POST /resolve`), so ranges, exact versions, and dist-tags are all accepted wherever a spec is. A bare `cpm install foo` records `^<resolved version>` as the root spec. `cpm update` re-resolves all roots: the store holds one version per package, so partial updates are not meaningful.
@@ -46,8 +47,8 @@ A package that declares `"startup": "<file>"` in its `cpm.json` gets a `/startup
 
 ```
 src/
-  bin/cpm.lua      CLI entry and dispatch
-  commands/        one file per command
+  bin/cpm.lua      CLI entry: builds the cli app from the command declarations
+  commands/        one file per command: declaration (arguments, description) plus handler
   sync.lua         resolve, diff, download, verify, swap, garbage-collect
   registry.lua     registry endpoints (base URL from settings) on top of net.lua
   net.lua          HTTP helpers: JSend unwrapping, JSON requests, binary downloads
@@ -59,7 +60,7 @@ src/
   install.lua      self-contained bootstrap installer served at GET /install
 ```
 
-`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, author }) generated at build time from the workspace version so it has one source of truth. The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
+`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, author, dependencies }) generated at build time from the workspace versions so they have one source of truth (the `cli` range tracks `packages/cc/cli`). The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
 
 ## Tooling
 

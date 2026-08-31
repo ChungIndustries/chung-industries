@@ -12,6 +12,7 @@
     "format:lua:check": "stylua --check src"
   },
   "devDependencies": {
+    "cli": "workspace:*",
     "tar": "^7.5.2"
   },
   "nx": {

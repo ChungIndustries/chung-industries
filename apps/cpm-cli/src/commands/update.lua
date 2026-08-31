@@ -5,18 +5,24 @@
 local sync = require("cpm.sync")
 local state = require("cpm.state")
 
-return function(args)
-  local current = state.load()
-  if next(current.roots) == nil then
-    print("Nothing installed")
-    return
-  end
-
-  for _, name in ipairs(args) do
-    if not current.roots[name] then
-      error(name .. " is not an installed root package", 0)
+return {
+  description = "Re-resolve every root and apply the changes",
+  arguments = {
+    { name = "packages", hint = "<name>", repeated = true },
+  },
+  handler = function(args)
+    local current = state.load()
+    if next(current.roots) == nil then
+      print("Nothing installed")
+      return
     end
-  end
 
-  sync.apply(current.roots)
-end
+    for _, name in ipairs(args.packages) do
+      if not current.roots[name] then
+        error(name .. " is not an installed root package", 0)
+      end
+    end
+
+    sync.apply(current.roots)
+  end,
+}

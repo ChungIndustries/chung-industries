@@ -1,0 +1,24 @@
+{
+  "name": "cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A library for building command-line interfaces on CC:Tweaked.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "publish:registry": "node scripts/publish.mjs",
+    "lint:lua": "luacheck src tests",
+    "format:lua": "stylua src tests",
+    "format:lua:check": "stylua --check src tests",
+    "test:lua": "lua tests/run.lua"
+  },
+  "devDependencies": {
+    "tar": "^7.5.2"
+  },
+  "nx": {
+    "tags": [
+      "lang:lua",
+      "scope:cpm"
+    ]
+  }
+}
