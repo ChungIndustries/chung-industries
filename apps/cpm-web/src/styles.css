@@ -1,0 +1,131 @@
+@import "@workspace/ui/styles/globals.css";
+@plugin "@tailwindcss/typography";
+
+/*
+ * Site theme: a clean, dark registry site set in the IBM Plex family, with
+ * the CC:Tweaked advanced-computer gold as the primary accent. The pixel
+ * display font and the terminal colours are reserved for the brand mark and
+ * the landing-page terminal; everything else styles through the shadcn
+ * tokens so the @workspace/ui components pick the theme up unmodified.
+ */
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: "Silkscreen", "IBM Plex Mono", monospace;
+
+  /* The advanced computer's gold, tempered so it accents rather than shouts. */
+  --color-brand: oklch(0.79 0.115 79);
+
+  /* The terminal text: CraftOS colours. The terminal surface itself is the
+     shared card colour, so it matches the inputs exactly. */
+  --color-screen-foreground: oklch(0.93 0.004 100);
+  --color-screen-yellow: oklch(0.79 0.115 79);
+  --color-screen-green: oklch(0.76 0.16 132);
+  --color-screen-red: oklch(0.62 0.13 25);
+  --color-screen-muted: oklch(0.6 0.008 100);
+
+  --animate-blink: blink 1.1s steps(1) infinite;
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+}
+
+/*
+ * A neutral dark scale matching the docs site's Scalar theme exactly:
+ * background-1/2/3, border, and text colours lifted from
+ * docs.chungindustries.com so the two surfaces feel like one product.
+ */
+.dark {
+  --background: #0f0f0f;
+  --foreground: #e7e7e7;
+  --card: #1a1a1a;
+  --card-foreground: #e7e7e7;
+  --popover: #1a1a1a;
+  --popover-foreground: #e7e7e7;
+  --primary: oklch(0.79 0.115 79);
+  --primary-foreground: oklch(0.22 0.05 78);
+  --secondary: #272727;
+  --secondary-foreground: #e7e7e7;
+  --muted: #232323;
+  --muted-foreground: #a4a4a4;
+  --accent: #272727;
+  --accent-foreground: #e7e7e7;
+  --border: #2d2d2d;
+  --input: #2d2d2d;
+  --ring: oklch(0.72 0.11 75);
+  --radius: 0.5rem;
+}
+
+/*
+ * A dithered edge: two offset rows of squares in the border colour, used
+ * instead of a plain border at the site's big seams (hero bottom, footer
+ * top).
+ */
+.pixel-rule {
+  height: 8px;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border) 0 4px, transparent 4px 8px),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 4px,
+      color-mix(in oklab, var(--border) 45%, transparent) 4px 8px
+    );
+  background-size: 8px 4px;
+  background-position:
+    0 0,
+    0 4px;
+  background-repeat: repeat-x;
+}
+
+/* The vertical counterpart: a dashed pixel line for connectors. */
+.pixel-line-y {
+  background-image: repeating-linear-gradient(180deg, var(--border) 0 4px, transparent 4px 8px);
+}
+
+/* Terminal-style staged output: lines flip visible after their delay. */
+@keyframes reveal {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
+}
+
+/*
+ * Terminal typing: a command reveals one character per step while a block
+ * caret rides the clipped edge in inline flow, then vanishes when the
+ * command is done. The timeline lives in terminal.tsx.
+ */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--typed-width);
+  }
+}
+
+@keyframes caret-hide {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-typed {
+    animation: none !important;
+  }
+}
+
+::selection {
+  background: var(--color-brand);
+  color: oklch(0.2 0.03 78);
+}
