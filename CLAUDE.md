@@ -9,7 +9,7 @@ NX + pnpm monorepo.
 - `apps/`: deployable apps and end-user tools
   - `cpm-registry`: TypeScript/Express registry API for the Chung Package Manager (cpm)
   - `web`: React/Supabase app (currently template boilerplate)
-- `packages/`: shared libraries: TypeScript (`@workspace/*`) and Lua published to the cpm registry (`cli`)
+- `packages/`: shared libraries: TypeScript (`@workspace/*`), and ComputerCraft packages published to the cpm registry under `packages/cc/*` (`cli`)
 - `supabase/`: Supabase config, migrations, edge functions (Deno runtime, NOT a workspace package)
 
 ## Conventions

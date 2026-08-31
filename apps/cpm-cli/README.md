@@ -25,7 +25,7 @@ cpm search [<query>]
 cpm help [<command>]
 ```
 
-The interface is declared through the [cli](../../packages/cli) package (cpm's first registry dependency, and the dogfood proof of the dependency resolver): each command module declares its arguments next to its handler, and `cpm help` plus all usage text are generated from those declarations.
+The interface is declared through the [cli](../../packages/cc/cli) package (cpm's first registry dependency, and the dogfood proof of the dependency resolver): each command module declares its arguments next to its handler, and `cpm help` plus all usage text are generated from those declarations.
 
 Version resolution happens on the registry (`POST /resolve`), so ranges, exact versions, and dist-tags are all accepted wherever a spec is. A bare `cpm install foo` records `^<resolved version>` as the root spec. `cpm update` re-resolves all roots: the store holds one version per package, so partial updates are not meaningful.
 
@@ -62,7 +62,7 @@ src/
   install.lua      self-contained bootstrap installer served at GET /install
 ```
 
-`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, author, dependencies }) generated at build time from the workspace versions so they have one source of truth (the `cli` range tracks `packages/cli`). The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
+`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, author, dependencies }) generated at build time from the workspace versions so they have one source of truth (the `cli` range tracks `packages/cc/cli`). The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
 
 ## Tooling
 

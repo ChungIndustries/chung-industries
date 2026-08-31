@@ -17,7 +17,7 @@ const file = join(dist, `cpm-${pkg.version}.tgz`);
 // The cli dependency range tracks the workspace version of packages/cli, so a
 // released cpm always requires the cli it was built and released against.
 const cliPkg = JSON.parse(
-  await readFile(join(root, "..", "..", "packages", "cli", "package.json"), "utf8"),
+  await readFile(join(root, "..", "..", "packages", "cc", "cli", "package.json"), "utf8"),
 );
 
 // cpm.json is generated rather than committed so the versions have a single

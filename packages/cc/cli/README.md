@@ -1,6 +1,6 @@
 # cli
 
-A declarative command-line library for CC:Tweaked programs, published to the [cpm registry](../../apps/cpm-registry) as the `cli` package. A tool declares its commands, positional arguments, and named options once; usage text, the `help` command, and argument validation are all generated from those declarations, so help text can never drift from the actual interface. cpm itself ([apps/cpm-cli](../../apps/cpm-cli)) is the first consumer.
+A declarative command-line library for CC:Tweaked programs, published to the [cpm registry](../../../apps/cpm-registry) as the `cli` package. A tool declares its commands, positional arguments, and named options once; usage text, the `help` command, and argument validation are all generated from those declarations, so help text can never drift from the actual interface. cpm itself ([apps/cpm-cli](../../../apps/cpm-cli)) is the first consumer.
 
 ## Usage
 
