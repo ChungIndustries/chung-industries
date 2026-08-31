@@ -1,3 +1,18 @@
+## 0.0.2 (2026-08-31)
+
+### 🚀 Features
+
+- cpm's commands are now declared through the new `cli` package, its first registry dependency. The help text is generated from those declarations, and there is a new `cpm help [<command>]`. The bootstrap installer now installs cpm's full dependency closure instead of only the cpm package itself. ([#86](https://github.com/ChungIndustries/chung-industries/issues/86))
+
+### 🧱 Updated Dependencies
+
+- Updated cli to 0.0.1
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5
+
 ## 0.0.1 (2026-08-25)
 
 ### 🚀 Features
