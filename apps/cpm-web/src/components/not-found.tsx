@@ -18,7 +18,7 @@ export function NotFound() {
           <EmptyMedia variant="icon">
             <FileQuestion />
           </EmptyMedia>
-          <EmptyTitle>404</EmptyTitle>
+          <EmptyTitle className="font-display">404</EmptyTitle>
           <EmptyDescription>This page does not exist.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>

@@ -49,7 +49,7 @@ function Steps() {
           {index < STEPS.length - 1 && (
             <span className="bg-border absolute top-10 bottom-2 left-4 w-px" aria-hidden="true" />
           )}
-          <span className="border-border bg-card text-muted-foreground grid size-8 shrink-0 place-items-center rounded-full border font-mono text-sm">
+          <span className="border-border bg-card text-muted-foreground font-display grid size-8 shrink-0 place-items-center rounded-full border text-xs">
             {index + 1}
           </span>
           <div className="min-w-0 flex-1 space-y-3 pt-1">
@@ -65,7 +65,7 @@ function Steps() {
 export function GetStartedSection() {
   return (
     <section id="get-started" className="mx-auto max-w-5xl scroll-mt-20 px-6 py-16 md:py-20">
-      <h2 className="text-2xl font-semibold tracking-tight">Get started</h2>
+      <h2 className="font-display text-xl">Get started</h2>
       <div className="mt-8">
         <Steps />
       </div>

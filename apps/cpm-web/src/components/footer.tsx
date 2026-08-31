@@ -15,7 +15,8 @@ function FooterExternalLink({ href, children }: { href: string; children: string
 
 export function SiteFooter() {
   return (
-    <footer className="border-border border-t">
+    <footer>
+      <div className="pixel-rule" aria-hidden="true" />
       <div className="mx-auto w-full max-w-5xl px-6 py-12">
         <div className="flex flex-col justify-between gap-10 sm:flex-row">
           <div className="flex max-w-xs flex-col gap-3">
@@ -27,7 +28,7 @@ export function SiteFooter() {
           </div>
           <div className="grid grid-cols-2 gap-8 sm:gap-20">
             <nav aria-label="Site pages">
-              <h3 className="mb-3 text-sm font-medium">Site</h3>
+              <h3 className="font-display mb-3 text-xs">Site</h3>
               <ul className="text-muted-foreground space-y-2 text-sm">
                 <li>
                   <Link to="/packages" className="hover:text-foreground">
@@ -47,7 +48,7 @@ export function SiteFooter() {
               </ul>
             </nav>
             <nav aria-label="External resources">
-              <h3 className="mb-3 text-sm font-medium">Resources</h3>
+              <h3 className="font-display mb-3 text-xs">Resources</h3>
               <ul className="text-muted-foreground space-y-2 text-sm">
                 <li>
                   <FooterExternalLink href="https://chungindustries.com">

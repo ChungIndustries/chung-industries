@@ -36,10 +36,10 @@ export function TerminalWindow({
         className="border-border flex items-center gap-1.5 border-b px-4 py-2.5"
         aria-hidden="true"
       >
-        <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-        <span className="size-2.5 rounded-full bg-[#febc2e]" />
-        <span className="size-2.5 rounded-full bg-[#28c840]" />
-        <span className="text-screen-muted ml-2 font-mono text-xs">CraftOS 1.9</span>
+        <span className="size-2 bg-[#ff5f57]" />
+        <span className="size-2 bg-[#febc2e]" />
+        <span className="size-2 bg-[#28c840]" />
+        <span className="text-screen-muted font-display ml-2 text-[10px]">CraftOS 1.9</span>
       </div>
       <div
         className="text-screen-foreground [scrollbar-width:thin] overflow-x-auto px-4 py-3.5 font-mono text-[13px] leading-7"

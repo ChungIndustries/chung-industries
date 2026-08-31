@@ -59,6 +59,27 @@
   --radius: 0.5rem;
 }
 
+/*
+ * A dithered edge: two offset rows of 3px squares in the border colour, the
+ * way Minecraft textures fade into each other. Used instead of a plain
+ * border at the site's big seams (hero bottom, footer top).
+ */
+.pixel-rule {
+  height: 8px;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border) 0 4px, transparent 4px 8px),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 4px,
+      color-mix(in oklab, var(--border) 45%, transparent) 4px 8px
+    );
+  background-size: 8px 4px;
+  background-position:
+    0 0,
+    0 4px;
+  background-repeat: repeat-x;
+}
+
 /* Terminal-style staged output: lines flip visible after their delay. */
 @keyframes reveal {
   from {

@@ -197,7 +197,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
         <aside className="space-y-4">
           <Card size="sm" className="gap-3">
             <CardHeader>
-              <CardTitle>Install</CardTitle>
+              <CardTitle className="font-display text-xs">Install</CardTitle>
             </CardHeader>
             <CardContent>
               <CommandBlock command={install} className="text-xs" />
@@ -205,7 +205,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
           </Card>
           <Card size="sm" className="gap-3">
             <CardHeader>
-              <CardTitle>Metadata</CardTitle>
+              <CardTitle className="font-display text-xs">Metadata</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="text-sm">
