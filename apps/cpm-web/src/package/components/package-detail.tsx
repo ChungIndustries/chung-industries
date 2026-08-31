@@ -131,8 +131,8 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
   const install = pinned ? `cpm install ${pkg.name}@${version.version}` : `cpm install ${pkg.name}`;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pt-8 pb-12">
-      <Breadcrumb className="mb-6">
+    <div className="mx-auto max-w-5xl px-6 pt-6 pb-12">
+      <Breadcrumb className="mb-4">
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
@@ -173,7 +173,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
       </div>
       {version.author && <p className="text-muted-foreground mt-1 text-sm">by {version.author}</p>}
 
-      <div className="mt-8 grid grid-cols-1 items-start gap-10 md:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="mt-6 grid grid-cols-1 items-start gap-10 md:grid-cols-[minmax(0,1fr)_18rem]">
         <Tabs defaultValue="readme">
           <TabsList
             variant="line"
