@@ -166,7 +166,11 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
         <h1 className="font-mono text-3xl font-semibold break-all">{pkg.name}</h1>
         <span className="text-muted-foreground text-lg">v{version.version}</span>
         {tagsFor(pkg["dist-tags"], version.version).map((tag) => (
-          <Badge key={tag} variant="secondary" className="font-display rounded-none text-[10px]">
+          <Badge
+            key={tag}
+            variant="secondary"
+            className="font-display self-center rounded-none text-[10px]"
+          >
             {tag}
           </Badge>
         ))}
