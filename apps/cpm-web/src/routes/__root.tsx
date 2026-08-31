@@ -135,7 +135,11 @@ function RootComponent() {
                 </span>
               </Link>
               <p className="text-muted-foreground text-sm">
-                The package manager for ComputerCraft.
+                The package manager for ComputerCraft. A{" "}
+                <a href="https://chungindustries.com" className="hover:text-foreground">
+                  ChungIndustries
+                </a>{" "}
+                project.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-8 sm:gap-20">
@@ -175,13 +179,6 @@ function RootComponent() {
               </nav>
             </div>
           </div>
-          <p className="border-border text-muted-foreground mt-10 border-t pt-6 text-xs">
-            A{" "}
-            <a href="https://chungindustries.com" className="hover:text-foreground">
-              ChungIndustries
-            </a>{" "}
-            project: recreating the internet inside Minecraft.
-          </p>
         </div>
       </footer>
     </div>
