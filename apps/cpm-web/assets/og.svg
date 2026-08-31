@@ -5,6 +5,12 @@
        Regenerate with @resvg/resvg-js (loadSystemFonts: false) against the
        Google Fonts TTFs for Silkscreen, IBM Plex Sans 400/600, and
        IBM Plex Mono, then write the 1200x630 render to public/og.png. -->
+  <!-- For browser previews of this file; resvg ignores it and uses the
+       TTFs it is given instead. Only works when the SVG is opened as its
+       own document (an <img> embed blocks external fetches). -->
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&amp;family=IBM+Plex+Sans:wght@400;600&amp;family=Silkscreen&amp;display=swap");
+  </style>
   <defs>
     <pattern id="dither-a" width="16" height="5" patternUnits="userSpaceOnUse">
       <rect width="8" height="5" fill="#e2b25f"/>
