@@ -56,7 +56,7 @@ function Steps() {
             {index + 1}
           </span>
           <div className="min-w-0 flex-1 space-y-3 pt-1">
-            <h3 className="font-display text-sm leading-6">{step.title}</h3>
+            <h3 className="leading-6 font-medium">{step.title}</h3>
             <div className="text-muted-foreground space-y-3 text-sm">{step.body}</div>
           </div>
         </li>

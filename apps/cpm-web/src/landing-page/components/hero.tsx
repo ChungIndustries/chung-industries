@@ -5,10 +5,30 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/comp
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Search } from "lucide-react";
-import { Fragment, useState } from "react";
+import { type CSSProperties, Fragment, useState } from "react";
 
 import { Terminal } from "@/landing-page/components/terminal";
 import { packagesQueryOptions } from "@/package/queries";
+
+/**
+ * Particles emitted from the terminal's top-right corner: each spawns at the
+ * frame, climbs in discrete steps, and dissolves. Staggered cycles keep it
+ * sparse - mostly one visible at a time.
+ */
+const PARTICLES: { className: string; style: CSSProperties }[] = [
+  {
+    className: "-top-1 -right-1 size-2",
+    style: { "--rise": "5s", "--rise-delay": "0s", "--peak": 0.55 } as CSSProperties,
+  },
+  {
+    className: "-top-2 right-4 size-1.5",
+    style: { "--rise": "6.5s", "--rise-delay": "-4s", "--peak": 0.35 } as CSSProperties,
+  },
+  {
+    className: "-top-1 -right-3 size-1",
+    style: { "--rise": "7s", "--rise-delay": "-2s", "--peak": 0.25 } as CSSProperties,
+  },
+];
 
 function HeroSearch() {
   const navigate = useNavigate();
@@ -95,7 +115,17 @@ export function Hero() {
           <HeroSearch />
           <TryPackages />
         </div>
-        <Terminal />
+        <div className="relative">
+          {PARTICLES.map((particle, index) => (
+            <span
+              key={index}
+              className={`pixel-particle bg-brand absolute ${particle.className}`}
+              style={particle.style}
+              aria-hidden="true"
+            />
+          ))}
+          <Terminal />
+        </div>
       </div>
       <div className="pixel-rule" aria-hidden="true" />
     </section>
