@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { BookOpen, Package } from "lucide-react";
 
+import { UserMenu } from "@/auth/components/user-menu";
 import { BrandMark } from "@/components/brand-mark";
 import { GithubIcon } from "@/components/icons";
 import { DOCS_URL, GITHUB_URL } from "@/site";
@@ -13,7 +14,7 @@ export function SiteHeader() {
           <BrandMark />
           <span className="text-muted-foreground text-sm">by ChungIndustries</span>
         </Link>
-        <nav className="flex gap-6 text-sm font-medium" aria-label="Site">
+        <nav className="flex items-center gap-6 text-sm font-medium" aria-label="Site">
           <Link
             to="/packages"
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
@@ -36,6 +37,7 @@ export function SiteHeader() {
             <GithubIcon className="size-4" />
             GitHub
           </a>
+          <UserMenu />
         </nav>
       </div>
     </header>

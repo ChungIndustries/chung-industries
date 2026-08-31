@@ -1,6 +1,7 @@
 # CPM Registry: authentication and package ownership
 
-Status: phases 0-2 implemented (accounts, tokens, ownership enforcement); phases 3+ pending
+Status: phases 0-2 implemented (accounts, tokens, ownership enforcement); account/token UI shipped
+in `apps/cpm-web` 2026-09-01 (see section 12, decision 2); phases 3+ pending
 Scope: `apps/cpm-registry`, the publish tooling that authenticates to it (CI and author terminals today, possibly an in-game client later), and the minimal browser surface accounts need
 Date: 2026-08-27
 
@@ -739,6 +740,16 @@ Resolved 2026-08-27:
    ruled out here anyway) and not grown inside the Worker. Consequence to design for later: a separate
    origin means the auth endpoints need CORS and cookie-domain configuration when that app arrives;
    nothing in this phase should bake in a same-origin assumption.
+
+   **Shipped 2026-09-01 in `apps/cpm-web`** (the registry website), which resolved the origin
+   question the other way: instead of CORS and cookie-domain configuration, cpm-web proxies
+   `/auth/*` to the registry over its existing service binding (`src/routes/auth.$.ts`), and
+   `BETTER_AUTH_URL` is set to the **website's** origin. Every auth cookie and OAuth redirect
+   therefore lives on `cpm.chungindustries.com`, the browser never talks to the registry origin,
+   and the registry still needs no public CORS. The site's pages are `/signin` (GitHub) and
+   `/account` (profile, maintained packages, token mint/reveal-once/revoke); its SSR reads the
+   session by forwarding the cookie over the same binding. The GitHub OAuth App callback moves to
+   `https://cpm.chungindustries.com/auth/callback/github` accordingly.
 3. **Scoped names: no. Names stay flat**, first-publish-wins. `nameParam`, `tarballKey`, and client
    name parsing keep their current shapes. This is the explicit no.
 4. **Handles: seeded from the GitHub login at signup, immutable thereafter.** Maintainer references

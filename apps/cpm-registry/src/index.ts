@@ -67,7 +67,7 @@ app.openAPIRegistry.registerComponent("securitySchemes", "publishToken", {
   type: "http",
   scheme: "bearer",
   description:
-    "A cpm publish token, created from the registry account page. Send as `Authorization: Bearer cpm_...`",
+    "A cpm publish token, created from the account page at https://cpm.chungindustries.com/account. Send as `Authorization: Bearer cpm_...`",
 });
 
 registerPackageRoutes(app);
