@@ -7,7 +7,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Search } from "lucide-react";
 import { Fragment, useState } from "react";
 
-import { Terminal } from "@/landing-page/components/terminal";
+import { HeroTerminal } from "@/landing-page/components/hero-terminal";
 import { packagesQueryOptions } from "@/package/queries";
 
 function HeroSearch() {
@@ -95,7 +95,7 @@ export function Hero() {
           <HeroSearch />
           <TryPackages />
         </div>
-        <Terminal />
+        <HeroTerminal />
       </div>
       <div className="pixel-rule" aria-hidden="true" />
     </section>

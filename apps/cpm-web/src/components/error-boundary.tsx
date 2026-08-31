@@ -3,7 +3,7 @@ import { Button } from "@workspace/ui/components/button";
 import { House, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
-import { TerminalScript, TerminalWindow } from "@/landing-page/components/terminal";
+import { TerminalScript, TerminalWindow } from "@/terminal/terminal";
 
 /**
  * The error page as a CraftOS session: the site is a program that just

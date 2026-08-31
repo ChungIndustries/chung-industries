@@ -2,7 +2,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { House, Package } from "lucide-react";
 
-import { TerminalScript, TerminalWindow } from "@/landing-page/components/terminal";
+import { TerminalScript, TerminalWindow } from "@/terminal/terminal";
 
 /**
  * The 404 as a CraftOS session: the missing path is typed at the prompt and

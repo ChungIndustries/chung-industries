@@ -3,7 +3,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { House, Package } from "lucide-react";
 
-import { TerminalScript, TerminalWindow } from "@/landing-page/components/terminal";
+import { TerminalScript, TerminalWindow } from "@/terminal/terminal";
 
 /** Skeleton mirroring the detail page layout while its loader runs. */
 export function PackageDetailPending() {
