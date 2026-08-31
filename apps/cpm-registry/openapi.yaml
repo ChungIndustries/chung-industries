@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: CPM Registry
-  version: 0.0.5
+  version: 0.0.6
   description: API for the CPM Registry, used by the Chung Package Manager (cpm)
     to host and distribute ComputerCraft-focused Lua packages.
 servers:

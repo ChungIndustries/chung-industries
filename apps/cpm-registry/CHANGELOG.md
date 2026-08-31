@@ -1,3 +1,15 @@
+## 0.0.6 (2026-08-31)
+
+### 🚀 Features
+
+- Package responses now expose publish timestamps: `createdAt` on each version and on the package itself (first publish). The website renders them as a relative "published X ago" in the package index rows and in each package's versions list. ([#123](https://github.com/ChungIndustries/chung-industries/issues/123), [#122](https://github.com/ChungIndustries/chung-industries/issues/122))
+- Packages can now declare an optional `description` in their `cpm.json` manifest, stating what the package does. The registry validates and stores it at publish and returns it in package responses, and the website shows it under the package name in search results and on package pages, with search matching against it. ([#123](https://github.com/ChungIndustries/chung-industries/issues/123), [#122](https://github.com/ChungIndustries/chung-industries/issues/122))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5
+
 ## 0.0.5 (2026-08-27)
 
 ### 🩹 Fixes

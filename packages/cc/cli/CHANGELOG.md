@@ -1,3 +1,14 @@
+## 0.0.2 (2026-08-31)
+
+### 🚀 Features
+
+- The generated `cpm.json` manifest now carries the package description from `package.json`, so the registry and its website can show what the package does. ([#123](https://github.com/ChungIndustries/chung-industries/issues/123), [#122](https://github.com/ChungIndustries/chung-industries/issues/122))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5
+
 ## 0.0.1 (2026-08-31)
 
 ### 🚀 Features
