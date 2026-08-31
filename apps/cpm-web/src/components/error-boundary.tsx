@@ -27,7 +27,9 @@ export function ErrorBoundary({ error }: { error: Error }) {
         </EmptyHeader>
         <EmptyContent>
           <div className="flex gap-3">
-            <Button onClick={() => router.invalidate()}>Try again</Button>
+            <Button className="pixel-btn" onClick={() => router.invalidate()}>
+              Try again
+            </Button>
             <Button variant="outline" asChild>
               <Link to="/">Go home</Link>
             </Button>

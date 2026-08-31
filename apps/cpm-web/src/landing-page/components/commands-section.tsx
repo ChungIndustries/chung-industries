@@ -32,7 +32,8 @@ function CommandsTable() {
 
 export function CommandsSection() {
   return (
-    <section id="commands" className="border-border scroll-mt-20 border-t">
+    <section id="commands" className="scroll-mt-20">
+      <div className="pixel-rule" aria-hidden="true" />
       <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <h2 className="font-display text-xl">Commands</h2>

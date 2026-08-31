@@ -22,7 +22,7 @@ export function NotFound() {
           <EmptyDescription>This page does not exist.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button asChild>
+          <Button asChild className="pixel-btn">
             <Link to="/packages">Browse packages</Link>
           </Button>
         </EmptyContent>

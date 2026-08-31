@@ -37,7 +37,7 @@ function HeroSearch() {
           className="!text-base"
         />
       </InputGroup>
-      <Button type="submit" size="lg" className="h-11 px-5">
+      <Button type="submit" size="lg" className="pixel-btn h-11 px-5">
         Search
       </Button>
     </form>
@@ -95,7 +95,13 @@ export function Hero() {
           <HeroSearch />
           <TryPackages />
         </div>
-        <Terminal />
+        <div className="relative">
+          {/* Pixel particles drifting off the machine. */}
+          <span className="bg-brand/40 absolute -top-5 right-10 size-2" aria-hidden="true" />
+          <span className="bg-brand/25 absolute -top-9 right-16 size-1.5" aria-hidden="true" />
+          <span className="bg-brand/15 absolute -top-3 right-4 size-1" aria-hidden="true" />
+          <Terminal />
+        </div>
       </div>
       <div className="pixel-rule" aria-hidden="true" />
     </section>

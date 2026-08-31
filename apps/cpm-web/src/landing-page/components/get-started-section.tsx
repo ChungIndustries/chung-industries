@@ -47,7 +47,10 @@ function Steps() {
       {STEPS.map((step, index) => (
         <li key={step.title} className="relative flex gap-5 pb-10 last:pb-0">
           {index < STEPS.length - 1 && (
-            <span className="bg-border absolute top-10 bottom-2 left-4 w-px" aria-hidden="true" />
+            <span
+              className="pixel-line-y absolute top-10 bottom-2 left-[15px] w-0.5"
+              aria-hidden="true"
+            />
           )}
           <span className="border-border bg-card text-muted-foreground font-display grid size-8 shrink-0 place-items-center rounded-full border text-xs">
             {index + 1}

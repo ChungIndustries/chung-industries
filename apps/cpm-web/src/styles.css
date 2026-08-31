@@ -80,6 +80,28 @@
   background-repeat: repeat-x;
 }
 
+/* The vertical counterpart: a dashed pixel line for connectors. */
+.pixel-line-y {
+  background-image: repeating-linear-gradient(180deg, var(--border) 0 4px, transparent 4px 8px);
+}
+
+/*
+ * A Minecraft-style button face: square corners and a hard two-tone bevel
+ * (lit top-left, shaded bottom-right) that flattens inverted while pressed.
+ */
+.pixel-btn {
+  border-radius: 0;
+  box-shadow:
+    inset 2px 2px 0 0 color-mix(in oklab, white 28%, transparent),
+    inset -2px -3px 0 0 color-mix(in oklab, black 30%, transparent);
+}
+
+.pixel-btn:active {
+  box-shadow:
+    inset 2px 3px 0 0 color-mix(in oklab, black 30%, transparent),
+    inset -2px -2px 0 0 color-mix(in oklab, white 12%, transparent);
+}
+
 /* Terminal-style staged output: lines flip visible after their delay. */
 @keyframes reveal {
   from {

@@ -88,7 +88,9 @@ function VersionsTab({ pkg, current }: { pkg: Package; current: string }) {
             {v === current ? (
               <>
                 <span className="font-mono font-medium">v{v}</span>
-                <Badge variant="outline">viewing</Badge>
+                <Badge variant="outline" className="font-display rounded-none text-[10px]">
+                  viewing
+                </Badge>
               </>
             ) : (
               <Link
@@ -102,7 +104,11 @@ function VersionsTab({ pkg, current }: { pkg: Package; current: string }) {
           </span>
           <span className="flex gap-1.5">
             {tagsFor(pkg["dist-tags"], v).map((tag) => (
-              <Badge key={tag} variant="secondary">
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="font-display rounded-none text-[10px]"
+              >
                 {tag}
               </Badge>
             ))}
@@ -114,7 +120,7 @@ function VersionsTab({ pkg, current }: { pkg: Package; current: string }) {
 }
 
 function TabCount({ count }: { count: number }) {
-  return <span className="text-muted-foreground font-normal">{count}</span>;
+  return <span className="text-muted-foreground font-sans text-sm font-normal">{count}</span>;
 }
 
 export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
@@ -160,7 +166,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
         <h1 className="font-mono text-3xl font-semibold break-all">{pkg.name}</h1>
         <span className="text-muted-foreground text-lg">v{version.version}</span>
         {tagsFor(pkg["dist-tags"], version.version).map((tag) => (
-          <Badge key={tag} variant="secondary">
+          <Badge key={tag} variant="secondary" className="font-display rounded-none text-[10px]">
             {tag}
           </Badge>
         ))}
@@ -173,13 +179,13 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
             variant="line"
             className="border-border w-full justify-start gap-4 border-b p-0"
           >
-            <TabsTrigger value="readme" className="flex-none px-0">
+            <TabsTrigger value="readme" className="font-display flex-none px-0 text-xs">
               Readme
             </TabsTrigger>
-            <TabsTrigger value="dependencies" className="flex-none gap-2 px-0">
+            <TabsTrigger value="dependencies" className="font-display flex-none gap-2 px-0 text-xs">
               Dependencies <TabCount count={dependencies.length} />
             </TabsTrigger>
-            <TabsTrigger value="versions" className="flex-none gap-2 px-0">
+            <TabsTrigger value="versions" className="font-display flex-none gap-2 px-0 text-xs">
               Versions <TabCount count={versionCount} />
             </TabsTrigger>
           </TabsList>
