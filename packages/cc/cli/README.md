@@ -1,8 +1,6 @@
 # cli
 
-A library for building command-line interfaces on CC:Tweaked, published to the [cpm registry](../../../apps/cpm-registry) as the `cli` package.
-
-A program describes its commands and their arguments once. The library parses and validates the input against those declarations, dispatches to the right handler, and generates all the help text, so the help always matches what the program actually accepts. cpm ([apps/cpm-cli](../../../apps/cpm-cli)) is the first consumer.
+A library for building command-line interfaces on CC:Tweaked, published to the [cpm registry](../../../apps/cpm-registry) as the `cli` package. You define your commands as tables and the library handles argument parsing, validation, and help text. cpm ([apps/cpm-cli](../../../apps/cpm-cli)) is built with it.
 
 ## Usage
 

@@ -1,9 +1,7 @@
 -- cli: a library for building command-line interfaces on CC:Tweaked.
 --
--- A program describes its commands, arguments, and options once. The library parses
--- and validates the input against those declarations, dispatches to the right
--- handler, and generates all the help text, so the help always matches what the
--- program actually accepts.
+-- You define your commands as tables and the library handles argument parsing,
+-- validation, and help text.
 --
 --   local cli = require("cli")
 --   local app = cli.new({ name = "greet", description = "Greeting utilities" })
