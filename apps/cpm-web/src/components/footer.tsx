@@ -18,12 +18,12 @@ export function SiteFooter() {
     <footer className="border-border border-t">
       <div className="mx-auto w-full max-w-5xl px-6 py-12">
         <div className="flex flex-col justify-between gap-10 sm:flex-row">
-          <div className="max-w-xs space-y-3">
-            <Link to="/" aria-label="cpm home" className="inline-block">
+          <div className="flex max-w-xs flex-col gap-3">
+            <Link to="/" aria-label="cpm home" className="self-start">
               <BrandMark />
             </Link>
             <p className="text-muted-foreground text-sm">The package manager for ComputerCraft.</p>
-            <p className="text-muted-foreground text-xs">© 2026 ChungIndustries</p>
+            <p className="text-muted-foreground mt-auto pt-4 text-xs">© 2026 ChungIndustries</p>
           </div>
           <div className="grid grid-cols-2 gap-8 sm:gap-20">
             <nav aria-label="Site pages">
