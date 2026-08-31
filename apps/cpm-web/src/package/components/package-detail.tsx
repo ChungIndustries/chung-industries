@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import {
@@ -11,16 +10,15 @@ import {
 } from "@workspace/ui/components/breadcrumb";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
-import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import type { ReactNode } from "react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 import { CommandBlock } from "@/components/command-block";
-import { readmeQueryOptions } from "@/package/queries";
+import { DependenciesTab } from "@/package/components/dependencies-tab";
+import { ReadmeTab } from "@/package/components/readme-tab";
+import { VersionsTab } from "@/package/components/versions-tab";
 import type { Package, PackageVersion } from "@/package/schemas";
-import { formatBytes, sortVersionsDesc, tagsFor } from "@/package/search";
+import { formatBytes, tagsFor } from "@/package/search";
 import { REGISTRY_ORIGIN } from "@/site";
 
 export interface PackageDetailProps {
@@ -29,94 +27,6 @@ export interface PackageDetailProps {
   version: PackageVersion;
   /** True when the URL pins a specific version rather than following latest. */
   pinned: boolean;
-}
-
-function ReadmeTab({ version }: { version: PackageVersion }) {
-  const readme = useQuery(readmeQueryOptions(version.name, version.version));
-  if (readme.isPending) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-6 w-48" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-24 w-full" />
-      </div>
-    );
-  }
-  // Errors are treated like a missing README.
-  if (!readme.data) {
-    return <p className="text-muted-foreground text-sm">This version does not ship a README.</p>;
-  }
-  return (
-    // Package content is untrusted; react-markdown never injects raw HTML
-    // from the source, so markdown is safe to render.
-    <div className="prose prose-sm prose-invert prose-a:text-brand prose-pre:bg-card prose-pre:border-border prose-pre:border max-w-none">
-      <Markdown remarkPlugins={[remarkGfm]}>{readme.data}</Markdown>
-    </div>
-  );
-}
-
-function DependenciesTab({ dependencies }: { dependencies: [string, string][] }) {
-  if (dependencies.length === 0) {
-    return <p className="text-muted-foreground text-sm">None: this package stands alone.</p>;
-  }
-  return (
-    <ul className="divide-border divide-y">
-      {dependencies.map(([dep, range]) => (
-        <li key={dep} className="flex justify-between gap-3 py-2 text-sm">
-          <Link
-            to="/packages/$name"
-            params={{ name: dep }}
-            className="text-brand font-mono font-medium hover:underline"
-          >
-            {dep}
-          </Link>
-          <span className="text-muted-foreground font-mono">{range}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function VersionsTab({ pkg, current }: { pkg: Package; current: string }) {
-  const versions = sortVersionsDesc(Object.keys(pkg.versions));
-  return (
-    <ul className="divide-border divide-y">
-      {versions.map((v) => (
-        <li key={v} className="flex items-center justify-between gap-3 py-2 text-sm">
-          <span className="flex items-center gap-2">
-            {v === current ? (
-              <>
-                <span className="font-mono font-medium">v{v}</span>
-                <Badge variant="outline" className="font-display rounded-none text-[10px]">
-                  viewing
-                </Badge>
-              </>
-            ) : (
-              <Link
-                to="/packages/$name/$version"
-                params={{ name: pkg.name, version: v }}
-                className="text-brand font-mono font-medium hover:underline"
-              >
-                v{v}
-              </Link>
-            )}
-          </span>
-          <span className="flex gap-1.5">
-            {tagsFor(pkg["dist-tags"], v).map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="font-display rounded-none text-[10px]"
-              >
-                {tag}
-              </Badge>
-            ))}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function TabCount({ count }: { count: number }) {
