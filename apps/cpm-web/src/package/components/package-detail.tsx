@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import type { ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -30,43 +31,107 @@ export interface PackageDetailProps {
   pinned: boolean;
 }
 
-function SectionTitle({ children }: { children: string }) {
-  return <h2 className="mb-4 text-lg font-semibold tracking-tight">{children}</h2>;
-}
-
-function ReadmeSection({ version }: { version: PackageVersion }) {
+function ReadmeTab({ version }: { version: PackageVersion }) {
   const readme = useQuery(readmeQueryOptions(version.name, version.version));
   if (readme.isPending) {
     return (
-      <section>
-        <SectionTitle>README</SectionTitle>
-        <Skeleton className="h-40 w-full" />
-      </section>
+      <div className="space-y-3">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-4/5" />
+        <Skeleton className="h-24 w-full" />
+      </div>
     );
   }
-  // Errors are treated like a missing README: the section just disappears.
-  if (!readme.data) return null;
+  // Errors are treated like a missing README.
+  if (!readme.data) {
+    return <p className="text-muted-foreground text-sm">This version does not ship a README.</p>;
+  }
   return (
-    <section>
-      <SectionTitle>README</SectionTitle>
-      {/* Package content is untrusted; react-markdown never injects raw HTML
-          from the source, so markdown is safe to render. */}
-      <div className="border-border bg-card prose prose-sm prose-invert prose-a:text-brand prose-pre:bg-background prose-pre:border-border prose-pre:border max-h-160 max-w-none overflow-y-auto rounded-lg border p-6">
-        <Markdown remarkPlugins={[remarkGfm]}>{readme.data}</Markdown>
-      </div>
-    </section>
+    // Package content is untrusted; react-markdown never injects raw HTML
+    // from the source, so markdown is safe to render.
+    <div className="prose prose-sm prose-invert prose-a:text-brand prose-pre:bg-card prose-pre:border-border prose-pre:border max-w-none">
+      <Markdown remarkPlugins={[remarkGfm]}>{readme.data}</Markdown>
+    </div>
   );
+}
+
+function DependenciesTab({ dependencies }: { dependencies: [string, string][] }) {
+  if (dependencies.length === 0) {
+    return <p className="text-muted-foreground text-sm">None: this package stands alone.</p>;
+  }
+  return (
+    <ul>
+      {dependencies.map(([dep, range]) => (
+        <li
+          key={dep}
+          className="border-border flex justify-between gap-3 border-b py-2 text-sm first:border-t"
+        >
+          <Link
+            to="/packages/$name"
+            params={{ name: dep }}
+            className="text-brand font-mono font-medium hover:underline"
+          >
+            {dep}
+          </Link>
+          <span className="text-muted-foreground font-mono">{range}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function VersionsTab({ pkg, current }: { pkg: Package; current: string }) {
+  const versions = sortVersionsDesc(Object.keys(pkg.versions));
+  return (
+    <ul>
+      {versions.map((v) => (
+        <li
+          key={v}
+          className="border-border flex items-center justify-between gap-3 border-b py-2 text-sm first:border-t"
+        >
+          <span className="flex items-center gap-2">
+            {v === current ? (
+              <>
+                <span className="font-mono font-medium">v{v}</span>
+                <Badge variant="outline">viewing</Badge>
+              </>
+            ) : (
+              <Link
+                to="/packages/$name/$version"
+                params={{ name: pkg.name, version: v }}
+                className="text-brand font-mono font-medium hover:underline"
+              >
+                v{v}
+              </Link>
+            )}
+          </span>
+          <span className="flex gap-1.5">
+            {tagsFor(pkg["dist-tags"], v).map((tag) => (
+              <Badge key={tag} variant="secondary">
+                {tag}
+              </Badge>
+            ))}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TabCount({ count }: { count: number }) {
+  return <span className="text-muted-foreground font-normal">{count}</span>;
 }
 
 export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
   const dependencies = Object.entries(version.dependencies ?? {}).sort(([a], [b]) =>
     a.localeCompare(b),
   );
-  const versions = sortVersionsDesc(Object.keys(pkg.versions));
+  const versionCount = Object.keys(pkg.versions).length;
   const install = pinned ? `cpm install ${pkg.name}@${version.version}` : `cpm install ${pkg.name}`;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-6 pt-8 pb-12">
       <Breadcrumb className="mb-6">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -109,78 +174,44 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
       {version.author && <p className="text-muted-foreground mt-1 text-sm">by {version.author}</p>}
 
       <div className="mt-8 grid grid-cols-1 items-start gap-10 md:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="space-y-9">
-          <ReadmeSection version={version} />
-
-          <section>
-            <SectionTitle>Dependencies</SectionTitle>
-            {dependencies.length === 0 ? (
-              <p className="text-muted-foreground text-sm">None: this package stands alone.</p>
-            ) : (
-              <ul>
-                {dependencies.map(([dep, range]) => (
-                  <li
-                    key={dep}
-                    className="border-border flex justify-between gap-3 border-b py-2 text-sm first:border-t"
-                  >
-                    <Link
-                      to="/packages/$name"
-                      params={{ name: dep }}
-                      className="text-brand font-mono font-medium hover:underline"
-                    >
-                      {dep}
-                    </Link>
-                    <span className="text-muted-foreground font-mono">{range}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section>
-            <SectionTitle>Versions</SectionTitle>
-            <ul>
-              {versions.map((v) => (
-                <li
-                  key={v}
-                  className="border-border flex justify-between gap-3 border-b py-2 text-sm first:border-t"
-                >
-                  {v === version.version ? (
-                    <span className="font-mono">v{v}</span>
-                  ) : (
-                    <Link
-                      to="/packages/$name/$version"
-                      params={{ name: pkg.name, version: v }}
-                      className="text-brand font-mono font-medium hover:underline"
-                    >
-                      v{v}
-                    </Link>
-                  )}
-                  <span className="flex gap-1.5">
-                    {tagsFor(pkg["dist-tags"], v).map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
+        <Tabs defaultValue="readme">
+          <TabsList
+            variant="line"
+            className="border-border w-full justify-start gap-4 border-b p-0"
+          >
+            <TabsTrigger value="readme" className="flex-none px-0">
+              Readme
+            </TabsTrigger>
+            <TabsTrigger value="dependencies" className="flex-none gap-2 px-0">
+              Dependencies <TabCount count={dependencies.length} />
+            </TabsTrigger>
+            <TabsTrigger value="versions" className="flex-none gap-2 px-0">
+              Versions <TabCount count={versionCount} />
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="readme" className="pt-4">
+            <ReadmeTab version={version} />
+          </TabsContent>
+          <TabsContent value="dependencies" className="pt-4">
+            <DependenciesTab dependencies={dependencies} />
+          </TabsContent>
+          <TabsContent value="versions" className="pt-4">
+            <VersionsTab pkg={pkg} current={version.version} />
+          </TabsContent>
+        </Tabs>
 
         <aside className="space-y-4">
-          <Card>
+          <Card size="sm" className="gap-3">
             <CardHeader>
-              <CardTitle className="text-sm">Install</CardTitle>
+              <CardTitle>Install</CardTitle>
             </CardHeader>
             <CardContent>
               <CommandBlock command={install} className="text-xs" />
             </CardContent>
           </Card>
-          <Card>
+          <Card size="sm" className="gap-3">
             <CardHeader>
-              <CardTitle className="text-sm">Metadata</CardTitle>
+              <CardTitle>Metadata</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="text-sm">
@@ -195,15 +226,14 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
                   </span>
                 </MetaRow>
               </dl>
-              <Separator className="my-3" />
-              <div className="flex items-center gap-2 text-sm">
+              <div className="border-border mt-2.5 flex items-center gap-2 border-t pt-2.5 text-sm">
                 <a
                   href={`${REGISTRY_ORIGIN}${version.dist.tarball.url}`}
                   className="text-brand font-medium hover:underline"
                 >
                   tarball
                 </a>
-                <Separator orientation="vertical" className="h-3.5 self-center" />
+                <Separator orientation="vertical" className="my-1" />
                 <a
                   href={`${REGISTRY_ORIGIN}${version.dist.bundle.url}`}
                   className="text-brand font-medium hover:underline"
@@ -221,7 +251,7 @@ export function PackageDetail({ pkg, version, pinned }: PackageDetailProps) {
 
 function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="border-border flex justify-between gap-3 border-b py-1.5 last:border-0">
+    <div className="border-border flex justify-between gap-3 border-b py-1.5 last:border-0 last:pb-0">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="text-right break-all">{children}</dd>
     </div>
