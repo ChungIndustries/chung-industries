@@ -1,3 +1,14 @@
+## 0.0.7 (2026-09-01)
+
+### 🩹 Fixes
+
+- Publish tokens now require a name at creation, so the account page's token inventory stays a readable machine-by-machine list. ([a4f4357](https://github.com/ChungIndustries/chung-industries/commit/a4f4357))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5
+
 ## 0.0.6 (2026-08-31)
 
 ### 🚀 Features

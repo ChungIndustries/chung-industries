@@ -1,3 +1,14 @@
+## 0.0.3 (2026-09-01)
+
+### 🚀 Features
+
+- Sign in with GitHub from the website: the new account page shows the packages you maintain and lets you mint, copy once, and revoke the publish tokens your machines and CI authenticate with. ([a4f4357](https://github.com/ChungIndustries/chung-industries/commit/a4f4357))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5
+
 ## 0.0.2 (2026-08-31)
 
 ### 🚀 Features
