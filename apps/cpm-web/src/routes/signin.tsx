@@ -1,11 +1,18 @@
-import { Link, createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Spinner } from "@workspace/ui/components/spinner";
 
 import { useSignInWithGithub } from "@/auth/hooks";
 import { sessionQueryOptions } from "@/auth/queries";
-import { BrandMark } from "@/components/brand-mark";
 import { GithubIcon } from "@/components/icons";
+import {
+  Cursor,
+  Prompt,
+  TerminalScript,
+  TerminalWindow,
+  scriptDuration,
+  type ScriptLine,
+} from "@/terminal/terminal";
 
 interface SignInSearchParams {
   /** Where to land after signing in. Same-site paths only, or it is dropped. */
@@ -35,42 +42,56 @@ export const Route = createFileRoute("/signin")({
   component: SignInPage,
 });
 
+/* Signing in as the computer would do it: `cpm login` runs, then the screen
+   waits on the one step only a browser can do. */
+const SCRIPT: ScriptLine[] = [
+  { kind: "command", text: "cpm login" },
+  { kind: "output", text: "Authenticating with GitHub...", className: "text-screen-muted" },
+];
+
+const SCRIPT_END = scriptDuration(SCRIPT);
+
 function SignInPage() {
   const { redirect: redirectTo, error } = Route.useSearch();
   const signIn = useSignInWithGithub();
 
   return (
     <div className="flex min-h-[calc(100svh-3.5rem)] items-center justify-center px-6 py-16">
-      <div className="flex w-full max-w-xs flex-col items-center gap-8">
-        <div className="flex flex-col items-center gap-6 text-center">
-          <Link to="/" aria-label="cpm home">
-            <BrandMark className="px-2.5 pt-1.5 pb-1 text-xl" />
-          </Link>
-          <h1 className="font-display text-2xl">
-            Sign in
-            <span
-              className="bg-brand animate-blink ml-2 inline-block h-[0.75em] w-[0.45em]"
-              aria-hidden="true"
-            />
-          </h1>
-        </div>
+      <div className="flex w-full max-w-md flex-col items-center gap-8">
+        <h1 className="font-display text-2xl">Sign in</h1>
 
-        <div className="flex w-full flex-col gap-3">
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={signIn.isPending}
-            onClick={() => signIn.mutate(redirectTo ?? "/account")}
+        <TerminalWindow interactive label="Sign in" className="w-full">
+          <div aria-hidden="true">
+            <TerminalScript script={SCRIPT} />
+          </div>
+          <div
+            className="animate-[reveal_0s_both] py-2 motion-reduce:animate-none"
+            style={{ animationDelay: `${SCRIPT_END}s` }}
           >
-            {signIn.isPending ? <Spinner /> : <GithubIcon className="size-4" />}
-            Continue with GitHub
-          </Button>
+            <Button
+              className="w-full"
+              disabled={signIn.isPending}
+              onClick={() => signIn.mutate(redirectTo ?? "/account")}
+            >
+              {signIn.isPending ? <Spinner /> : <GithubIcon className="size-4" />}
+              Continue with GitHub
+            </Button>
+          </div>
           {(signIn.error || error) && (
-            <p className="text-destructive text-center text-sm" role="alert">
+            <p className="text-screen-red" role="alert">
               {signIn.error?.message ?? "GitHub sign-in did not complete. Try again."}
             </p>
           )}
-        </div>
+          <p
+            className="animate-[reveal_0s_both] motion-reduce:animate-none"
+            style={{ animationDelay: `${SCRIPT_END}s` }}
+            aria-hidden="true"
+          >
+            <Prompt>
+              <Cursor />
+            </Prompt>
+          </p>
+        </TerminalWindow>
 
         <p className="text-muted-foreground text-center text-xs text-balance">
           You don't need an account to browse or install packages.
