@@ -76,8 +76,8 @@ export function CreateTokenDialog() {
             <DialogHeader>
               <DialogTitle>New publish token</DialogTitle>
               <DialogDescription>
-                Mint one token per machine that publishes, named after the machine, so revoking one
-                never breaks another.
+                Give it a name that tells you where it will be used, so it is easy to find and
+                revoke later.
               </DialogDescription>
             </DialogHeader>
             <form
@@ -181,8 +181,7 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
       </div>
       <p className="text-screen-yellow flex items-start gap-2 text-sm">
         <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        This is the only time it is shown — the registry keeps just a hash. Treat it like a
-        password.
+        You won't be able to see this token again. Treat it like a password.
       </p>
       <DialogFooter>
         <Button type="button" onClick={onDone}>

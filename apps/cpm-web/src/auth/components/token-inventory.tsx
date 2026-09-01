@@ -64,7 +64,7 @@ export function TokenInventory() {
         <div>
           <p className="font-medium">No tokens yet</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            Mint one to publish your first package.
+            Create a token to publish your first package.
           </p>
         </div>
         <CreateTokenDialog />
@@ -147,7 +147,8 @@ function RevokeTokenButton({ token }: { token: PublishToken }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Revoke {token.name ?? "this token"}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Any machine still using it loses publish access immediately. This cannot be undone.
+            Anything still using this token will no longer be able to publish. This cannot be
+            undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

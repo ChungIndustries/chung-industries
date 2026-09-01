@@ -41,50 +41,39 @@ function SignInPage() {
 
   return (
     <div className="flex min-h-[calc(100svh-3.5rem)] items-center justify-center px-6 py-16">
-      <div className="flex w-full max-w-sm flex-col gap-8">
+      <div className="flex w-full max-w-xs flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-6 text-center">
           <Link to="/" aria-label="cpm home">
             <BrandMark className="px-2.5 pt-1.5 pb-1 text-xl" />
           </Link>
-          <div>
-            <h1 className="font-display text-2xl">
-              Sign in
-              <span
-                className="bg-brand animate-blink ml-2 inline-block h-[0.75em] w-[0.45em]"
-                aria-hidden="true"
-              />
-            </h1>
-            <p className="text-muted-foreground mt-3 text-sm text-balance">
-              One GitHub account is your cpm account — the first sign-in creates it.
-            </p>
-          </div>
+          <h1 className="font-display text-2xl">
+            Sign in
+            <span
+              className="bg-brand animate-blink ml-2 inline-block h-[0.75em] w-[0.45em]"
+              aria-hidden="true"
+            />
+          </h1>
         </div>
 
-        <div className="border-border bg-card overflow-hidden rounded-lg border">
-          <div className="pixel-rule" aria-hidden="true" />
-          <div className="flex flex-col gap-4 p-6">
-            <Button
-              size="lg"
-              className="w-full"
-              disabled={signIn.isPending}
-              onClick={() => signIn.mutate(redirectTo ?? "/account")}
-            >
-              {signIn.isPending ? <Spinner /> : <GithubIcon className="size-4" />}
-              Continue with GitHub
-            </Button>
-            {(signIn.error || error) && (
-              <p className="text-destructive text-center text-sm" role="alert">
-                {signIn.error?.message ?? "GitHub sign-in did not complete. Try again."}
-              </p>
-            )}
-            <p className="text-muted-foreground text-center text-xs text-balance">
-              cpm reads only your public profile and email address, and never posts as you.
+        <div className="flex w-full flex-col gap-3">
+          <Button
+            size="lg"
+            className="w-full"
+            disabled={signIn.isPending}
+            onClick={() => signIn.mutate(redirectTo ?? "/account")}
+          >
+            {signIn.isPending ? <Spinner /> : <GithubIcon className="size-4" />}
+            Continue with GitHub
+          </Button>
+          {(signIn.error || error) && (
+            <p className="text-destructive text-center text-sm" role="alert">
+              {signIn.error?.message ?? "GitHub sign-in did not complete. Try again."}
             </p>
-          </div>
+          )}
         </div>
 
-        <p className="text-muted-foreground text-center text-xs">
-          Browsing and installing packages never needs an account.
+        <p className="text-muted-foreground text-center text-xs text-balance">
+          You don't need an account to browse or install packages.
         </p>
       </div>
     </div>

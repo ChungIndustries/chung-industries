@@ -85,13 +85,7 @@ function AccountPage() {
 
       <AccountSection
         title="Publish tokens"
-        description={
-          <>
-            The credential machines publish with, sent as{" "}
-            <code className="font-mono text-xs">Authorization: Bearer</code>. One named token per
-            machine, shown once at creation, revocable here at any time.
-          </>
-        }
+        description="Tokens let you publish packages to the registry from the command line or CI. Each token is shown once when created, and you can revoke it at any time."
       >
         <Suspense fallback={<TokenInventorySkeleton />}>
           <TokenInventory />
@@ -102,7 +96,7 @@ function AccountPage() {
 
       <AccountSection
         title="Your packages"
-        description="Names you own or maintain on the registry. The first authenticated publish of a new name claims it."
+        description="Packages you own or maintain. Publishing a new package name claims it for your account."
       >
         <Suspense fallback={<MyPackagesSkeleton />}>
           <MyPackages />

@@ -52,7 +52,7 @@ export const createTokenSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Name the machine this token is for")
+    .min(1, "Give the token a name")
     .max(64, "Keep the name under 64 characters"),
   expiresInDays: z.literal(TOKEN_EXPIRY_DAYS, "Pick one of the offered expiries"),
 });

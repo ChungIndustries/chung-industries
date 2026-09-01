@@ -18,7 +18,7 @@ export function MyPackages() {
         <div>
           <p className="font-medium">Nothing published yet</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            Publish with a token and the name is yours.
+            Packages you publish will show up here.
           </p>
         </div>
       </div>
