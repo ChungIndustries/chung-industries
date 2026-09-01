@@ -71,7 +71,7 @@ export type ScriptLine =
    holds for its pause before the next line lands. */
 function toTimeline(script: ScriptLine[]) {
   // A short lead-in beat before the first prompt lands.
-  let clock = 0.25;
+  let clock = 0.1;
   const entries = script.map((line) => {
     const at = clock;
     let duration = 0;
