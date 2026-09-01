@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { sessionQueryOptions } from "@/auth/queries";
 import { AppShell } from "@/components/app-shell";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { NotFound } from "@/components/not-found";
@@ -17,6 +18,12 @@ const DESCRIPTION =
   "cpm is the package manager for ComputerCraft: install Lua packages, programs, and their dependencies on CC:Tweaked computers with one in-game command.";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  // The header's account slot needs the session everywhere; cached with a
+  // short staleTime, so this only actually fetches once a minute at most. A
+  // failed lookup renders the site signed out rather than broken.
+  beforeLoad: async ({ context }) => {
+    await context.queryClient.ensureQueryData(sessionQueryOptions).catch(() => null);
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

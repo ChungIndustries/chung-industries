@@ -16,21 +16,27 @@ export function Cursor() {
   );
 }
 
-/** A terminal window dressed as a CC:Tweaked computer screen. */
+/**
+ * A terminal window dressed as a CC:Tweaked computer screen. Decorative by
+ * default (one labelled image); `interactive` keeps the chrome but exposes
+ * the content to assistive tech, for screens with real controls inside.
+ */
 export function TerminalWindow({
   label,
   className,
   children,
+  interactive = false,
 }: {
   label: string;
   className?: string;
   children: ReactNode;
+  interactive?: boolean;
 }) {
   return (
     <div
       className={cn("bg-card border-border max-w-full rounded-lg border", className)}
-      role="img"
-      aria-label={label}
+      role={interactive ? undefined : "img"}
+      aria-label={interactive ? undefined : label}
     >
       <div
         className="border-border flex items-center gap-1.5 border-b px-4 py-2.5"
@@ -43,7 +49,7 @@ export function TerminalWindow({
       </div>
       <div
         className="text-screen-foreground [scrollbar-width:thin] overflow-x-auto px-4 py-3.5 font-mono text-[13px] leading-7"
-        aria-hidden="true"
+        aria-hidden={interactive ? undefined : true}
       >
         {children}
       </div>
@@ -64,8 +70,9 @@ export type ScriptLine =
    PROMPT_PAUSE, types for length * TYPE_SPEED, then yields; an output line
    holds for its pause before the next line lands. */
 function toTimeline(script: ScriptLine[]) {
-  let clock = 0.5;
-  return script.map((line) => {
+  // No lead-in: the first prompt is on screen the moment the terminal is.
+  let clock = 0;
+  const entries = script.map((line) => {
     const at = clock;
     let duration = 0;
     if (line.kind === "command") {
@@ -76,6 +83,12 @@ function toTimeline(script: ScriptLine[]) {
     }
     return { line, at, duration };
   });
+  return { entries, end: clock };
+}
+
+/** When the script's last line has landed, for timing UI revealed after it. */
+export function scriptDuration(script: ScriptLine[]): number {
+  return toTimeline(script).end;
 }
 
 function TypedCommand({ text, at, duration }: { text: string; at: number; duration: number }) {
@@ -102,7 +115,7 @@ function TypedCommand({ text, at, duration }: { text: string; at: number; durati
 
 /** A script played inside a TerminalWindow: typed commands, popped output. */
 export function TerminalScript({ script }: { script: ScriptLine[] }) {
-  return toTimeline(script).map(({ line, at, duration }, index) => (
+  return toTimeline(script).entries.map(({ line, at, duration }, index) => (
     <p
       key={index}
       className={cn(

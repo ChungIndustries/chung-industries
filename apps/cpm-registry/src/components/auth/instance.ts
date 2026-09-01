@@ -32,6 +32,9 @@ export function authFor(env: Env) {
     plugins: [
       apiKey({
         defaultPrefix: "cpm_",
+        // Tokens read like an inventory on the account page: one per machine,
+        // named after it (docs/cpm-registry-auth-design.md, section 10.4).
+        requireName: true,
         // The type docs say milliseconds, but the implementation feeds this to
         // getDate(..., "sec"): it is SECONDS (verified against the 1.6.25
         // source; re-check on upgrade). The plugin's client-facing cap,

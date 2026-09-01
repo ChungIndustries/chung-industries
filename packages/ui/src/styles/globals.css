@@ -143,3 +143,16 @@
     cursor: pointer;
   }
 }
+
+/*
+ * Radix menu/listbox items render as divs and the shadcn components give
+ * them an explicit `cursor-default` utility, so this rule sits outside the
+ * cascade layers to take precedence (unlayered CSS beats layered). Disabled
+ * items already have pointer-events: none, so no exclusion is needed.
+ */
+[role="menuitem"],
+[role="menuitemcheckbox"],
+[role="menuitemradio"],
+[role="option"] {
+  cursor: pointer;
+}
