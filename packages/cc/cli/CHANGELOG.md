@@ -1,3 +1,14 @@
+## 0.0.3 (2026-09-01)
+
+### 🚀 Features
+
+- Apps get shell tab-completion from their command declarations: the new `app:completionFunction()` builds a completer for `shell.setCompletionFunction` that completes command names for the first argument and the command's `--flags` (plus `--help`) for dashed later ones. ([18e0d7f](https://github.com/ChungIndustries/chung-industries/commit/18e0d7f))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5
+
 ## 0.0.2 (2026-08-31)
 
 ### 🚀 Features
