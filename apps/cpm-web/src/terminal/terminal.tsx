@@ -70,8 +70,8 @@ export type ScriptLine =
    PROMPT_PAUSE, types for length * TYPE_SPEED, then yields; an output line
    holds for its pause before the next line lands. */
 function toTimeline(script: ScriptLine[]) {
-  // A short lead-in beat before the first prompt lands.
-  let clock = 0.1;
+  // No lead-in: the first prompt is on screen the moment the terminal is.
+  let clock = 0;
   const entries = script.map((line) => {
     const at = clock;
     let duration = 0;
