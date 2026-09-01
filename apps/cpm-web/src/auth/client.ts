@@ -1,16 +1,15 @@
 import { apiKeyClient } from "@better-auth/api-key/client";
 import { createAuthClient } from "better-auth/react";
 
-import { SITE_ORIGIN } from "@/site";
-
 /**
  * Better Auth client for browser-side mutations (sign-in, sign-out, token
- * mint/revoke). It talks to the same-origin `/auth` proxy (routes/auth.$.ts),
- * so the session cookie stays first-party. Only ever called in the browser;
- * the SSR fallback origin merely satisfies module evaluation. Pinned to the
- * registry's Better Auth version; keep the two in lockstep when upgrading.
+ * create/revoke). The auth server is same-origin behind the `/auth` proxy
+ * (routes/auth.$.ts), so per the Better Auth client docs only `basePath` is
+ * set and the origin is resolved from the page; the session cookie stays
+ * first-party. Only ever called in the browser. Pinned to the registry's
+ * Better Auth version; keep the two in lockstep when upgrading.
  */
 export const authClient = createAuthClient({
-  baseURL: `${typeof window === "undefined" ? SITE_ORIGIN : window.location.origin}/auth`,
+  basePath: "/auth",
   plugins: [apiKeyClient()],
 });
