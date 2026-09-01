@@ -41,10 +41,13 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account menu">
-          <Avatar className="size-7">
-            <AvatarImage src={user.image ?? undefined} alt="" />
-            <AvatarFallback>{user.name.slice(0, 1).toUpperCase() || "?"}</AvatarFallback>
+        <Button variant="ghost" size="icon" aria-label="Account menu">
+          {/* Square, matching the brand tile and the account page. */}
+          <Avatar className="size-7 rounded-sm after:rounded-sm">
+            <AvatarImage src={user.image ?? undefined} alt="" className="rounded-sm" />
+            <AvatarFallback className="font-display rounded-sm">
+              {user.name.slice(0, 1).toUpperCase() || "?"}
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

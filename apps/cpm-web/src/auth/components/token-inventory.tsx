@@ -11,23 +11,9 @@ import {
   AlertDialogTrigger,
 } from "@workspace/ui/components/alert-dialog";
 import { Button } from "@workspace/ui/components/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@workspace/ui/components/table";
+import { cn } from "@workspace/ui/lib/utils";
+import { KeyRound } from "lucide-react";
 
 import { CreateTokenDialog } from "@/auth/components/create-token-dialog";
 import { useRevokeToken } from "@/auth/hooks";
@@ -41,83 +27,110 @@ const EXPIRY_DATE = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const SOON_MS = 14 * 24 * 60 * 60 * 1000;
+
+type ExpiryStatus = "ok" | "soon" | "expired";
+
+function expiryStatus(expiresAt: string | null): ExpiryStatus {
+  if (expiresAt === null) return "ok";
+  const remaining = Date.parse(expiresAt) - Date.now();
+  if (remaining <= 0) return "expired";
+  return remaining < SOON_MS ? "soon" : "ok";
+}
+
+/** A square pixel of CraftOS terminal colour: the token's health at a glance. */
+function StatusPixel({ status }: { status: ExpiryStatus }) {
+  return (
+    <span
+      className={cn("size-2 shrink-0", {
+        "bg-screen-green": status === "ok",
+        "bg-screen-yellow": status === "soon",
+        "bg-screen-red": status === "expired",
+      })}
+      aria-hidden="true"
+    />
+  );
+}
+
 export function TokenInventory() {
   const { data: tokens } = useSuspenseQuery(tokensQueryOptions);
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-display text-base">Publish tokens</CardTitle>
-        <CardDescription>
-          Tokens authenticate <code>cpm</code> publishes from real machines and CI. Each one is
-          shown once at creation and can be revoked here at any time.
-        </CardDescription>
-        <CardAction>
-          <CreateTokenDialog />
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        {tokens.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No tokens yet. Mint one to publish your first package.
+
+  if (tokens.length === 0) {
+    return (
+      <div className="border-border flex flex-col items-center gap-4 rounded-lg border border-dashed px-6 py-12 text-center">
+        <span className="border-border bg-card text-muted-foreground grid size-10 place-items-center rounded-md border">
+          <KeyRound className="size-5" aria-hidden="true" />
+        </span>
+        <div>
+          <p className="font-medium">No tokens yet</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Mint one to publish your first package.
           </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Token</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead className="w-0" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tokens.map((token) => (
-                <TokenRow key={token.id} token={token} />
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+        <CreateTokenDialog />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-muted-foreground text-sm" suppressHydrationWarning>
+          {tokens.length} {tokens.length === 1 ? "token" : "tokens"}
+        </p>
+        <CreateTokenDialog />
+      </div>
+      <ul className="border-border divide-border divide-y rounded-lg border">
+        {tokens.map((token) => (
+          <TokenRow key={token.id} token={token} />
+        ))}
+      </ul>
+    </div>
   );
 }
 
 function TokenRow({ token }: { token: PublishToken }) {
-  const expired = token.expiresAt !== null && Date.parse(token.expiresAt) <= Date.now();
+  const status = expiryStatus(token.expiresAt);
   return (
-    <TableRow>
-      <TableCell className="font-medium">{token.name ?? "unnamed"}</TableCell>
-      <TableCell className="text-muted-foreground font-mono">
-        {token.start ? `${token.start}…` : "—"}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {/* Relative time drifts between server render and hydration. */}
-        <time dateTime={token.createdAt} suppressHydrationWarning>
-          {formatTimeAgo(token.createdAt)}
-        </time>
-      </TableCell>
-      <TableCell className={expired ? "text-destructive" : "text-muted-foreground"}>
-        {token.expiresAt === null
-          ? "never"
-          : expired
-            ? "expired"
-            : EXPIRY_DATE.format(new Date(token.expiresAt))}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {token.lastRequest ? (
-          <time dateTime={token.lastRequest} suppressHydrationWarning>
-            {formatTimeAgo(token.lastRequest)}
-          </time>
-        ) : (
-          "never"
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        <RevokeTokenButton token={token} />
-      </TableCell>
-    </TableRow>
+    <li className="flex items-center justify-between gap-4 px-4 py-3.5">
+      <div className="min-w-0" suppressHydrationWarning>
+        <div className="flex items-center gap-2.5">
+          <StatusPixel status={status} />
+          <span className="truncate font-medium">{token.name ?? "unnamed"}</span>
+          {token.start && (
+            <code className="text-muted-foreground shrink-0 font-mono text-xs">{token.start}…</code>
+          )}
+        </div>
+        <p className="text-muted-foreground mt-1 pl-[18px] text-xs">
+          Created <time dateTime={token.createdAt}>{formatTimeAgo(token.createdAt)}</time>
+          <span className="mx-1.5" aria-hidden="true">
+            ·
+          </span>
+          {token.expiresAt === null ? (
+            "Never expires"
+          ) : status === "expired" ? (
+            <span className="text-screen-red">
+              Expired {EXPIRY_DATE.format(new Date(token.expiresAt))}
+            </span>
+          ) : (
+            <span className={status === "soon" ? "text-screen-yellow" : undefined}>
+              Expires {EXPIRY_DATE.format(new Date(token.expiresAt))}
+            </span>
+          )}
+          <span className="mx-1.5" aria-hidden="true">
+            ·
+          </span>
+          {token.lastRequest ? (
+            <>
+              Last used <time dateTime={token.lastRequest}>{formatTimeAgo(token.lastRequest)}</time>
+            </>
+          ) : (
+            "Never used"
+          )}
+        </p>
+      </div>
+      <RevokeTokenButton token={token} />
+    </li>
   );
 }
 
@@ -154,14 +167,21 @@ function RevokeTokenButton({ token }: { token: PublishToken }) {
 
 export function TokenInventorySkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-display text-base">Publish tokens</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-8 w-28" />
+      </div>
+      <div className="border-border divide-border divide-y rounded-lg border">
+        <div className="px-4 py-3.5">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="mt-2 h-3.5 w-72 max-w-full" />
+        </div>
+        <div className="px-4 py-3.5">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="mt-2 h-3.5 w-64 max-w-full" />
+        </div>
+      </div>
+    </div>
   );
 }

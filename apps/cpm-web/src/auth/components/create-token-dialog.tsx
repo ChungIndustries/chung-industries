@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { Spinner } from "@workspace/ui/components/spinner";
-import { Check, Copy, Plus } from "lucide-react";
+import { Check, Copy, Plus, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import { useCreateToken } from "@/auth/hooks";
@@ -157,19 +157,19 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Copy your token now</DialogTitle>
+        <DialogTitle>Token created</DialogTitle>
         <DialogDescription>
-          This is the only time it is shown; the registry keeps just a hash. Treat it like a
-          password.
+          Use it as <code className="font-mono text-xs">Authorization: Bearer &lt;token&gt;</code>{" "}
+          when publishing, or store it in your CI secrets.
         </DialogDescription>
       </DialogHeader>
-      <div className="border-border bg-muted/40 flex items-center gap-2 rounded-md border p-3">
+      <div className="border-brand/40 bg-brand/5 flex items-center gap-2 rounded-md border p-3">
         <code className="min-w-0 flex-1 font-mono text-sm break-all select-all">{token}</code>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Copy token"
+          aria-label={copied ? "Copied" : "Copy token"}
           onClick={() => void copy(token)}
         >
           {copied ? (
@@ -179,9 +179,10 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
           )}
         </Button>
       </div>
-      <p className="text-muted-foreground text-sm">
-        Use it as <code>Authorization: Bearer &lt;token&gt;</code> when publishing, or store it in
-        your CI secrets.
+      <p className="text-screen-yellow flex items-start gap-2 text-sm">
+        <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        This is the only time it is shown — the registry keeps just a hash. Treat it like a
+        password.
       </p>
       <DialogFooter>
         <Button type="button" onClick={onDone}>
