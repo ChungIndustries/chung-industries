@@ -355,7 +355,14 @@ rather than producing two owners.
 **Removal is soft and never frees the name.** Set `packages.deleted_at`, insert into `reserved_names`
 with the reason, leave `versions` and the R2 objects untouched. Published versions stay immutable; that
 property is load-bearing for anyone who has already installed one. Removed packages disappear from
-`GET /packages` and return 404 from `GET /packages/{name}`.
+`GET /packages`, `GET /search`, and `GET /me/packages`, return 404 from `GET /packages/{name}` and
+`GET /packages/{name}/{version}`, cannot be pinned by `POST /resolve` (a root or transitive dependency
+on one fails with 404, so a dependent's install breaks loudly instead of silently), and refuse every
+publish with 403, admins included, so reviving a package is never a side effect of a publish. The
+tarball and bundle downloads of already-published versions keep working by exact version: the bytes
+are immutable, the edge caches them for a year anyway, and a computer or fleet holding an exact pin
+can still fetch what it already depends on. Read-path behaviour implemented 2026-09-02; the removal
+endpoint itself is phase 4.
 
 **Deprecation** is the soft alternative: `packages.deprecated_message` is returned in the package
 document, the client prints it on install, and nothing else changes. This should be the common path.

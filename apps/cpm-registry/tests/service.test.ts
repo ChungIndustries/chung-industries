@@ -475,6 +475,64 @@ describe("PackageService", () => {
     });
   });
 
+  describe("removal", () => {
+    const lib = (v: string) => pack(meta(v), { "init.lua": `return '${v}'` });
+
+    beforeEach(async () => {
+      await publish(lib("1.0.0"));
+      await publish(lib("1.1.0"));
+      await publish(
+        pack(
+          { name: "dependent", version: "1.0.0", dependencies: { example: "^1.0.0" } },
+          { "init.lua": "x" },
+        ),
+      );
+      registry.markRemoved("example");
+    });
+
+    it("hides a removed package from the index, search, its document, and its versions", async () => {
+      expect((await service.list()).map((p) => p.name)).toEqual(["dependent"]);
+      // Neither a match nor a count: the empty query is the paginated index.
+      expect(await service.search("example", { limit: 20, offset: 0 })).toEqual({
+        results: [],
+        total: 0,
+      });
+      expect((await service.search("", { limit: 20, offset: 0 })).total).toBe(1);
+      await expect(service.get("example")).rejects.toMatchObject({ status: 404 });
+      await expect(service.getVersion("example", "1.1.0")).rejects.toMatchObject({ status: 404 });
+      // Gone from its maintainers' inventory too, not just the public index.
+      expect(await service.maintainedBy(OWNER.userId)).toEqual([
+        { name: "dependent", role: "owner" },
+      ]);
+    });
+
+    it("cannot be pinned by resolve, as a root or as a transitive dependency", async () => {
+      await expect(service.resolve({ example: "latest" })).rejects.toMatchObject({ status: 404 });
+      await expect(service.resolve({ dependent: "latest" })).rejects.toMatchObject({
+        status: 404,
+      });
+    });
+
+    it("keeps already-published artifacts downloadable by exact version", async () => {
+      // Immutable bytes stay served for anyone holding a pin, even though the
+      // package document is gone; an unknown version still 404s.
+      expect(sha1(await service.readTarball("example", "1.0.0"))).toBe(sha1(lib("1.0.0")));
+      const { manifest } = parseBundle(await service.readBundle("example", "1.1.0"));
+      expect(manifest).toMatchObject({ name: "example", version: "1.1.0" });
+      await expect(service.readTarball("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("refuses publishes to the retired name, even from its owner or an admin", async () => {
+      await expect(publish(lib("1.2.0"))).rejects.toMatchObject({ status: 403 });
+      await expect(publish(lib("1.2.0"), ADMIN)).rejects.toMatchObject({ status: 403 });
+      // Nothing was recorded against the removed package.
+      expect(Object.keys((await registry.getIncludingRemoved("example"))!.versions)).toEqual([
+        "1.0.0",
+        "1.1.0",
+      ]);
+    });
+  });
+
   it("serves the bootstrap installer from the latest cpm package", async () => {
     await expect(service.readInstaller()).rejects.toMatchObject({ status: 404 });
 

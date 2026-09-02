@@ -88,7 +88,7 @@ export function registerPackageRoutes(app: App): void {
       method: "get",
       path: "/packages",
       summary: "List packages",
-      description: "Returns all CPM packages in the registry.",
+      description: "Returns all CPM packages in the registry. Removed packages are not listed.",
       responses: {
         200: jsonSuccess(z.object({ packages: z.array(packageSchema) }), "All packages"),
         500: serverError,
@@ -108,7 +108,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/search",
       summary: "Search packages",
       description:
-        "Searches the registry by package name, author, and description (case-insensitive substring match), returning one summary per matching package instead of the full package document. Results are ranked with exact name matches first, then name prefixes, then other name matches, then author or description matches, ties broken by name. An empty or omitted `q` matches every package, so this also serves as the paginated index. Page with `limit` and `offset`; `total` counts matches across all pages.",
+        "Searches the registry by package name, author, and description (case-insensitive substring match), returning one summary per matching package instead of the full package document. Results are ranked with exact name matches first, then name prefixes, then other name matches, then author or description matches, ties broken by name. An empty or omitted `q` matches every package, so this also serves as the paginated index. Page with `limit` and `offset`; `total` counts matches across all pages. Removed packages never match.",
       request: { query: searchQuerySchema },
       responses: {
         200: jsonSuccess(searchResultsSchema, "Matching packages"),
@@ -129,11 +129,12 @@ export function registerPackageRoutes(app: App): void {
       method: "get",
       path: "/packages/{name}",
       summary: "Get package",
-      description: "Returns the CPM package entry for the given package name.",
+      description:
+        "Returns the CPM package entry for the given package name. A removed package responds 404 like an unknown one; its name stays reserved.",
       request: { params: z.object({ name: nameParam }) },
       responses: {
         200: jsonSuccess(packageSchema, "The package"),
-        404: jsonFail("Package not found"),
+        404: jsonFail("Package not found or removed"),
         500: serverError,
       },
     }),
@@ -153,12 +154,13 @@ export function registerPackageRoutes(app: App): void {
       method: "get",
       path: "/packages/{name}/{version}",
       summary: "Get package version",
-      description: "Returns the specific version entry for the given package.",
+      description:
+        "Returns the specific version entry for the given package. Versions of a removed package respond 404, although their artifacts stay downloadable.",
       request: { params: versionParams },
       responses: {
         200: jsonSuccess(packageVersionSchema, "The version"),
         400: jsonFail("Invalid version"),
-        404: jsonFail("Package or version not found"),
+        404: jsonFail("Package or version not found, or package removed"),
         500: serverError,
       },
     }),
@@ -177,7 +179,7 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description: `Creates a package if missing, or adds a new version to an existing one. Requires a publish token (\`Authorization: Bearer cpm_...\`); the first authenticated publish of a new name claims ownership, and later versions may only be published by its maintainers. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; the \`cpm.json\` at the tarball root is the package metadata. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
+      description: `Creates a package if missing, or adds a new version to an existing one. Requires a publish token (\`Authorization: Bearer cpm_...\`); the first authenticated publish of a new name claims ownership, and later versions may only be published by its maintainers. Published versions are immutable: re-publishing an existing version returns 409. A removed package's name is retired and cannot be published to (403). Send the tarball file as \`tarball\` in multipart/form-data; the \`cpm.json\` at the tarball root is the package metadata. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
       middleware: [requireActorScope("publish")] as const,
       security: [{ publishToken: [] }],
       request: {
@@ -219,7 +221,8 @@ export function registerPackageRoutes(app: App): void {
       method: "get",
       path: "/packages/{name}/{version}/dist/tarball",
       summary: "Download tarball",
-      description: "Returns the gzipped tarball bytes for a specific package version.",
+      description:
+        "Returns the gzipped tarball bytes for a specific package version. Published versions are immutable and never deleted, so this keeps working for a removed package's existing versions.",
       request: { params: versionParams },
       responses: {
         200: {
@@ -250,7 +253,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/packages/{name}/{version}/dist/bundle",
       summary: "Download bundle",
       description:
-        "Returns the bundle for a specific package version: the artifact the in-game cpm client installs from. Format: `<manifest byte length>\\n<minified manifest JSON><raw concatenated file bytes>`, where the manifest is `{ name, version, files: [{ path, offset, length }] }` with offsets relative to the first byte after the manifest. Served gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`; `dist.bundle.sha256` is the SHA-256 of the decoded bytes.",
+        "Returns the bundle for a specific package version: the artifact the in-game cpm client installs from. Format: `<manifest byte length>\\n<minified manifest JSON><raw concatenated file bytes>`, where the manifest is `{ name, version, files: [{ path, offset, length }] }` with offsets relative to the first byte after the manifest. Served gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`; `dist.bundle.sha256` is the SHA-256 of the decoded bytes. Published versions are immutable and never deleted, so this keeps working for a removed package's existing versions.",
       request: { params: versionParams },
       responses: {
         200: {
@@ -289,14 +292,14 @@ export function registerPackageRoutes(app: App): void {
       path: "/resolve",
       summary: "Resolve dependencies",
       description:
-        "Pins one version per package for the given root dependencies and their transitive dependencies. Each spec may be a semver range, an exact version, or a dist-tag. Every requester of a package must agree on a single version (the client installs into a flat store): the highest version satisfying all requested ranges is chosen, and unsatisfiable combinations fail. Results are ordered dependencies-first.",
+        "Pins one version per package for the given root dependencies and their transitive dependencies. Each spec may be a semver range, an exact version, or a dist-tag. Every requester of a package must agree on a single version (the client installs into a flat store): the highest version satisfying all requested ranges is chosen, and unsatisfiable combinations fail. Results are ordered dependencies-first. A removed package cannot be pinned: a root or transitive dependency on one fails with 404.",
       request: {
         body: { required: true, content: { "application/json": { schema: resolveRequestSchema } } },
       },
       responses: {
         200: jsonSuccess(z.object({ packages: z.array(packageVersionSchema) }), "Pinned packages"),
         400: jsonFail("Invalid request or unsatisfiable dependencies"),
-        404: jsonFail("Package not found"),
+        404: jsonFail("Package not found or removed"),
         500: serverError,
       },
     }),

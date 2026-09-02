@@ -299,7 +299,8 @@ paths:
       tags:
         - Packages
       summary: List packages
-      description: Returns all CPM packages in the registry.
+      description: Returns all CPM packages in the registry. Removed packages are not
+        listed.
       responses:
         "200":
           description: All packages
@@ -349,7 +350,8 @@ paths:
         one. Requires a publish token (`Authorization: Bearer cpm_...`); the
         first authenticated publish of a new name claims ownership, and later
         versions may only be published by its maintainers. Published versions
-        are immutable: re-publishing an existing version returns 409. Send the
+        are immutable: re-publishing an existing version returns 409. A removed
+        package's name is retired and cannot be published to (403). Send the
         tarball file as `tarball` in multipart/form-data; the `cpm.json` at the
         tarball root is the package metadata. The tarball must be a gzipped tar
         of the package files at its root (no wrapping directory), with relative
@@ -525,7 +527,7 @@ paths:
         then author or description matches, ties broken by name. An empty or
         omitted `q` matches every package, so this also serves as the paginated
         index. Page with `limit` and `offset`; `total` counts matches across all
-        pages.
+        pages. Removed packages never match.
       parameters:
         - schema:
             type: string
@@ -621,7 +623,8 @@ paths:
       tags:
         - Packages
       summary: Get package
-      description: Returns the CPM package entry for the given package name.
+      description: Returns the CPM package entry for the given package name. A removed
+        package responds 404 like an unknown one; its name stays reserved.
       parameters:
         - schema:
             type: string
@@ -648,7 +651,7 @@ paths:
                   - status
                   - data
         "404":
-          description: Package not found
+          description: Package not found or removed
           content:
             application/json:
               schema:
@@ -691,7 +694,9 @@ paths:
       tags:
         - Packages
       summary: Get package version
-      description: Returns the specific version entry for the given package.
+      description: Returns the specific version entry for the given package. Versions
+        of a removed package respond 404, although their artifacts stay
+        downloadable.
       parameters:
         - schema:
             type: string
@@ -748,7 +753,7 @@ paths:
                   - status
                   - data
         "404":
-          description: Package or version not found
+          description: Package or version not found, or package removed
           content:
             application/json:
               schema:
@@ -792,6 +797,8 @@ paths:
         - Packages
       summary: Download tarball
       description: Returns the gzipped tarball bytes for a specific package version.
+        Published versions are immutable and never deleted, so this keeps
+        working for a removed package's existing versions.
       parameters:
         - schema:
             type: string
@@ -888,7 +895,9 @@ paths:
         the manifest is `{ name, version, files: [{ path, offset, length }] }`
         with offsets relative to the first byte after the manifest. Served
         gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`;
-        `dist.bundle.sha256` is the SHA-256 of the decoded bytes."
+        `dist.bundle.sha256` is the SHA-256 of the decoded bytes. Published
+        versions are immutable and never deleted, so this keeps working for a
+        removed package's existing versions."
       parameters:
         - schema:
             type: string
@@ -984,7 +993,9 @@ paths:
         version, or a dist-tag. Every requester of a package must agree on a
         single version (the client installs into a flat store): the highest
         version satisfying all requested ranges is chosen, and unsatisfiable
-        combinations fail. Results are ordered dependencies-first."
+        combinations fail. Results are ordered dependencies-first. A removed
+        package cannot be pinned: a root or transitive dependency on one fails
+        with 404."
       requestBody:
         required: true
         content:
@@ -1038,7 +1049,7 @@ paths:
                   - status
                   - data
         "404":
-          description: Package not found
+          description: Package not found or removed
           content:
             application/json:
               schema:
