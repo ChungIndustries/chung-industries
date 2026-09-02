@@ -14,12 +14,15 @@ ChungIndustries rebuilds real internet infrastructure inside Minecraft using Com
 
 ## Projects
 
-| Project                             | Stack                   | Description                                                                     |
-| ----------------------------------- | ----------------------- | ------------------------------------------------------------------------------- |
-| [`cpm-registry`](apps/cpm-registry) | TypeScript · Express    | Registry API for the Chung Package Manager; hosts package metadata and tarballs |
-| [`web`](apps/web)                   | React · Vite · Supabase | Web app (currently template boilerplate)                                        |
-| [`docs`](apps/docs)                 | Hono · Scalar           | API docs site (docs.chungindustries.com), serves the CPM Registry reference     |
-| [`packages/*`](packages)            | TypeScript              | `@workspace/*` shared configuration and libraries                               |
+| Project                             | Stack                   | Description                                                                        |
+| ----------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| [`cpm-registry`](apps/cpm-registry) | TypeScript · Hono       | Registry API for the Chung Package Manager; hosts package metadata and tarballs    |
+| [`cpm-web`](apps/cpm-web)           | React · Hono            | Registry website: browse packages, sign in, manage publish tokens                  |
+| [`cpm-cli`](apps/cpm-cli)           | Lua                     | The in-game cpm client, published to the registry as the `cpm` package             |
+| [`cpm-tool`](apps/cpm-tool)         | Go · Cobra              | The `cpm` command for real computers: log in, pack, and publish packages           |
+| [`web`](apps/web)                   | React · Vite · Supabase | Web app (currently template boilerplate)                                           |
+| [`docs`](apps/docs)                 | Hono · Scalar           | API docs site (docs.chungindustries.com), serves the CPM Registry reference        |
+| [`packages/*`](packages)            | TypeScript · Lua        | `@workspace/*` shared libraries, and `packages/cc/*` Lua packages for the registry |
 
 See each project's own README for how to run and configure it.
 
@@ -35,6 +38,7 @@ See each project's own README for how to run and configure it.
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 24, [pnpm](https://pnpm.io/) >= 10
+- [Go](https://go.dev/) for the cpm tool (`apps/cpm-tool`) and for building the Lua packages, which run it
 - [Docker](https://www.docker.com/) for the web app's local Supabase
 
 ## Getting started
