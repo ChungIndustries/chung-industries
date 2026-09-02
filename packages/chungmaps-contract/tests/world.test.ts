@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  MAP_CHUNK_SIZE,
+  SECTION_SIZE,
   blockIdSchema,
   blockStateSchema,
   blockTypeSchema,
   dimensionIdSchema,
-  mapChunkOf,
+  sectionOf,
   positionSchema,
 } from "../src";
 
@@ -69,17 +69,17 @@ describe("positions", () => {
   });
 });
 
-describe("mapChunkOf", () => {
+describe("sectionOf", () => {
   it("floors positive coordinates", () => {
-    expect(mapChunkOf({ x: 0, y: 15, z: 16 })).toEqual({ cx: 0, cy: 0, cz: 1 });
-    expect(mapChunkOf({ x: 31, y: 32, z: 33 })).toEqual({ cx: 1, cy: 2, cz: 2 });
+    expect(sectionOf({ x: 0, y: 15, z: 16 })).toEqual({ sx: 0, sy: 0, sz: 1 });
+    expect(sectionOf({ x: 31, y: 32, z: 33 })).toEqual({ sx: 1, sy: 2, sz: 2 });
   });
 
   it("floors negative coordinates into the cube below zero", () => {
-    expect(mapChunkOf({ x: -1, y: -16, z: -17 })).toEqual({ cx: -1, cy: -1, cz: -2 });
+    expect(sectionOf({ x: -1, y: -16, z: -17 })).toEqual({ sx: -1, sy: -1, sz: -2 });
   });
 
-  it("uses 16-block map chunks", () => {
-    expect(MAP_CHUNK_SIZE).toBe(16);
+  it("uses 16-block sections", () => {
+    expect(SECTION_SIZE).toBe(16);
   });
 });

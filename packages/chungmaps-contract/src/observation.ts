@@ -6,7 +6,7 @@ import {
   blockStateSchema,
   blockTypeSchema,
   dimensionIdSchema,
-  mapChunkKeySchema,
+  sectionKeySchema,
   positionSchema,
 } from "./world";
 
@@ -49,8 +49,8 @@ export const storedBlockSchema = observationSchema.extend({
 });
 export type StoredBlock = z.infer<typeof storedBlockSchema>;
 
-/** One map chunk's known blocks. Sparse: unobserved cells are simply absent. */
-export const mapChunkSchema = mapChunkKeySchema.extend({
+/** One section's known blocks. Sparse: unobserved cells are simply absent. */
+export const sectionSchema = sectionKeySchema.extend({
   blocks: z.array(storedBlockSchema),
 });
-export type MapChunk = z.infer<typeof mapChunkSchema>;
+export type Section = z.infer<typeof sectionSchema>;

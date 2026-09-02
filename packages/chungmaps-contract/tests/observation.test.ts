@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AIR,
   MAX_BATCH_SIZE,
-  mapChunkSchema,
+  sectionSchema,
   observationBatchSchema,
   observationSchema,
   storedBlockSchema,
@@ -61,7 +61,7 @@ describe("observation batch", () => {
   });
 });
 
-describe("stored blocks and map chunks", () => {
+describe("stored blocks and sections", () => {
   const stored = { ...stone, observedAt: "2026-01-01T00:00:00.000Z", turtleId: "t_1" };
 
   it("requires the server-assigned timestamp and the observing turtle", () => {
@@ -69,9 +69,9 @@ describe("stored blocks and map chunks", () => {
     expect(storedBlockSchema.safeParse(stone).success).toBe(false);
   });
 
-  it("serves a map chunk as a sparse block list", () => {
-    const chunk = { dimension: "minecraft:overworld", cx: 0, cy: 4, cz: -2, blocks: [stored] };
-    expect(mapChunkSchema.safeParse(chunk).success).toBe(true);
-    expect(mapChunkSchema.safeParse({ ...chunk, blocks: [] }).success).toBe(true);
+  it("serves a section as a sparse block list", () => {
+    const section = { dimension: "minecraft:overworld", sx: 0, sy: 4, sz: -2, blocks: [stored] };
+    expect(sectionSchema.safeParse(section).success).toBe(true);
+    expect(sectionSchema.safeParse({ ...section, blocks: [] }).success).toBe(true);
   });
 });

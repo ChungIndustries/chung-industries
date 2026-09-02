@@ -74,31 +74,31 @@ export const facingSchema = z.enum(["north", "east", "south", "west"]).meta({
 export type Facing = z.infer<typeof facingSchema>;
 
 /**
- * Edge length of the cubes the map is addressed and served in. A map chunk is
- * 16x16x16, deliberately not Minecraft's chunk (a 16-wide column spanning the
- * full build height), hence the distinct name.
+ * Edge length of the cubes the map is addressed and served in. "Section" is
+ * Minecraft's own term for a 16x16x16 cube; a chunk is the full-height
+ * 16-wide column made of them, which is why this is not called a chunk.
  */
-export const MAP_CHUNK_SIZE = 16;
+export const SECTION_SIZE = 16;
 
-export const mapChunkCoordinateSchema = z
+export const sectionCoordinateSchema = z
   .int()
-  .min(Math.floor(-WORLD_LIMIT / MAP_CHUNK_SIZE))
-  .max(Math.floor(WORLD_LIMIT / MAP_CHUNK_SIZE));
+  .min(Math.floor(-WORLD_LIMIT / SECTION_SIZE))
+  .max(Math.floor(WORLD_LIMIT / SECTION_SIZE));
 
-/** Addresses one map chunk. */
-export const mapChunkKeySchema = z.object({
+/** Addresses one section. */
+export const sectionKeySchema = z.object({
   dimension: dimensionIdSchema,
-  cx: mapChunkCoordinateSchema,
-  cy: mapChunkCoordinateSchema,
-  cz: mapChunkCoordinateSchema,
+  sx: sectionCoordinateSchema,
+  sy: sectionCoordinateSchema,
+  sz: sectionCoordinateSchema,
 });
-export type MapChunkKey = z.infer<typeof mapChunkKeySchema>;
+export type SectionKey = z.infer<typeof sectionKeySchema>;
 
-/** The map chunk containing a position. Floors, so negative coordinates land in the right cube. */
-export function mapChunkOf(position: Position): Pick<MapChunkKey, "cx" | "cy" | "cz"> {
+/** The section containing a position. Floors, so negative coordinates land in the right cube. */
+export function sectionOf(position: Position): Pick<SectionKey, "sx" | "sy" | "sz"> {
   return {
-    cx: Math.floor(position.x / MAP_CHUNK_SIZE),
-    cy: Math.floor(position.y / MAP_CHUNK_SIZE),
-    cz: Math.floor(position.z / MAP_CHUNK_SIZE),
+    sx: Math.floor(position.x / SECTION_SIZE),
+    sy: Math.floor(position.y / SECTION_SIZE),
+    sz: Math.floor(position.z / SECTION_SIZE),
   };
 }
