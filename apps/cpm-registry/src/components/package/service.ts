@@ -15,10 +15,12 @@ import {
   type Package,
   type PackageVersion,
   type PackageVersionMetadata,
+  type SearchResults,
 } from "@/components/package/schemas";
 import {
   type BlobStore,
   type RegistryStore,
+  type SearchOptions,
   bundleKey,
   bundlePath,
   tarballKey,
@@ -81,6 +83,11 @@ export class PackageService {
 
   list(): Promise<Package[]> {
     return this.registry.list();
+  }
+
+  /** Searches the index; see {@link RegistryStore.search} for the matching contract. */
+  search(query: string, options: SearchOptions): Promise<SearchResults> {
+    return this.registry.search(query.trim(), options);
   }
 
   async get(name: string): Promise<Package> {

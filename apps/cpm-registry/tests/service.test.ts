@@ -302,6 +302,71 @@ describe("PackageService", () => {
     await expect(service.readBundle("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
   });
 
+  describe("search", () => {
+    const page = { limit: 20, offset: 0 };
+    const names = async (query: string, options = page) =>
+      (await service.search(query, options)).results.map((r) => r.name);
+
+    beforeEach(async () => {
+      const put = (manifest: PackageVersionMetadata) =>
+        publish(pack(manifest, { "init.lua": "return {}" }));
+      await put({ name: "http", version: "1.0.0", description: "Plain HTTP helpers" });
+      await put({ name: "http-client", version: "1.0.0", author: "alice" });
+      await put({ name: "cc-http", version: "1.0.0" });
+      await put({
+        name: "mail",
+        version: "1.0.0",
+        author: "alice",
+        description: "Send letters over HTTP",
+      });
+      await put({
+        name: "mail",
+        version: "2.0.0",
+        author: "alice",
+        description: "Mail over HTTP, now with attachments",
+      });
+    });
+
+    it("ranks exact, prefix, and substring name matches ahead of description matches", async () => {
+      expect(await names("http")).toEqual(["http", "http-client", "cc-http", "mail"]);
+    });
+
+    it("matches author and the latest description, case-insensitively", async () => {
+      expect(await names("ALICE")).toEqual(["http-client", "mail"]);
+      expect(await names("attachments")).toEqual(["mail"]);
+      // Only the latest version's description is searched.
+      expect(await names("letters")).toEqual([]);
+    });
+
+    it("summarizes each package from its latest version", async () => {
+      const { results, total } = await service.search("mail", page);
+      const pkg = await service.get("mail");
+      expect(total).toBe(1);
+      expect(results).toEqual([
+        {
+          name: "mail",
+          author: "alice",
+          description: "Mail over HTTP, now with attachments",
+          version: "2.0.0",
+          versionCount: 2,
+          publishedAt: pkg.versions["2.0.0"]?.createdAt,
+        },
+      ]);
+    });
+
+    it("lists everything by name for an empty query, with total spanning all pages", async () => {
+      expect(await names("")).toEqual(["cc-http", "http", "http-client", "mail"]);
+      const { results, total } = await service.search("", { limit: 2, offset: 1 });
+      expect(results.map((r) => r.name)).toEqual(["http", "http-client"]);
+      expect(total).toBe(4);
+    });
+
+    it("trims the query and returns an empty page for no matches", async () => {
+      expect(await names("  http  ")).toEqual(await names("http"));
+      expect(await service.search("nope", page)).toEqual({ results: [], total: 0 });
+    });
+  });
+
   describe("resolve", () => {
     beforeEach(async () => {
       const put = (manifest: PackageVersionMetadata) =>

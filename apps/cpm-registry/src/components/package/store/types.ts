@@ -1,4 +1,4 @@
-import type { Package, PackageVersion } from "@/components/package/schemas";
+import type { Package, PackageVersion, SearchResults } from "@/components/package/schemas";
 
 export interface AddVersionInput {
   name: string;
@@ -31,6 +31,11 @@ export interface MaintainedPackage {
   role: MaintainerRole;
 }
 
+export interface SearchOptions {
+  limit: number;
+  offset: number;
+}
+
 /**
  * The package index. Reads assemble the npm-style package document; `addVersion`
  * records a new immutable version atomically.
@@ -38,6 +43,16 @@ export interface MaintainedPackage {
 export interface RegistryStore {
   list(): Promise<Package[]>;
   get(name: string): Promise<Package | null>;
+  /**
+   * Case-insensitive substring search over package name, package author, and
+   * the description of the `latest` version. `query` arrives trimmed; an empty
+   * query matches every package, so this doubles as the paginated index.
+   *
+   * Ranking: exact name, then name prefix, then other name matches, then
+   * author-or-description-only matches, ties by name in byte order. `total`
+   * counts every match regardless of the page requested.
+   */
+  search(query: string, options: SearchOptions): Promise<SearchResults>;
   /**
    * Upserts the package, inserts the immutable version (throws `ConflictError`
    * if that (name, version) already exists), and upserts the dist-tags, all in

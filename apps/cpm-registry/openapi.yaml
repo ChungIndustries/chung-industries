@@ -193,6 +193,67 @@ components:
           cc-http: ^1.2.0
         dist: *a1
         createdAt: 2026-01-15T12:00:00.000Z
+    SearchResults:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PackageSummary"
+          description: The requested page of matches
+        total:
+          type: integer
+          minimum: 0
+          example: 1
+          description: Number of matches across all pages
+      required:
+        - results
+        - total
+      additionalProperties: false
+    PackageSummary:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]+$
+          example: example
+        author:
+          type: string
+          example: chungindustries
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          example: Example utilities for CC:Tweaked computers
+          description: Short user-facing summary of what the package does
+        version:
+          type: string
+          example: 1.0.0
+          description: The version `dist-tags.latest` points at
+        versionCount:
+          type: integer
+          minimum: 0
+          exclusiveMinimum: true
+          example: 3
+          description: Number of published versions
+        publishedAt:
+          type: string
+          format: date-time
+          example: 2026-01-15T12:00:00.000Z
+          description: Publish timestamp of the latest version, ISO 8601 UTC
+      required:
+        - name
+        - version
+        - versionCount
+        - publishedAt
+      additionalProperties: false
+      example:
+        name: example
+        author: chungindustries
+        description: Example utilities for CC:Tweaked computers
+        version: 1.0.0
+        versionCount: 3
+        publishedAt: 2026-01-15T12:00:00.000Z
     ResolveRequest:
       type: object
       properties:
@@ -415,6 +476,109 @@ paths:
                   - data
         "413":
           description: Tarball too large
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /search:
+    get:
+      tags:
+        - Packages
+      summary: Search packages
+      description: Searches the registry by package name, author, and description
+        (case-insensitive substring match), returning one summary per matching
+        package instead of the full package document. Results are ranked with
+        exact name matches first, then name prefixes, then other name matches,
+        then author or description matches, ties broken by name. An empty or
+        omitted `q` matches every package, so this also serves as the paginated
+        index. Page with `limit` and `offset`; `total` counts matches across all
+        pages.
+      parameters:
+        - schema:
+            type: string
+            default: ""
+            example: http
+            description: Text to match against package names, authors, and descriptions.
+              Empty or omitted matches every package
+          required: false
+          description: Text to match against package names, authors, and descriptions.
+            Empty or omitted matches every package
+          name: q
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+            description: Page size, at most 100
+          required: false
+          description: Page size, at most 100
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+            default: 0
+            example: 0
+            description: Number of matches to skip
+          required: false
+          description: Number of matches to skip
+          name: offset
+          in: query
+      responses:
+        "200":
+          description: Matching packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/SearchResults"
+                required:
+                  - status
+                  - data
+        "400":
+          description: Invalid query parameters
           content:
             application/json:
               schema:

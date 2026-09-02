@@ -7,6 +7,8 @@ import {
   packageSchema,
   packageVersionSchema,
   resolveRequestSchema,
+  searchQuerySchema,
+  searchResultsSchema,
   semverSchema,
 } from "@/components/package/schemas";
 import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service";
@@ -97,6 +99,28 @@ export function registerPackageRoutes(app: App): void {
         { status: "success" as const, data: { packages: await serviceFor(c.env).list() } },
         200,
       ),
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "get",
+      path: "/search",
+      summary: "Search packages",
+      description:
+        "Searches the registry by package name, author, and description (case-insensitive substring match), returning one summary per matching package instead of the full package document. Results are ranked with exact name matches first, then name prefixes, then other name matches, then author or description matches, ties broken by name. An empty or omitted `q` matches every package, so this also serves as the paginated index. Page with `limit` and `offset`; `total` counts matches across all pages.",
+      request: { query: searchQuerySchema },
+      responses: {
+        200: jsonSuccess(searchResultsSchema, "Matching packages"),
+        400: jsonFail("Invalid query parameters"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { q, limit, offset } = c.req.valid("query");
+      const data = await serviceFor(c.env).search(q, { limit, offset });
+      return c.json({ status: "success" as const, data }, 200);
+    },
   );
 
   app.openapi(

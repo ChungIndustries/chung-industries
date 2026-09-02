@@ -195,3 +195,89 @@ export const packageSchema = z
   })
   .openapi("Package");
 export type Package = z.infer<typeof packageSchema>;
+
+/** Default and ceiling for `GET /search` page sizes. */
+export const SEARCH_DEFAULT_LIMIT = 20;
+export const SEARCH_MAX_LIMIT = 100;
+
+const queryParam = (name: string) => ({ param: { name, in: "query" as const } });
+
+export const searchQuerySchema = z.object({
+  q: z
+    .string()
+    .trim()
+    .default("")
+    .openapi({
+      ...queryParam("q"),
+      example: "http",
+      description:
+        "Text to match against package names, authors, and descriptions. Empty or omitted matches every package",
+    }),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(SEARCH_MAX_LIMIT)
+    .default(SEARCH_DEFAULT_LIMIT)
+    .openapi({
+      ...queryParam("limit"),
+      example: SEARCH_DEFAULT_LIMIT,
+      description: `Page size, at most ${SEARCH_MAX_LIMIT}`,
+    }),
+  offset: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .openapi({
+      ...queryParam("offset"),
+      example: 0,
+      description: "Number of matches to skip",
+    }),
+});
+export type SearchQuery = z.infer<typeof searchQuerySchema>;
+
+/**
+ * One package as it appears in search results: what an index row needs, taken
+ * from the package and its `latest` version, without the full version map.
+ */
+export const packageSummarySchema = z
+  .strictObject({
+    name: packageNameSchema,
+    author: authorSchema,
+    description: descriptionSchema,
+    version: semverSchema.openapi({ description: "The version `dist-tags.latest` points at" }),
+    versionCount: z
+      .number()
+      .int()
+      .positive()
+      .openapi({ example: 3, description: "Number of published versions" }),
+    publishedAt: createdAtSchema.openapi({
+      description: "Publish timestamp of the latest version, ISO 8601 UTC",
+    }),
+  })
+  .openapi("PackageSummary", {
+    example: {
+      name: "example",
+      author: "chungindustries",
+      description: "Example utilities for CC:Tweaked computers",
+      version: "1.0.0",
+      versionCount: 3,
+      publishedAt: "2026-01-15T12:00:00.000Z",
+    },
+  });
+export type PackageSummary = z.infer<typeof packageSummarySchema>;
+
+export const searchResultsSchema = z
+  .strictObject({
+    results: z
+      .array(packageSummarySchema)
+      .openapi({ description: "The requested page of matches" }),
+    total: z
+      .number()
+      .int()
+      .nonnegative()
+      .openapi({ example: 1, description: "Number of matches across all pages" }),
+  })
+  .openapi("SearchResults");
+export type SearchResults = z.infer<typeof searchResultsSchema>;
