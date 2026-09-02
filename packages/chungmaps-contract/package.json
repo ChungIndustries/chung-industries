@@ -1,0 +1,25 @@
+{
+  "name": "@workspace/chungmaps-contract",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared schemas for what turtles report to chungmaps and what the map serves back.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@workspace/lint-config": "workspace:*",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
