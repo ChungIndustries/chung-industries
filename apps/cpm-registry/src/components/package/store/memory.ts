@@ -4,8 +4,9 @@ import type {
   BlobStore,
   MaintainedPackage,
   Maintainer,
-  MaintainerRole,
+  MaintainerChange,
   RegistryStore,
+  RegistryUser,
   SearchOptions,
 } from "@/components/package/store/types";
 import { ConflictError, ForbiddenError } from "@/errors";
@@ -14,22 +15,25 @@ import { ConflictError, ForbiddenError } from "@/errors";
  * In-memory {@link RegistryStore} used by the service unit tests. It mirrors the
  * atomicity contract of the D1 store (duplicate version -> `ConflictError`,
  * non-maintainer publish -> `ForbiddenError`, first publish claims ownership,
- * original author preserved) without needing a real database, so the tests are
- * fast and portable.
+ * original author preserved, owner-guarded maintainer writes) without needing
+ * a real database, so the tests are fast and portable.
  */
 export class InMemoryRegistryStore implements RegistryStore {
   private readonly packages = new Map<string, Package>();
+  /** Rows in insertion order, which is the D1 store's `added_at` order. */
   private readonly maintainers = new Map<string, Maintainer[]>();
   private readonly reserved = new Set<string>();
+  /** Mirrors the `user` table's id and handle columns, keyed by user id. */
+  private readonly users = new Map<string, RegistryUser>();
 
   /** Test helper mirroring a row in `reserved_names`. */
   reserve(name: string): void {
     this.reserved.add(name);
   }
 
-  /** Test helper mirroring a maintainer row added out of band. */
-  addMaintainer(name: string, userId: string, role: MaintainerRole = "maintainer"): void {
-    this.maintainers.set(name, [...(this.maintainers.get(name) ?? []), { userId, role }]);
+  /** Test helper mirroring an account signing up (Better Auth writes `user`). */
+  addUser(user: RegistryUser): void {
+    this.users.set(user.userId, user);
   }
 
   async list(): Promise<Package[]> {
@@ -64,7 +68,32 @@ export class InMemoryRegistryStore implements RegistryStore {
   }
 
   async getMaintainers(name: string): Promise<Maintainer[]> {
-    return [...(this.maintainers.get(name) ?? [])];
+    const rows = this.maintainers.get(name) ?? [];
+    // Owner first, then insertion order (Array.prototype.sort is stable).
+    return rows
+      .map((row) => this.withHandle(row))
+      .sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner"));
+  }
+
+  async addMaintainer({ name, userId, actorUserId }: MaintainerChange): Promise<void> {
+    const rows = this.requireOwner(name, actorUserId);
+    if (rows.some((m) => m.userId === userId)) return;
+    this.maintainers.set(name, [...rows, { userId, role: "maintainer" }]);
+  }
+
+  async removeMaintainer({ name, userId, actorUserId }: MaintainerChange): Promise<boolean> {
+    const rows = this.requireOwner(name, actorUserId);
+    const kept = rows.filter((m) => !(m.userId === userId && m.role === "maintainer"));
+    this.maintainers.set(name, kept);
+    return kept.length < rows.length;
+  }
+
+  async userByHandle(handle: string): Promise<RegistryUser | null> {
+    const needle = handle.toLowerCase();
+    for (const user of this.users.values()) {
+      if (user.handle.toLowerCase() === needle) return { ...user };
+    }
+    return null;
   }
 
   async isReserved(name: string): Promise<boolean> {
@@ -115,6 +144,21 @@ export class InMemoryRegistryStore implements RegistryStore {
     };
     this.packages.set(name, pkg);
     return clone(pkg);
+  }
+
+  /** The D1 store's `IS_OWNER` guard on maintainer writes. */
+  private requireOwner(name: string, actorUserId: string): Maintainer[] {
+    const rows = this.maintainers.get(name) ?? [];
+    if (!rows.some((m) => m.userId === actorUserId && m.role === "owner")) {
+      throw new ForbiddenError(`Only the owner of "${name}" can manage its maintainers`);
+    }
+    return rows;
+  }
+
+  /** The D1 store's `LEFT JOIN user`: a handle only for accounts that have one. */
+  private withHandle(row: Maintainer): Maintainer {
+    const handle = this.users.get(row.userId)?.handle;
+    return { userId: row.userId, ...(handle ? { handle } : {}), role: row.role };
   }
 }
 

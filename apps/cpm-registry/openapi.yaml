@@ -9,6 +9,8 @@ servers:
 tags:
   - name: Packages
     description: Endpoints for browsing and retrieving cpm packages.
+  - name: Maintainers
+    description: Who may publish a package, managed by its owner.
   - name: Bootstrap
     description: Getting cpm onto a fresh computer.
   - name: Account
@@ -254,6 +256,44 @@ components:
         version: 1.0.0
         versionCount: 3
         publishedAt: 2026-01-15T12:00:00.000Z
+    Maintainers:
+      type: object
+      properties:
+        maintainers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Maintainer"
+          description: The owner first, then maintainers in the order added
+      required:
+        - maintainers
+      additionalProperties: false
+    Maintainer:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9
+          description: Stable account id, the key `package_maintainers` references
+        handle:
+          type: string
+          pattern: ^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38}$
+          example: octocat
+          description: Absent only for accounts created before handles existed
+        role:
+          type: string
+          enum:
+            - owner
+            - maintainer
+          description: Exactly one maintainer is the `owner`, who alone may change the
+            maintainer list
+      required:
+        - userId
+        - role
+      additionalProperties: false
+      example:
+        userId: kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9
+        handle: octocat
+        role: owner
     ResolveRequest:
       type: object
       properties:
@@ -649,6 +689,384 @@ paths:
                   - data
         "404":
           description: Package not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /packages/{name}/maintainers:
+    get:
+      tags:
+        - Maintainers
+      summary: List maintainers
+      description: "Returns who may publish the package: its single owner first, then
+        the maintainers in the order they were added. Public, like the package
+        itself."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+      responses:
+        "200":
+          description: The maintainers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/Maintainers"
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /packages/{name}/maintainers/{handle}:
+    put:
+      tags:
+        - Maintainers
+      summary: Add maintainer
+      description: "Adds the account with the given handle as a maintainer, letting
+        them publish new versions. Only the package owner may call this, with a
+        browser session or a token holding the `manage` scope. Handles are
+        GitHub logins, matched case-insensitively, and the account must already
+        exist. Idempotent: re-adding a maintainer, or the owner, changes
+        nothing. Returns the updated list."
+      security:
+        - publishToken: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+        - schema:
+            type: string
+            pattern: ^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38}$
+            example: octocat
+            description: "The account's handle: its GitHub login at signup, matched
+              case-insensitively"
+          required: true
+          description: "The account's handle: its GitHub login at signup, matched
+            case-insensitively"
+          name: handle
+          in: path
+      responses:
+        "200":
+          description: The updated maintainers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/Maintainers"
+                required:
+                  - status
+                  - data
+        "400":
+          description: Invalid handle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "403":
+          description: Not the package owner, or missing the manage scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package or account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+    delete:
+      tags:
+        - Maintainers
+      summary: Remove maintainer
+      description: "Removes the account with the given handle from the maintainers, so
+        they can no longer publish. Only the package owner may call this, with a
+        browser session or a token holding the `manage` scope. The owner cannot
+        be removed: changing who owns a package is an ownership transfer.
+        Returns the updated list."
+      security:
+        - publishToken: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+        - schema:
+            type: string
+            pattern: ^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38}$
+            example: octocat
+            description: "The account's handle: its GitHub login at signup, matched
+              case-insensitively"
+          required: true
+          description: "The account's handle: its GitHub login at signup, matched
+            case-insensitively"
+          name: handle
+          in: path
+      responses:
+        "200":
+          description: The updated maintainers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/Maintainers"
+                required:
+                  - status
+                  - data
+        "400":
+          description: Invalid handle, or the handle is the owner's
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "403":
+          description: Not the package owner, or missing the manage scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package or account not found, or not a maintainer
           content:
             application/json:
               schema:
