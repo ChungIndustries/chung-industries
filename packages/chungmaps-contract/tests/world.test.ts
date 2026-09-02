@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  SECTION_SIZE,
+  MAP_CHUNK_SIZE,
   blockIdSchema,
   blockStateSchema,
+  blockTypeSchema,
   dimensionIdSchema,
+  mapChunkOf,
   positionSchema,
-  sectionOf,
 } from "../src";
 
 describe("namespaced ids", () => {
@@ -43,6 +44,20 @@ describe("block state", () => {
   });
 });
 
+describe("block type", () => {
+  it("carries tags, including ones with a path", () => {
+    const type = { id: "minecraft:stone", tags: ["minecraft:mineable/pickaxe", "forge:stone"] };
+    expect(blockTypeSchema.safeParse(type).success).toBe(true);
+    expect(blockTypeSchema.safeParse({ id: "minecraft:air", tags: [] }).success).toBe(true);
+  });
+
+  it("rejects tags that are not namespaced", () => {
+    expect(blockTypeSchema.safeParse({ id: "minecraft:stone", tags: ["stone"] }).success).toBe(
+      false,
+    );
+  });
+});
+
 describe("positions", () => {
   it("requires integer coordinates", () => {
     expect(positionSchema.safeParse({ x: 1, y: 64, z: -3 }).success).toBe(true);
@@ -54,17 +69,17 @@ describe("positions", () => {
   });
 });
 
-describe("sectionOf", () => {
+describe("mapChunkOf", () => {
   it("floors positive coordinates", () => {
-    expect(sectionOf({ x: 0, y: 15, z: 16 })).toEqual({ sx: 0, sy: 0, sz: 1 });
-    expect(sectionOf({ x: 31, y: 32, z: 33 })).toEqual({ sx: 1, sy: 2, sz: 2 });
+    expect(mapChunkOf({ x: 0, y: 15, z: 16 })).toEqual({ cx: 0, cy: 0, cz: 1 });
+    expect(mapChunkOf({ x: 31, y: 32, z: 33 })).toEqual({ cx: 1, cy: 2, cz: 2 });
   });
 
   it("floors negative coordinates into the cube below zero", () => {
-    expect(sectionOf({ x: -1, y: -16, z: -17 })).toEqual({ sx: -1, sy: -1, sz: -2 });
+    expect(mapChunkOf({ x: -1, y: -16, z: -17 })).toEqual({ cx: -1, cy: -1, cz: -2 });
   });
 
-  it("uses 16-block sections", () => {
-    expect(SECTION_SIZE).toBe(16);
+  it("uses 16-block map chunks", () => {
+    expect(MAP_CHUNK_SIZE).toBe(16);
   });
 });
