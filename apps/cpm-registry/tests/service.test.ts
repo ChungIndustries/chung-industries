@@ -513,23 +513,18 @@ describe("PackageService", () => {
       });
     });
 
-    it("keeps already-published artifacts downloadable by exact version", async () => {
-      // Immutable bytes stay served for anyone holding a pin, even though the
-      // package document is gone; an unknown version still 404s.
-      expect(sha1(await service.readTarball("example", "1.0.0"))).toBe(sha1(lib("1.0.0")));
-      const { manifest } = parseBundle(await service.readBundle("example", "1.1.0"));
-      expect(manifest).toMatchObject({ name: "example", version: "1.1.0" });
-      await expect(service.readTarball("example", "9.9.9")).rejects.toMatchObject({ status: 404 });
+    it("stops serving its artifacts, like an npm unpublish, while keeping the bytes", async () => {
+      await expect(service.readTarball("example", "1.0.0")).rejects.toMatchObject({ status: 404 });
+      await expect(service.readBundle("example", "1.1.0")).rejects.toMatchObject({ status: 404 });
+      // Storage is untouched by a removal, so the package can be recovered.
+      expect(await blobs.get(tarballKey("example", sha1(lib("1.0.0"))))).not.toBeNull();
     });
 
     it("refuses publishes to the retired name, even from its owner or an admin", async () => {
       await expect(publish(lib("1.2.0"))).rejects.toMatchObject({ status: 403 });
       await expect(publish(lib("1.2.0"), ADMIN)).rejects.toMatchObject({ status: 403 });
-      // Nothing was recorded against the removed package.
-      expect(Object.keys((await registry.getIncludingRemoved("example"))!.versions)).toEqual([
-        "1.0.0",
-        "1.1.0",
-      ]);
+      // The rejection happened before any blob write.
+      expect(await blobs.get(tarballKey("example", sha1(lib("1.2.0"))))).toBeNull();
     });
   });
 

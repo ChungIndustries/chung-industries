@@ -41,10 +41,10 @@ export interface SearchOptions {
  * records a new immutable version atomically.
  *
  * Removal is soft (`packages.deleted_at`, docs/cpm-registry-auth-design.md,
- * section 8.3): the row, its versions, and the blobs all survive so the name
- * stays claimed and already-published artifacts stay downloadable. The index
- * reads (`list`, `get`, `search`, `packagesByMaintainer`) therefore hide removed
- * packages, and only the explicitly named methods below see them.
+ * section 8.3): the row, its versions, and the blobs all survive in storage so
+ * the name stays claimed and the package can be recovered, but nothing is
+ * served. Every read (`list`, `get`, `search`, `packagesByMaintainer`) hides
+ * removed packages; `isRemoved` is the only method that sees them.
  */
 export interface RegistryStore {
   /** Every package that has not been removed. */
@@ -61,13 +61,7 @@ export interface RegistryStore {
    * counts every match regardless of the page requested.
    */
   search(query: string, options: SearchOptions): Promise<SearchResults>;
-  /**
-   * Like {@link get} but also returns a removed package. Only for serving the
-   * immutable artifacts of already-published versions; never for the package
-   * document, listings, or resolution.
-   */
-  getIncludingRemoved(name: string): Promise<Package | null>;
-  /** Whether the package exists and has been soft-deleted. */
+  /** Whether the package exists and has been soft-deleted; the publish pre-flight check. */
   isRemoved(name: string): Promise<boolean>;
   /**
    * Upserts the package, inserts the immutable version (throws `ConflictError`

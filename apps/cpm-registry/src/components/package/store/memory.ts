@@ -35,9 +35,9 @@ export class InMemoryRegistryStore implements RegistryStore {
 
   /**
    * Test helper mirroring `packages.deleted_at` being set: the package, its
-   * versions, and its maintainers all stay in place, exactly like a soft
-   * delete in D1. Reserving the name is a separate step, as it is in the real
-   * removal (see `reserve`).
+   * versions, and its maintainers all stay in place (unserved), exactly like a
+   * soft delete in D1. Reserving the name is a separate step, as it is in the
+   * real removal (see `reserve`).
    */
   markRemoved(name: string): void {
     if (!this.packages.has(name)) throw new Error(`Cannot remove unknown package "${name}"`);
@@ -51,12 +51,8 @@ export class InMemoryRegistryStore implements RegistryStore {
   }
 
   async get(name: string): Promise<Package | null> {
-    return this.removed.has(name) ? null : this.getIncludingRemoved(name);
-  }
-
-  async getIncludingRemoved(name: string): Promise<Package | null> {
     const pkg = this.packages.get(name);
-    return pkg ? clone(pkg) : null;
+    return pkg && !this.removed.has(name) ? clone(pkg) : null;
   }
 
   async search(query: string, { limit, offset }: SearchOptions): Promise<SearchResults> {

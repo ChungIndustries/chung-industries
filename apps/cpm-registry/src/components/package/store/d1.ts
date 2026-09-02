@@ -51,8 +51,8 @@ const SELECT_PACKAGES = "SELECT name, author, created_at FROM packages";
 const SELECT_VERSIONS =
   "SELECT package_name, version, description, author, dependencies, shasum, integrity, bundle_sha256, bundle_size, created_at FROM versions";
 const SELECT_TAGS = "SELECT package_name, tag, version FROM dist_tags";
-// Soft-deleted rows are kept (name stays claimed, blobs stay served) but every
-// index read filters them out; see RegistryStore.
+// Soft-deleted rows are kept (name stays claimed, blobs stay in storage) but
+// every read filters them out, downloads included; see RegistryStore.
 const NOT_REMOVED = "deleted_at IS NULL";
 
 // One row per package joined to its `latest` version, which is where the
@@ -111,25 +111,9 @@ export class D1RegistryStore implements RegistryStore {
     );
   }
 
-  get(name: string): Promise<Package | null> {
-    return this.load(name, `name = ? AND ${NOT_REMOVED}`);
-  }
-
-  getIncludingRemoved(name: string): Promise<Package | null> {
-    return this.load(name, "name = ?");
-  }
-
-  async isRemoved(name: string): Promise<boolean> {
-    const row = await this.db
-      .prepare("SELECT deleted_at FROM packages WHERE name = ?")
-      .bind(name)
-      .first<{ deleted_at: number | null }>();
-    return row !== null && row.deleted_at !== null;
-  }
-
-  private async load(name: string, where: string): Promise<Package | null> {
+  async get(name: string): Promise<Package | null> {
     const pkgRow = await this.db
-      .prepare(`${SELECT_PACKAGES} WHERE ${where}`)
+      .prepare(`${SELECT_PACKAGES} WHERE name = ? AND ${NOT_REMOVED}`)
       .bind(name)
       .first<PackageRow>();
     if (!pkgRow) return null;
@@ -141,6 +125,14 @@ export class D1RegistryStore implements RegistryStore {
     const versionRows = (results[0]?.results ?? []) as VersionRow[];
     const tagRows = (results[1]?.results ?? []) as TagRow[];
     return assemble(pkgRow, versionRows, tagRows);
+  }
+
+  async isRemoved(name: string): Promise<boolean> {
+    const row = await this.db
+      .prepare("SELECT deleted_at FROM packages WHERE name = ?")
+      .bind(name)
+      .first<{ deleted_at: number | null }>();
+    return row !== null && row.deleted_at !== null;
   }
 
   async search(query: string, { limit, offset }: SearchOptions): Promise<SearchResults> {
