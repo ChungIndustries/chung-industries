@@ -84,6 +84,86 @@ components:
         latest: 1.0.0
       description: Distribution tags mapping tag names to versions
     PackageVersion:
+      allOf:
+        - $ref: "#/components/schemas/PackageVersionMetadata"
+        - type: object
+          properties:
+            dist:
+              type: object
+              properties:
+                tarball:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                      example: /packages/example/1.0.0/dist/tarball
+                      description: Tarball path
+                    shasum:
+                      type: string
+                      pattern: ^[a-f0-9]{40}$
+                      example: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+                      description: SHA-1 hex digest of the tarball
+                    integrity:
+                      type: string
+                      pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
+                      example: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
+                      description: Subresource Integrity (SRI) sha512 digest of the tarball
+                  required:
+                    - url
+                    - shasum
+                    - integrity
+                  additionalProperties: false
+                  description: "The publish artifact: a gzipped tar of the package files"
+                bundle:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                      example: /packages/example/1.0.0/dist/bundle
+                      description: "Bundle path: the artifact the in-game cpm client downloads"
+                    sha256:
+                      type: string
+                      pattern: ^[a-f0-9]{64}$
+                      example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+                      description: Hex SHA-256 digest of the bundle bytes
+                    size:
+                      type: integer
+                      minimum: 0
+                      example: 4096
+                      description: Bundle size in bytes (before wire compression)
+                  required:
+                    - url
+                    - sha256
+                    - size
+                  additionalProperties: false
+                  description: "The derived install artifact: a length-prefixed JSON manifest plus
+                    raw file bytes"
+              required:
+                - tarball
+                - bundle
+              additionalProperties: false
+              description: Distribution artifacts, one entry per artifact kind
+            createdAt:
+              type: string
+              format: date-time
+              example: 2026-01-15T12:00:00.000Z
+              description: Publish timestamp, ISO 8601 UTC
+          required:
+            - dist
+            - createdAt
+          additionalProperties: false
+      description: "A published version: the manifest metadata plus its distribution
+        artifacts and publish timestamp"
+      example:
+        name: example
+        description: Example utilities for CC:Tweaked computers
+        author: chungindustries
+        version: 1.0.0
+        dependencies:
+          cc-http: ^1.2.0
+        dist: *a1
+        createdAt: 2026-01-15T12:00:00.000Z
+    PackageVersionMetadata:
       type: object
       properties:
         name:
@@ -118,81 +198,12 @@ components:
           example: startup.lua
           description: Path, relative to the package root, of a Lua file the client runs
             at computer startup
-        dist:
-          type: object
-          properties:
-            tarball:
-              type: object
-              properties:
-                url:
-                  type: string
-                  example: /packages/example/1.0.0/dist/tarball
-                  description: Tarball path
-                shasum:
-                  type: string
-                  pattern: ^[a-f0-9]{40}$
-                  example: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                  description: SHA-1 hex digest of the tarball
-                integrity:
-                  type: string
-                  pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
-                  example: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
-                  description: Subresource Integrity (SRI) sha512 digest of the tarball
-              required:
-                - url
-                - shasum
-                - integrity
-              additionalProperties: false
-              description: "The publish artifact: a gzipped tar of the package files"
-            bundle:
-              type: object
-              properties:
-                url:
-                  type: string
-                  example: /packages/example/1.0.0/dist/bundle
-                  description: "Bundle path: the artifact the in-game cpm client downloads"
-                sha256:
-                  type: string
-                  pattern: ^[a-f0-9]{64}$
-                  example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
-                  description: Hex SHA-256 digest of the bundle bytes
-                size:
-                  type: integer
-                  minimum: 0
-                  example: 4096
-                  description: Bundle size in bytes (before wire compression)
-              required:
-                - url
-                - sha256
-                - size
-              additionalProperties: false
-              description: "The derived install artifact: a length-prefixed JSON manifest plus
-                raw file bytes"
-          required:
-            - tarball
-            - bundle
-          additionalProperties: false
-          description: Distribution artifacts, one entry per artifact kind
-        createdAt:
-          type: string
-          format: date-time
-          example: 2026-01-15T12:00:00.000Z
-          description: Publish timestamp, ISO 8601 UTC
       required:
         - name
         - version
-        - dist
-        - createdAt
       additionalProperties: false
-      example:
-        name: example
-        description: Example utilities for CC:Tweaked computers
-        author: chungindustries
-        version: 1.0.0
-        dependencies:
-          cc-http: ^1.2.0
-        dist: *a1
-        createdAt: 2026-01-15T12:00:00.000Z
+      description: "The package manifest: the `cpm.json` at the tarball root, which
+        the registry treats as the metadata source of truth at publish"
     ResolveRequest:
       type: object
       properties:
@@ -214,11 +225,15 @@ components:
       properties:
         userId:
           type: string
+        name:
+          type: string
+          description: The user's display name
         via:
           type: string
           enum:
             - token
             - session
+          description: How the caller authenticated
         scopes:
           type: array
           items:
@@ -227,10 +242,36 @@ components:
               - publish
               - manage
               - admin
+        token:
+          type: object
+          properties:
+            name:
+              type: string
+              nullable: true
+              description: The token's name on the account page
+            expiresAt:
+              type: string
+              nullable: true
+              format: date-time
+              description: Expiry, ISO 8601 UTC; null for a token that never expires
+          required:
+            - name
+            - expiresAt
+          description: The publish token used; absent for a browser session
       required:
         - userId
+        - name
         - via
         - scopes
+      example:
+        userId: 3f2c1e9a
+        name: chrille0313
+        via: token
+        scopes:
+          - publish
+        token:
+          name: laptop
+          expiresAt: 2026-12-01T00:00:00.000Z
   parameters: {}
 paths:
   /packages:
@@ -973,8 +1014,9 @@ paths:
         - Account
       summary: Who am I
       description: "Returns the authenticated identity behind the supplied credential:
-        a publish token (`Authorization: Bearer cpm_...`) or a browser session.
-        Useful as a token smoke test in CI and tooling."
+        a publish token (`Authorization: Bearer cpm_...`) or a browser session,
+        with the token's name and expiry when one was used. What `cpm whoami`
+        prints, and a token smoke test for CI."
       security:
         - publishToken: []
       responses:

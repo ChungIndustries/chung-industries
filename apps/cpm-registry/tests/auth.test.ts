@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import type { Scope } from "@/components/auth/actor";
 import { resolveActor, type AuthGateway } from "@/components/auth/middleware";
 
+const goodToken = { name: "laptop", expiresAt: "2026-12-01T00:00:00.000Z" };
+
 /** Gateway fake: one known token, one known session cookie. */
-function gateway(
-  overrides: Partial<Record<"token", { userId: string; scopes: Scope[] } | null>> = {},
-): AuthGateway {
+function gateway(): AuthGateway {
   return {
     async verifyToken(token) {
-      if ("token" in overrides) return overrides.token ?? null;
-      return token === "cpm_good" ? { userId: "user-1", scopes: ["publish"] } : null;
+      return token === "cpm_good"
+        ? { userId: "user-1", name: "Alice", scopes: ["publish"], token: goodToken }
+        : null;
     },
     async sessionUser(headers) {
-      return headers.get("cookie") === "session=valid" ? { userId: "user-2" } : null;
+      return headers.get("cookie") === "session=valid" ? { userId: "user-2", name: "Bob" } : null;
     },
   };
 }
@@ -25,9 +25,15 @@ describe("resolveActor", () => {
     expect(await resolveActor(headers(), gateway())).toBeNull();
   });
 
-  it("resolves a valid bearer token to a token actor", async () => {
+  it("resolves a valid bearer token to a token actor carrying the token's details", async () => {
     const actor = await resolveActor(headers({ Authorization: "Bearer cpm_good" }), gateway());
-    expect(actor).toEqual({ userId: "user-1", scopes: ["publish"], via: "token" });
+    expect(actor).toEqual({
+      userId: "user-1",
+      name: "Alice",
+      scopes: ["publish"],
+      via: "token",
+      token: goodToken,
+    });
   });
 
   it("accepts a case-insensitive scheme", async () => {
@@ -59,8 +65,14 @@ describe("resolveActor", () => {
     ).rejects.toMatchObject({ status: 401 });
   });
 
-  it("resolves a browser session when no token is supplied", async () => {
+  it("resolves a browser session to a session actor with no token details", async () => {
     const actor = await resolveActor(headers({ Cookie: "session=valid" }), gateway());
-    expect(actor).toEqual({ userId: "user-2", scopes: ["publish", "manage"], via: "session" });
+    expect(actor).toEqual({
+      userId: "user-2",
+      name: "Bob",
+      scopes: ["publish", "manage"],
+      via: "session",
+    });
+    expect(actor).not.toHaveProperty("token");
   });
 });

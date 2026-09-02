@@ -12,10 +12,32 @@ type App = OpenAPIHono<AppEnv>;
 const actorSchema = z
   .object({
     userId: z.string(),
-    via: z.enum(["token", "session"]),
+    name: z.string().openapi({ description: "The user's display name" }),
+    via: z.enum(["token", "session"]).openapi({ description: "How the caller authenticated" }),
     scopes: z.array(z.enum(SCOPES)),
+    token: z
+      .object({
+        name: z
+          .string()
+          .nullable()
+          .openapi({ description: "The token's name on the account page" }),
+        expiresAt: z.iso
+          .datetime()
+          .nullable()
+          .openapi({ description: "Expiry, ISO 8601 UTC; null for a token that never expires" }),
+      })
+      .optional()
+      .openapi({ description: "The publish token used; absent for a browser session" }),
   })
-  .openapi("Actor");
+  .openapi("Actor", {
+    example: {
+      userId: "3f2c1e9a",
+      name: "chrille0313",
+      via: "token",
+      scopes: ["publish"],
+      token: { name: "laptop", expiresAt: "2026-12-01T00:00:00.000Z" },
+    },
+  });
 
 const maintainedPackagesSchema = z.object({
   packages: z.array(
@@ -34,7 +56,7 @@ export function registerAccountRoutes(app: App): void {
       path: "/me",
       summary: "Who am I",
       description:
-        "Returns the authenticated identity behind the supplied credential: a publish token (`Authorization: Bearer cpm_...`) or a browser session. Useful as a token smoke test in CI and tooling.",
+        "Returns the authenticated identity behind the supplied credential: a publish token (`Authorization: Bearer cpm_...`) or a browser session, with the token's name and expiry when one was used. What `cpm whoami` prints, and a token smoke test for CI.",
       middleware: [requireActor()] as const,
       security: [{ publishToken: [] }],
       responses: {
@@ -44,9 +66,9 @@ export function registerAccountRoutes(app: App): void {
       },
     }),
     (c) => {
-      const { userId, via, scopes } = c.get("actor");
+      const { userId, name, via, scopes, token } = c.get("actor");
       return c.json(
-        { status: "success" as const, data: { userId, via, scopes: [...scopes] } },
+        { status: "success" as const, data: { userId, name, via, scopes: [...scopes], token } },
         200,
       );
     },

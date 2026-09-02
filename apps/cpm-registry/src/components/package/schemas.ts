@@ -137,14 +137,21 @@ export const resolveRequestSchema = z
   .openapi("ResolveRequest");
 export type ResolveRequest = z.infer<typeof resolveRequestSchema>;
 
-export const packageVersionMetadataSchema = z.strictObject({
-  name: packageNameSchema,
-  version: semverSchema,
-  description: descriptionSchema,
-  author: authorSchema,
-  dependencies: dependenciesSchema,
-  startup: startupSchema,
-});
+// Named in the OpenAPI document so publishing tools can generate the cpm.json
+// type straight from the spec instead of re-declaring it by hand.
+export const packageVersionMetadataSchema = z
+  .strictObject({
+    name: packageNameSchema,
+    version: semverSchema,
+    description: descriptionSchema,
+    author: authorSchema,
+    dependencies: dependenciesSchema,
+    startup: startupSchema,
+  })
+  .openapi("PackageVersionMetadata", {
+    description:
+      "The package manifest: the `cpm.json` at the tarball root, which the registry treats as the metadata source of truth at publish",
+  });
 export type PackageVersionMetadata = z.infer<typeof packageVersionMetadataSchema>;
 
 // `createdAt` is assigned by the store at publish, so it is part of the
@@ -152,6 +159,8 @@ export type PackageVersionMetadata = z.infer<typeof packageVersionMetadataSchema
 export const packageVersionSchema = packageVersionMetadataSchema
   .extend({ dist: distSchema, createdAt: createdAtSchema })
   .openapi("PackageVersion", {
+    description:
+      "A published version: the manifest metadata plus its distribution artifacts and publish timestamp",
     example: {
       name: "example",
       description: "Example utilities for CC:Tweaked computers",
