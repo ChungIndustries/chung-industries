@@ -99,7 +99,7 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers",
       summary: "List maintainers",
       description:
-        "Returns who may publish the package: its single owner first, then the maintainers in the order they were added. Public, like the package itself.",
+        "Returns the package's maintainers: the owner first, then maintainers in the order they were added.",
       request: { params: z.object({ name: nameParam }) },
       responses: {
         200: jsonSuccess(maintainersSchema, "The maintainers"),
@@ -120,7 +120,7 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers/{handle}",
       summary: "Add maintainer",
       description:
-        "Adds the account with the given handle as a maintainer, letting them publish new versions. Only the package owner may call this, with a browser session or a token holding the `manage` scope. Handles are GitHub logins, matched case-insensitively, and the account must already exist. Idempotent: re-adding a maintainer, or the owner, changes nothing. Returns the updated list.",
+        "Adds the account with the given handle as a maintainer, letting it publish new versions. Owner only, and requires the `manage` scope. Idempotent: re-adding a maintainer or the owner changes nothing. Returns the updated list.",
       middleware: [requireActorScope("manage")] as const,
       security: [{ publishToken: [] }],
       request: { params: maintainerParams },
@@ -147,13 +147,13 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers/{handle}",
       summary: "Remove maintainer",
       description:
-        "Removes the account with the given handle from the maintainers, so they can no longer publish. Only the package owner may call this, with a browser session or a token holding the `manage` scope. The owner cannot be removed: changing who owns a package is an ownership transfer. Returns the updated list.",
+        "Removes the account with the given handle from the maintainers, so it can no longer publish. Owner only, and requires the `manage` scope. The owner cannot be removed; that is an ownership transfer. Returns the updated list.",
       middleware: [requireActorScope("manage")] as const,
       security: [{ publishToken: [] }],
       request: { params: maintainerParams },
       responses: {
         200: jsonSuccess(maintainersSchema, "The updated maintainers"),
-        400: jsonFail("Invalid handle, or the handle is the owner's"),
+        400: jsonFail("Invalid handle, or the owner's handle"),
         401: jsonFail("Not authenticated"),
         403: jsonFail("Not the package owner, or missing the manage scope"),
         404: jsonFail("Package or account not found, or not a maintainer"),

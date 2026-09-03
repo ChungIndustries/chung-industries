@@ -273,21 +273,23 @@ components:
         userId:
           type: string
           example: kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9
-          description: Stable account id, the key `package_maintainers` references
+          description: Stable account id
         handle:
           type: string
           pattern: ^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38}$
           example: octocat
-          description: Absent only for accounts created before handles existed
+          description: "The account's handle: its GitHub login at signup, matched
+            case-insensitively"
         role:
           type: string
           enum:
             - owner
             - maintainer
-          description: Exactly one maintainer is the `owner`, who alone may change the
-            maintainer list
+          description: One maintainer is the `owner`, who alone may add or remove
+            maintainers
       required:
         - userId
+        - handle
         - role
       additionalProperties: false
       example:
@@ -731,9 +733,8 @@ paths:
       tags:
         - Maintainers
       summary: List maintainers
-      description: "Returns who may publish the package: its single owner first, then
-        the maintainers in the order they were added. Public, like the package
-        itself."
+      description: "Returns the package's maintainers: the owner first, then
+        maintainers in the order they were added."
       parameters:
         - schema:
             type: string
@@ -803,12 +804,10 @@ paths:
       tags:
         - Maintainers
       summary: Add maintainer
-      description: "Adds the account with the given handle as a maintainer, letting
-        them publish new versions. Only the package owner may call this, with a
-        browser session or a token holding the `manage` scope. Handles are
-        GitHub logins, matched case-insensitively, and the account must already
-        exist. Idempotent: re-adding a maintainer, or the owner, changes
-        nothing. Returns the updated list."
+      description: "Adds the account with the given handle as a maintainer, letting it
+        publish new versions. Owner only, and requires the `manage` scope.
+        Idempotent: re-adding a maintainer or the owner changes nothing. Returns
+        the updated list."
       security:
         - publishToken: []
       parameters:
@@ -956,11 +955,10 @@ paths:
       tags:
         - Maintainers
       summary: Remove maintainer
-      description: "Removes the account with the given handle from the maintainers, so
-        they can no longer publish. Only the package owner may call this, with a
-        browser session or a token holding the `manage` scope. The owner cannot
-        be removed: changing who owns a package is an ownership transfer.
-        Returns the updated list."
+      description: Removes the account with the given handle from the maintainers, so
+        it can no longer publish. Owner only, and requires the `manage` scope.
+        The owner cannot be removed; that is an ownership transfer. Returns the
+        updated list.
       security:
         - publishToken: []
       parameters:
@@ -1000,7 +998,7 @@ paths:
                   - status
                   - data
         "400":
-          description: Invalid handle, or the handle is the owner's
+          description: Invalid handle, or the owner's handle
           content:
             application/json:
               schema:

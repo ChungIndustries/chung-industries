@@ -74,6 +74,10 @@ describe("PackageService", () => {
     blobs = new InMemoryBlobStore();
     registry = new InMemoryRegistryStore();
     service = new PackageService(registry, blobs);
+    // Every actor is a signed-up account with a handle, as in production.
+    registry.addUser({ userId: OWNER.userId, handle: "owner" });
+    registry.addUser({ userId: OTHER.userId, handle: "Other-Dev" });
+    registry.addUser({ userId: ADMIN.userId, handle: "admin" });
   });
 
   it("round-trips publish -> resolve latest -> download with a matching checksum", async () => {
@@ -415,7 +419,7 @@ describe("PackageService", () => {
     it("claims a new name for the first authenticated publisher", async () => {
       await publish(lib("1.0.0"));
       expect(await registry.getMaintainers("example")).toEqual([
-        { userId: OWNER.userId, role: "owner" },
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
       ]);
       expect(await service.maintainedBy(OWNER.userId)).toEqual([
         { name: "example", role: "owner" },
@@ -427,7 +431,7 @@ describe("PackageService", () => {
       await expect(publish(lib("1.1.0"), OTHER)).rejects.toMatchObject({ status: 403 });
       // Ownership is untouched and the version was never recorded.
       expect(await registry.getMaintainers("example")).toEqual([
-        { userId: OWNER.userId, role: "owner" },
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
       ]);
       await expect(service.getVersion("example", "1.1.0")).rejects.toMatchObject({ status: 404 });
     });
@@ -443,8 +447,8 @@ describe("PackageService", () => {
       expect(pkg["dist-tags"].latest).toBe("1.1.0");
       // Publishing as a maintainer never reassigns ownership.
       expect(await registry.getMaintainers("example")).toEqual([
-        { userId: OWNER.userId, role: "owner" },
-        { userId: OTHER.userId, role: "maintainer" },
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
+        { userId: OTHER.userId, handle: "Other-Dev", role: "maintainer" },
       ]);
     });
 
@@ -487,8 +491,6 @@ describe("PackageService", () => {
     const THIRD = { userId: "user-third", handle: "third" };
 
     beforeEach(async () => {
-      registry.addUser({ userId: OWNER.userId, handle: "owner" });
-      registry.addUser({ userId: OTHER.userId, handle: "Other-Dev" });
       registry.addUser(THIRD);
       await publish(lib("1.0.0"));
     });
@@ -577,14 +579,6 @@ describe("PackageService", () => {
       ).toBe(false);
       expect(await service.listMaintainers("example")).toEqual([
         { userId: OWNER.userId, handle: "owner", role: "owner" },
-      ]);
-    });
-
-    it("omits the handle for accounts created before handles existed", async () => {
-      const legacy: Actor = { userId: "user-legacy", scopes: ["publish"], via: "token" };
-      await publish(pack({ name: "old", version: "1.0.0" }, { "init.lua": "x" }), legacy);
-      expect(await service.listMaintainers("old")).toEqual([
-        { userId: legacy.userId, role: "owner" },
       ]);
     });
   });

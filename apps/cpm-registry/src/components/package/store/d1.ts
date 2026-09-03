@@ -234,22 +234,20 @@ export class D1RegistryStore implements RegistryStore {
   }
 
   async getMaintainers(name: string): Promise<Maintainer[]> {
-    // LEFT JOIN: a maintainer row always references a live user (FK CASCADE),
-    // but accounts from before 0008_handles.sql may not have a handle yet.
     const { results } = await this.db
       .prepare(
         `SELECT m.user_id, u.handle, m.role FROM package_maintainers m
-         LEFT JOIN "user" u ON u.id = m.user_id
+         JOIN "user" u ON u.id = m.user_id
          WHERE m.package_name = ?
          ORDER BY m.role = 'owner' DESC, m.added_at, m.user_id`,
       )
       .bind(name)
       .all<{ user_id: string; handle: string | null; role: MaintainerRole }>();
-    return results.map((row) => ({
-      userId: row.user_id,
-      ...(row.handle ? { handle: row.handle } : {}),
-      role: row.role,
-    }));
+    return results.map((row) => {
+      // Only an account from before 0008_handles.sql that was never backfilled.
+      if (!row.handle) throw new Error(`User ${row.user_id} has no handle, backfill user.handle`);
+      return { userId: row.user_id, handle: row.handle, role: row.role };
+    });
   }
 
   async addMaintainer({ name, userId, actorUserId }: MaintainerChange): Promise<void> {

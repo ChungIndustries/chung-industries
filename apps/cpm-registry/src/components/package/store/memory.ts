@@ -21,7 +21,7 @@ import { ConflictError, ForbiddenError } from "@/errors";
 export class InMemoryRegistryStore implements RegistryStore {
   private readonly packages = new Map<string, Package>();
   /** Rows in insertion order, which is the D1 store's `added_at` order. */
-  private readonly maintainers = new Map<string, Maintainer[]>();
+  private readonly maintainers = new Map<string, Omit<Maintainer, "handle">[]>();
   private readonly reserved = new Set<string>();
   /** Mirrors the `user` table's id and handle columns, keyed by user id. */
   private readonly users = new Map<string, RegistryUser>();
@@ -147,7 +147,7 @@ export class InMemoryRegistryStore implements RegistryStore {
   }
 
   /** The D1 store's `IS_OWNER` guard on maintainer writes. */
-  private requireOwner(name: string, actorUserId: string): Maintainer[] {
+  private requireOwner(name: string, actorUserId: string): Omit<Maintainer, "handle">[] {
     const rows = this.maintainers.get(name) ?? [];
     if (!rows.some((m) => m.userId === actorUserId && m.role === "owner")) {
       throw new ForbiddenError(`Only the owner of "${name}" can manage its maintainers`);
@@ -155,10 +155,11 @@ export class InMemoryRegistryStore implements RegistryStore {
     return rows;
   }
 
-  /** The D1 store's `LEFT JOIN user`: a handle only for accounts that have one. */
-  private withHandle(row: Maintainer): Maintainer {
-    const handle = this.users.get(row.userId)?.handle;
-    return { userId: row.userId, ...(handle ? { handle } : {}), role: row.role };
+  /** The D1 store's `JOIN user`; tests register every actor with `addUser` first. */
+  private withHandle(row: Omit<Maintainer, "handle">): Maintainer {
+    const user = this.users.get(row.userId);
+    if (!user) throw new Error(`User ${row.userId} has no handle, call addUser first`);
+    return { userId: row.userId, handle: user.handle, role: row.role };
   }
 }
 

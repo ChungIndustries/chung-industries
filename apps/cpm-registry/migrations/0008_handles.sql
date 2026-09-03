@@ -3,9 +3,11 @@
 -- thereafter (docs/cpm-registry-auth-design.md, decision 4). References in
 -- other tables stay on `user.id`; the handle is only the human-facing address.
 --
--- Nullable because accounts created before this migration have no handle yet;
--- nothing stored knows their GitHub login (`account.accountId` is the numeric
--- GitHub id), so backfill each one by hand once, after deploying:
+-- Nullable only because ALTER TABLE cannot add a NOT NULL column without a
+-- default. Accounts created before this migration have no handle, and nothing
+-- stored knows their GitHub login (`account.accountId` is the numeric GitHub
+-- id), so backfill each one right after deploying; the API treats a missing
+-- handle as an error, not as optional:
 --   UPDATE "user" SET handle = '<github login>' WHERE id = '<user.id>';
 -- GitHub logins are case-insensitive, so uniqueness and lookups are NOCASE;
 -- the stored value keeps the login's original casing for display.

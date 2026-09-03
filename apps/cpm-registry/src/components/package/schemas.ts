@@ -207,14 +207,11 @@ export const maintainerSchema = z
   .strictObject({
     userId: z.string().openapi({
       example: "kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9",
-      description: "Stable account id, the key `package_maintainers` references",
+      description: "Stable account id",
     }),
-    handle: handleSchema
-      .optional()
-      .openapi({ description: "Absent only for accounts created before handles existed" }),
+    handle: handleSchema,
     role: z.enum(["owner", "maintainer"]).openapi({
-      description:
-        "Exactly one maintainer is the `owner`, who alone may change the maintainer list",
+      description: "One maintainer is the `owner`, who alone may add or remove maintainers",
     }),
   })
   .openapi("Maintainer", {

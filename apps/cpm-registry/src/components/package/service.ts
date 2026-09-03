@@ -198,7 +198,7 @@ export class PackageService {
     return this.registry.packagesByMaintainer(userId);
   }
 
-  /** The package's maintainers, owner first. Public, like the package itself. */
+  /** The package's maintainers, owner first. */
   async listMaintainers(name: string): Promise<Maintainer[]> {
     await this.get(name);
     return this.registry.getMaintainers(name);

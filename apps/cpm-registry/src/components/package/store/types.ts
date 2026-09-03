@@ -22,8 +22,7 @@ export type MaintainerRole = "owner" | "maintainer";
 
 export interface Maintainer {
   userId: string;
-  /** Absent only for accounts created before handles existed (0008_handles.sql). */
-  handle?: string;
+  handle: string;
   role: MaintainerRole;
 }
 
