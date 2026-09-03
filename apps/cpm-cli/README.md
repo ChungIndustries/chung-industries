@@ -64,14 +64,14 @@ src/
   install.lua      self-contained bootstrap installer served at GET /install
 ```
 
-`src/` is packed verbatim into the published tarball, plus a `cpm.json` manifest ({ name, version, description, author, startup, dependencies }) generated at build time from `package.json` so version and description have one source of truth (the `cli` range tracks `packages/cc/cli`). The registry requires that manifest at the package root and treats it as the metadata source of truth at publish.
+[`cpm.json`](cpm.json) describes the published package: its name, `src/` as the package root, the startup file, and its dependency on `cli` as `workspace:^`. The version and description come from `package.json` (which `nx release` bumps), and the [cpm tool](../cpm-tool) resolves the `cli` range against the workspace copy when it packs, so a released cpm always requires the cli it was built against. The registry reads the resolved manifest from the tarball root and treats it as the metadata source of truth at publish.
 
 ## Tooling
 
 | Task                           | Command                                                                                                           |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| Build `dist/cpm-<version>.tgz` | `nx build cpm-cli`                                                                                                |
-| Publish to the registry        | `nx publish:registry cpm-cli` (`CPM_REGISTRY_URL` is the target and required)                                     |
+| Build `dist/cpm-<version>.tgz` | `nx build cpm-cli` (runs `cpm pack` from [apps/cpm-tool](../cpm-tool); needs Go)                                  |
+| Publish to the registry        | `nx publish:registry cpm-cli` (`cpm publish`; needs a login or `CPM_REGISTRY_TOKEN`, see the tool's README)       |
 | Lint                           | `nx lint:lua cpm-cli` (needs [luacheck](https://github.com/lunarmodules/luacheck))                                |
 | Format                         | `nx format:lua cpm-cli` / `nx format:lua:check cpm-cli` (needs [StyLua](https://github.com/JohnnyMorganz/StyLua)) |
 

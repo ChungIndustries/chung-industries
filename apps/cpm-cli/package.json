@@ -3,22 +3,38 @@
   "version": "0.0.4",
   "private": true,
   "description": "The cpm package manager client for CC:Tweaked computers.",
-  "type": "module",
+  "author": "chungindustries",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "publish:registry": "node scripts/publish.mjs",
     "lint:lua": "luacheck src",
     "format:lua": "stylua src",
     "format:lua:check": "stylua --check src"
   },
   "devDependencies": {
-    "cli": "workspace:*",
-    "tar": "^7.5.2"
+    "cli": "workspace:*"
   },
   "nx": {
     "tags": [
       "lang:lua",
       "scope:cpm"
-    ]
+    ],
+    "implicitDependencies": [
+      "cpm-tool"
+    ],
+    "targets": {
+      "build": {
+        "command": "go run ./cmd/cpm pack --dir ../../{projectRoot}",
+        "options": {
+          "cwd": "apps/cpm-tool",
+          "forwardAllArgs": false
+        }
+      },
+      "publish:registry": {
+        "command": "go run ./cmd/cpm publish --dir ../../{projectRoot}",
+        "options": {
+          "cwd": "apps/cpm-tool",
+          "forwardAllArgs": false
+        }
+      }
+    }
   }
 }

@@ -11,9 +11,14 @@ import { MAX_TARBALL_BYTES, PackageService } from "@/components/package/service"
 import { InMemoryBlobStore, InMemoryRegistryStore } from "@/components/package/store/memory";
 import { tarballKey } from "@/components/package/store/types";
 
-const OWNER: Actor = { userId: "user-owner", scopes: ["publish"], via: "token" };
-const OTHER: Actor = { userId: "user-other", scopes: ["publish"], via: "token" };
-const ADMIN: Actor = { userId: "user-admin", scopes: ["publish", "admin"], via: "session" };
+const OWNER: Actor = { userId: "user-owner", name: "Owner", scopes: ["publish"], via: "token" };
+const OTHER: Actor = { userId: "user-other", name: "Other", scopes: ["publish"], via: "token" };
+const ADMIN: Actor = {
+  userId: "user-admin",
+  name: "Admin",
+  scopes: ["publish", "admin"],
+  via: "session",
+};
 
 const sha512 = (data: Uint8Array) => `sha512-${createHash("sha512").update(data).digest("base64")}`;
 const sha1 = (data: Uint8Array) => createHash("sha1").update(data).digest("hex");
@@ -486,7 +491,7 @@ describe("PackageService", () => {
   describe("maintainers", () => {
     const lib = (v: string) => pack(meta(v), { "init.lua": `return '${v}'` });
     // The owner acting from the website (sessions carry `manage`).
-    const MANAGER: Actor = { userId: OWNER.userId, scopes: ["publish", "manage"], via: "session" };
+    const MANAGER: Actor = { ...OWNER, scopes: ["publish", "manage"], via: "session" };
     const OTHER_MANAGER: Actor = { ...OTHER, scopes: ["publish", "manage"], via: "session" };
     const THIRD = { userId: "user-third", handle: "third" };
 

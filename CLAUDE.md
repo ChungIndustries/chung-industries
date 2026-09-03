@@ -7,7 +7,11 @@ ChungIndustries recreates the internet inside Minecraft (ComputerCraft / CC:Twea
 NX + pnpm monorepo.
 
 - `apps/`: deployable apps and end-user tools
-  - `cpm-registry`: TypeScript/Express registry API for the Chung Package Manager (cpm)
+  - `cpm-registry`: TypeScript/Hono Cloudflare Worker, the registry API for the Chung Package Manager (cpm)
+  - `cpm-web`: the registry website (sign-in, account, publish tokens)
+  - `cpm-cli`: the in-game cpm client, Lua, published to the registry as the `cpm` package
+  - `cpm-tool`: Go/Cobra CLI for real computers (`cpm login|logout|whoami|pack|publish`); its registry types are generated from `cpm-registry`'s `openapi.yaml`
+  - `docs`: API docs site
   - `web`: React/Supabase app (currently template boilerplate)
 - `packages/`: shared libraries: TypeScript (`@workspace/*`), and ComputerCraft packages published to the cpm registry under `packages/cc/*` (`cli`)
 - `supabase/`: Supabase config, migrations, edge functions (Deno runtime, NOT a workspace package)
@@ -16,7 +20,8 @@ NX + pnpm monorepo.
 
 - Use `pnpm`, never `npm` or `yarn`. Run tasks through NX (`nx <target> <project>`, `nx run-many`, `nx affected`).
 - Group feature code by domain (vertical slices), not by technology.
-- Projects are NX projects via their `package.json` (targets inferred from scripts).
+- Projects are NX projects via their `package.json` (targets inferred from scripts, or declared under `nx.targets` for non-Node projects such as the Lua packages and the Go tool).
+- Lua packages carry a committed `cpm.json` (name, root, startup, dependencies); version and description come from `package.json` so `nx release` stays the single source of truth. Their `build` and `publish:registry` targets run the Go tool from source.
 
 ## Environment & secrets
 

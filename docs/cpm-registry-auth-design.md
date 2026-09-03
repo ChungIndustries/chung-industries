@@ -579,16 +579,17 @@ Under `tests/`, Vitest, no runtime required:
 The shipped `cpm` client has no publish command, so the token consumers that exist right now are:
 
 - **The release workflow.** `release.yml` publishes the `cpm` package to the registry on every
-  cpm-cli release (`apps/cpm-cli/scripts/publish.mjs`, target from the `CPM_REGISTRY_URL` repository
-  variable). Once auth ships this needs a `publish`-scoped token in a GitHub Actions secret
-  (`CPM_REGISTRY_TOKEN`), sent as `Authorization: Bearer`, and the `cpm` package needs a real owner
-  account, claimed by first authenticated publish like any other package. The script's 409-means-
-  already-published idempotency is unaffected, since a valid token hits the same 409 on re-runs; but
-  an expired CI token turns every release publish into a 401, so the token's expiry needs a calendar
-  owner (or a deliberately long expiry, see open questions).
-- **Authors at a terminal**, publishing with curl or a future publisher CLI: create a token on the
-  website, paste it into a shell env var or config file. Ordinary npm-style workflow, nothing to
-  design.
+  cpm-cli release (via `publish-package.yml`, which runs the cpm tool in `apps/cpm-tool`; target
+  from the `CPM_REGISTRY_URL` repository variable). Once auth ships this needs a `publish`-scoped
+  token in a GitHub Actions secret (`CPM_REGISTRY_TOKEN`), sent as `Authorization: Bearer`, and the
+  `cpm` package needs a real owner account, claimed by first authenticated publish like any other
+  package. The tool's 409-means-already-published idempotency is unaffected, since a valid token hits
+  the same 409 on re-runs; but an expired CI token turns every release publish into a 401, so the
+  token's expiry needs a calendar owner (or a deliberately long expiry, see open questions).
+- **Authors at a terminal**, with the cpm tool (`apps/cpm-tool`, since 2026-09-02): create a token
+  on the website, `cpm login` pastes and verifies it (`GET /me`) and saves it per registry in the
+  user config file; `cpm publish` sends it as `Authorization: Bearer`. `CPM_REGISTRY_TOKEN` overrides
+  the saved login for CI. Ordinary npm-style workflow.
 
 Everything below about Minecraft computers applies **only if an in-game publish surface ships later**
 (the client design leaves this open). It is kept because it is the hard case, and because the scoping
