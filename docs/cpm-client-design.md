@@ -294,7 +294,7 @@ cpm install <name>[@<version|range|tag>] ...
 cpm remove <name> ...
 cpm update [<name> ...]
 cpm list                     installed packages and versions
-cpm search [<query>]         from GET /packages (client-side filter for now)
+cpm search [<query>]         from GET /search (matching and ranking on the registry)
 cpm help [<command>]
 ```
 

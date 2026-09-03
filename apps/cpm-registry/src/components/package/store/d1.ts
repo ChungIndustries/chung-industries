@@ -1,10 +1,16 @@
-import type { Package, PackageVersion } from "@/components/package/schemas";
+import type {
+  Package,
+  PackageSummary,
+  PackageVersion,
+  SearchResults,
+} from "@/components/package/schemas";
 import {
   type AddVersionInput,
   type MaintainedPackage,
   type Maintainer,
   type MaintainerRole,
   type RegistryStore,
+  type SearchOptions,
   bundlePath,
   tarballPath,
 } from "@/components/package/store/types";
@@ -32,11 +38,50 @@ interface TagRow {
   tag: string;
   version: string;
 }
+interface SummaryRow {
+  name: string;
+  author: string | null;
+  description: string | null;
+  version: string;
+  version_count: number;
+  published_at: number;
+}
 
 const SELECT_PACKAGES = "SELECT name, author, created_at FROM packages";
 const SELECT_VERSIONS =
   "SELECT package_name, version, description, author, dependencies, shasum, integrity, bundle_sha256, bundle_size, created_at FROM versions";
 const SELECT_TAGS = "SELECT package_name, tag, version FROM dist_tags";
+
+// One row per package joined to its `latest` version, which is where the
+// description lives. Bound parameters: ?1 lowercased query, ?2 substring LIKE
+// pattern, ?3 prefix LIKE pattern (both escaped by `likePattern`). SQLite's LIKE
+// and lower() are case-insensitive for ASCII only, which covers package names
+// (restricted to ASCII) and is accepted for author and description text.
+const FROM_SUMMARIES = `
+  FROM packages p
+  JOIN dist_tags t ON t.package_name = p.name AND t.tag = 'latest'
+  JOIN versions v ON v.package_name = p.name AND v.version = t.version
+  WHERE ?1 = ''
+    OR p.name LIKE ?2 ESCAPE '\\'
+    OR p.author LIKE ?2 ESCAPE '\\'
+    OR v.description LIKE ?2 ESCAPE '\\'`;
+const SELECT_SUMMARIES = `
+  SELECT p.name, p.author, v.description, v.version, v.created_at AS published_at,
+    (SELECT COUNT(*) FROM versions WHERE package_name = p.name) AS version_count
+  ${FROM_SUMMARIES}
+  ORDER BY CASE
+      WHEN lower(p.name) = ?1 THEN 0
+      WHEN p.name LIKE ?3 ESCAPE '\\' THEN 1
+      WHEN p.name LIKE ?2 ESCAPE '\\' THEN 2
+      ELSE 3
+    END, p.name
+  LIMIT ?4 OFFSET ?5`;
+const COUNT_SUMMARIES = `SELECT COUNT(*) AS total ${FROM_SUMMARIES}`;
+
+/** Escapes the LIKE wildcards in a user-supplied needle so they match literally. */
+export function likePattern(needle: string): string {
+  return needle.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
 
 /** D1-backed package index. Metadata only; tarball bytes live in R2. */
 export class D1RegistryStore implements RegistryStore {
@@ -74,6 +119,18 @@ export class D1RegistryStore implements RegistryStore {
     const versionRows = (results[0]?.results ?? []) as VersionRow[];
     const tagRows = (results[1]?.results ?? []) as TagRow[];
     return assemble(pkgRow, versionRows, tagRows);
+  }
+
+  async search(query: string, { limit, offset }: SearchOptions): Promise<SearchResults> {
+    const needle = query.toLowerCase();
+    const pattern = likePattern(needle);
+    const results = await this.db.batch<SummaryRow | { total: number }>([
+      this.db.prepare(SELECT_SUMMARIES).bind(needle, `%${pattern}%`, `${pattern}%`, limit, offset),
+      this.db.prepare(COUNT_SUMMARIES).bind(needle, `%${pattern}%`),
+    ]);
+    const rows = (results[0]?.results ?? []) as SummaryRow[];
+    const [count] = (results[1]?.results ?? []) as { total: number }[];
+    return { results: rows.map(summarize), total: count?.total ?? 0 };
   }
 
   async addVersion({
@@ -225,6 +282,17 @@ function assemble(pkg: PackageRow, versions: VersionRow[], tags: TagRow[]): Pack
     createdAt: new Date(pkg.created_at).toISOString(),
     "dist-tags": distTags as Package["dist-tags"],
     versions: versionsMap,
+  };
+}
+
+function summarize(row: SummaryRow): PackageSummary {
+  return {
+    name: row.name,
+    ...(row.author ? { author: row.author } : {}),
+    ...(row.description ? { description: row.description } : {}),
+    version: row.version,
+    versionCount: row.version_count,
+    publishedAt: new Date(row.published_at).toISOString(),
   };
 }
 

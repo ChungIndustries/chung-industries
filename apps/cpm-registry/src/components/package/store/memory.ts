@@ -1,4 +1,4 @@
-import type { Package } from "@/components/package/schemas";
+import type { Package, PackageSummary, SearchResults } from "@/components/package/schemas";
 import type {
   AddVersionInput,
   BlobStore,
@@ -6,6 +6,7 @@ import type {
   Maintainer,
   MaintainerRole,
   RegistryStore,
+  SearchOptions,
 } from "@/components/package/store/types";
 import { ConflictError, ForbiddenError } from "@/errors";
 
@@ -38,6 +39,28 @@ export class InMemoryRegistryStore implements RegistryStore {
   async get(name: string): Promise<Package | null> {
     const pkg = this.packages.get(name);
     return pkg ? clone(pkg) : null;
+  }
+
+  async search(query: string, { limit, offset }: SearchOptions): Promise<SearchResults> {
+    const needle = query.toLowerCase();
+    const has = (text: string | undefined) => text?.toLowerCase().includes(needle) ?? false;
+    // Same tiers as the D1 store's ORDER BY: exact name, name prefix, name
+    // substring, then author/description-only matches.
+    const rank = (pkg: Package): number => {
+      const name = pkg.name.toLowerCase();
+      if (name === needle) return 0;
+      if (name.startsWith(needle)) return 1;
+      if (name.includes(needle)) return 2;
+      return 3;
+    };
+    const matches = Array.from(this.packages.values())
+      .filter((pkg) => has(pkg.name) || has(pkg.author) || has(latestEntry(pkg).description))
+      // Byte-order tie break, matching SQLite's default collation on `name`.
+      .sort((a, b) => rank(a) - rank(b) || (a.name < b.name ? -1 : 1));
+    return {
+      results: matches.slice(offset, offset + limit).map(summarize),
+      total: matches.length,
+    };
   }
 
   async getMaintainers(name: string): Promise<Maintainer[]> {
@@ -111,4 +134,23 @@ export class InMemoryBlobStore implements BlobStore {
 
 function clone(pkg: Package): Package {
   return structuredClone(pkg);
+}
+
+function latestEntry(pkg: Package) {
+  const latest = pkg.versions[pkg["dist-tags"].latest];
+  if (!latest) throw new Error(`Package "${pkg.name}" has a dangling latest tag`);
+  return latest;
+}
+
+/** The search-result view of a package, mirroring the D1 store's summary query. */
+function summarize(pkg: Package): PackageSummary {
+  const latest = latestEntry(pkg);
+  return {
+    name: pkg.name,
+    ...(pkg.author ? { author: pkg.author } : {}),
+    ...(latest.description ? { description: latest.description } : {}),
+    version: latest.version,
+    versionCount: Object.keys(pkg.versions).length,
+    publishedAt: latest.createdAt,
+  };
 }

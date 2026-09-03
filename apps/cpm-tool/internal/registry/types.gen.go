@@ -107,6 +107,35 @@ type Package struct {
 	Versions map[string]PackageVersion `json:"versions"`
 }
 
+// PackageSummary Example: {"author":"chungindustries","description":"Example utilities for CC:Tweaked computers","name":"example","publishedAt":"2026-01-15T12:00:00.000Z","version":"1.0.0","versionCount":3}
+type PackageSummary struct {
+	// Author Example: chungindustries
+	Author *string `json:"author,omitempty"`
+
+	// Description Short user-facing summary of what the package does
+	//
+	// Example: Example utilities for CC:Tweaked computers
+	Description *string `json:"description,omitempty"`
+
+	// Name Example: example
+	Name string `json:"name"`
+
+	// PublishedAt Publish timestamp of the latest version, ISO 8601 UTC
+	//
+	// Example: 2026-01-15T12:00:00.000Z
+	PublishedAt time.Time `json:"publishedAt"`
+
+	// Version The version `dist-tags.latest` points at
+	//
+	// Example: 1.0.0
+	Version string `json:"version"`
+
+	// VersionCount Number of published versions
+	//
+	// Example: 3
+	VersionCount int `json:"versionCount"`
+}
+
 // PackageVersion A published version: the manifest metadata plus its distribution artifacts and publish timestamp
 type PackageVersion struct {
 	// Author Example: chungindustries
@@ -213,6 +242,17 @@ type PackageVersionMetadata struct {
 type ResolveRequest struct {
 	// Dependencies Example: {"cc-http":"latest","example":"^1.2.0"}
 	Dependencies map[string]string `json:"dependencies"`
+}
+
+// SearchResults defines model for SearchResults.
+type SearchResults struct {
+	// Results The requested page of matches
+	Results []PackageSummary `json:"results"`
+
+	// Total Number of matches across all pages
+	//
+	// Example: 1
+	Total int `json:"total"`
 }
 
 // Getter for additional properties for DistTags. Returns the specified
