@@ -491,7 +491,7 @@ describe("PackageService", () => {
   describe("maintainers", () => {
     const lib = (v: string) => pack(meta(v), { "init.lua": `return '${v}'` });
     // The owner acting from the website (sessions carry `manage`).
-    const MANAGER: Actor = { userId: OWNER.userId, scopes: ["publish", "manage"], via: "session" };
+    const MANAGER: Actor = { ...OWNER, scopes: ["publish", "manage"], via: "session" };
     const OTHER_MANAGER: Actor = { ...OTHER, scopes: ["publish", "manage"], via: "session" };
     const THIRD = { userId: "user-third", handle: "third" };
 
