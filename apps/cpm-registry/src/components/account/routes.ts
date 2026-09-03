@@ -34,11 +34,11 @@ export function registerAccountRoutes(app: App): void {
       path: "/me",
       summary: "Who am I",
       description:
-        "Returns the authenticated identity behind the supplied credential: a publish token (`Authorization: Bearer cpm_...`) or a browser session. Useful as a token smoke test in CI and tooling.",
+        "Tells you which account your publish token or browser session belongs to, and which scopes it holds. Handy for checking a token from CI.",
       middleware: [requireActor()] as const,
       security: [{ publishToken: [] }],
       responses: {
-        200: jsonSuccess(actorSchema, "The authenticated actor"),
+        200: jsonSuccess(actorSchema, "Your account and scopes"),
         401: jsonFail("Not authenticated"),
         500: serverError,
       },
@@ -58,11 +58,11 @@ export function registerAccountRoutes(app: App): void {
       method: "get",
       path: "/me/packages",
       summary: "List my packages",
-      description: "Returns the packages the authenticated user owns or maintains.",
+      description: "Lists the packages you own or maintain.",
       middleware: [requireActor()] as const,
       security: [{ publishToken: [] }],
       responses: {
-        200: jsonSuccess(maintainedPackagesSchema, "Maintained packages"),
+        200: jsonSuccess(maintainedPackagesSchema, "Your packages"),
         401: jsonFail("Not authenticated"),
         500: serverError,
       },
