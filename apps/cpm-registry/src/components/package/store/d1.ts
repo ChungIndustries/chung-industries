@@ -53,6 +53,9 @@ const SELECT_PACKAGES = "SELECT name, author, created_at FROM packages";
 const SELECT_VERSIONS =
   "SELECT package_name, version, description, author, dependencies, shasum, integrity, bundle_sha256, bundle_size, created_at FROM versions";
 const SELECT_TAGS = "SELECT package_name, tag, version FROM dist_tags";
+// Soft-deleted rows are kept (name stays claimed, blobs stay in storage) but
+// every read filters them out, downloads included; see RegistryStore.
+const NOT_REMOVED = "deleted_at IS NULL";
 
 // One row per package joined to its `latest` version, which is where the
 // description lives. Bound parameters: ?1 lowercased query, ?2 substring LIKE
@@ -63,10 +66,11 @@ const FROM_SUMMARIES = `
   FROM packages p
   JOIN dist_tags t ON t.package_name = p.name AND t.tag = 'latest'
   JOIN versions v ON v.package_name = p.name AND v.version = t.version
-  WHERE ?1 = ''
-    OR p.name LIKE ?2 ESCAPE '\\'
-    OR p.author LIKE ?2 ESCAPE '\\'
-    OR v.description LIKE ?2 ESCAPE '\\'`;
+  WHERE p.${NOT_REMOVED}
+    AND (?1 = ''
+      OR p.name LIKE ?2 ESCAPE '\\'
+      OR p.author LIKE ?2 ESCAPE '\\'
+      OR v.description LIKE ?2 ESCAPE '\\')`;
 const SELECT_SUMMARIES = `
   SELECT p.name, p.author, v.description, v.version, v.created_at AS published_at,
     (SELECT COUNT(*) FROM versions WHERE package_name = p.name) AS version_count
@@ -100,8 +104,10 @@ export class D1RegistryStore implements RegistryStore {
   constructor(private readonly db: D1Database) {}
 
   async list(): Promise<Package[]> {
+    // Versions and tags of removed packages are fetched and then dropped by
+    // the per-package filter below, which is fine: removals are rare.
     const results = await this.db.batch<PackageRow | VersionRow | TagRow>([
-      this.db.prepare(SELECT_PACKAGES),
+      this.db.prepare(`${SELECT_PACKAGES} WHERE ${NOT_REMOVED}`),
       this.db.prepare(SELECT_VERSIONS),
       this.db.prepare(SELECT_TAGS),
     ]);
@@ -119,7 +125,7 @@ export class D1RegistryStore implements RegistryStore {
 
   async get(name: string): Promise<Package | null> {
     const pkgRow = await this.db
-      .prepare(`${SELECT_PACKAGES} WHERE name = ?`)
+      .prepare(`${SELECT_PACKAGES} WHERE name = ? AND ${NOT_REMOVED}`)
       .bind(name)
       .first<PackageRow>();
     if (!pkgRow) return null;
@@ -131,6 +137,14 @@ export class D1RegistryStore implements RegistryStore {
     const versionRows = (results[0]?.results ?? []) as VersionRow[];
     const tagRows = (results[1]?.results ?? []) as TagRow[];
     return assemble(pkgRow, versionRows, tagRows);
+  }
+
+  async isRemoved(name: string): Promise<boolean> {
+    const row = await this.db
+      .prepare("SELECT deleted_at FROM packages WHERE name = ?")
+      .bind(name)
+      .first<{ deleted_at: number | null }>();
+    return row !== null && row.deleted_at !== null;
   }
 
   async search(query: string, { limit, offset }: SearchOptions): Promise<SearchResults> {
@@ -314,9 +328,14 @@ export class D1RegistryStore implements RegistryStore {
   }
 
   async packagesByMaintainer(userId: string): Promise<MaintainedPackage[]> {
+    // Maintainer rows outlive a removal (only a hard delete cascades), so the
+    // join is what keeps removed packages out of a user's inventory.
     const { results } = await this.db
       .prepare(
-        "SELECT package_name, role FROM package_maintainers WHERE user_id = ? ORDER BY package_name",
+        `SELECT m.package_name, m.role FROM package_maintainers m
+         JOIN packages p ON p.name = m.package_name
+         WHERE m.user_id = ? AND p.${NOT_REMOVED}
+         ORDER BY m.package_name`,
       )
       .bind(userId)
       .all<{ package_name: string; role: MaintainerRole }>();

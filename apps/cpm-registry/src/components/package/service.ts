@@ -76,6 +76,15 @@ function parseManifest(bytes: Uint8Array | undefined): PackageVersionMetadata {
  * storage backend: it talks to a {@link RegistryStore} (the index) and a
  * {@link BlobStore} (tarball and bundle bytes). Production wires these to D1
  * and R2; tests wire them to in-memory fakes.
+ *
+ * A removed (soft-deleted) package is gone from the API the way an npm
+ * unpublish is: it is not listed, its package and version documents 404, its
+ * artifact downloads 404, `resolve` cannot pin it (so a dependent's install
+ * fails loudly rather than silently pinning a withdrawn package), and its
+ * retired name cannot be published to. The rows and blobs survive in storage
+ * for recovery, they are just no longer served. Deprecation, not removal, is
+ * the path that keeps a package installable
+ * (docs/cpm-registry-auth-design.md, section 8.3).
  */
 export class PackageService {
   constructor(
@@ -134,6 +143,16 @@ export class PackageService {
     // stores nothing and the caller gets a specific message. The guarded
     // inserts in the store are the atomic backstop for anything racing past
     // these reads (docs/cpm-registry-auth-design.md, section 8.4).
+    //
+    // A removed package is checked first and refused for everyone, admins
+    // included: a removal also reserves the name, but the reserved-name check
+    // has an admin override, and reviving a removed package must be its own
+    // deliberate operation rather than a side effect of a publish.
+    if (await this.registry.isRemoved(metadata.name)) {
+      throw new ForbiddenError(
+        `Package "${metadata.name}" has been removed and its name cannot be published to`,
+      );
+    }
     if ((await this.registry.isReserved(metadata.name)) && !actor.scopes.includes("admin")) {
       throw new ForbiddenError(`Package name "${metadata.name}" is reserved`);
     }
@@ -264,7 +283,8 @@ export class PackageService {
   }
 
   async readTarball(name: string, version: string): Promise<Uint8Array> {
-    // Resolve the version first (throws 404), then reach for its bytes.
+    // Resolve the version first (throws 404, also for a removed package), then
+    // reach for its bytes.
     const entry = await this.getVersion(name, version);
     const data = await this.blobs.get(tarballKey(name, entry.dist.tarball.shasum));
     if (!data) throw new NotFoundError("Tarball not found");
@@ -278,7 +298,12 @@ export class PackageService {
     return data;
   }
 
-  /** Pins one version per package for the given root dependencies (see `resolve.ts`). */
+  /**
+   * Pins one version per package for the given root dependencies (see
+   * `resolve.ts`). Loads through {@link RegistryStore.get}, so a removed
+   * package anywhere in the graph fails resolution with 404 exactly like an
+   * unknown one.
+   */
   resolve(dependencies: Record<string, string>): Promise<PackageVersion[]> {
     return resolveDependencies(dependencies, (name) => this.registry.get(name));
   }

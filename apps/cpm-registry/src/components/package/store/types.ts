@@ -55,9 +55,17 @@ export interface SearchOptions {
 /**
  * The package index. Reads assemble the npm-style package document; `addVersion`
  * records a new immutable version atomically.
+ *
+ * Removal is soft (`packages.deleted_at`, docs/cpm-registry-auth-design.md,
+ * section 8.3): the row, its versions, and the blobs all survive in storage so
+ * the name stays claimed and the package can be recovered, but nothing is
+ * served. Every read (`list`, `get`, `search`, `packagesByMaintainer`) hides
+ * removed packages; `isRemoved` is the only method that sees them.
  */
 export interface RegistryStore {
+  /** Every package that has not been removed. */
   list(): Promise<Package[]>;
+  /** The package document, or `null` if the name is unknown or removed. */
   get(name: string): Promise<Package | null>;
   /**
    * Case-insensitive substring search over package name, package author, and
@@ -69,6 +77,8 @@ export interface RegistryStore {
    * counts every match regardless of the page requested.
    */
   search(query: string, options: SearchOptions): Promise<SearchResults>;
+  /** Whether the package exists and has been soft-deleted; the publish pre-flight check. */
+  isRemoved(name: string): Promise<boolean>;
   /**
    * Upserts the package, inserts the immutable version (throws `ConflictError`
    * if that (name, version) already exists), and upserts the dist-tags, all in
@@ -98,6 +108,7 @@ export interface RegistryStore {
   /** Case-insensitive lookup of an account by handle. */
   userByHandle(handle: string): Promise<RegistryUser | null>;
   isReserved(name: string): Promise<boolean>;
+  /** Packages the user maintains that have not been removed. */
   packagesByMaintainer(userId: string): Promise<MaintainedPackage[]>;
 }
 
