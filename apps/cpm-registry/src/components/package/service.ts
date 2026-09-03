@@ -19,7 +19,9 @@ import {
 } from "@/components/package/schemas";
 import {
   type BlobStore,
+  type Maintainer,
   type RegistryStore,
+  type RegistryUser,
   type SearchOptions,
   bundleKey,
   bundlePath,
@@ -194,6 +196,71 @@ export class PackageService {
   /** Packages the given user maintains, for `GET /me/packages`. */
   maintainedBy(userId: string) {
     return this.registry.packagesByMaintainer(userId);
+  }
+
+  /** The package's maintainers, owner first. */
+  async listMaintainers(name: string): Promise<Maintainer[]> {
+    await this.get(name);
+    return this.registry.getMaintainers(name);
+  }
+
+  /**
+   * Adds the account behind `handle` as a maintainer (owner only). Idempotent:
+   * re-adding a maintainer, or the owner, changes nothing. Returns the updated
+   * list.
+   */
+  async addMaintainer(actor: Actor, name: string, handle: string): Promise<Maintainer[]> {
+    await this.requireOwner(actor, name);
+    const user = await this.requireUser(handle);
+    await this.registry.addMaintainer({ name, userId: user.userId, actorUserId: actor.userId });
+    return this.registry.getMaintainers(name);
+  }
+
+  /**
+   * Removes the account behind `handle` from the maintainers (owner only). The
+   * owner row is never removable this way: that is an ownership transfer.
+   * Returns the updated list.
+   */
+  async removeMaintainer(actor: Actor, name: string, handle: string): Promise<Maintainer[]> {
+    const maintainers = await this.requireOwner(actor, name);
+    const user = await this.requireUser(handle);
+    const target = maintainers.find((m) => m.userId === user.userId);
+    if (!target) {
+      throw new NotFoundError(`"${user.handle}" is not a maintainer of "${name}"`);
+    }
+    if (target.role === "owner") {
+      throw new BadRequestError(
+        `"${user.handle}" owns "${name}" and cannot be removed, transfer ownership instead`,
+      );
+    }
+    const removed = await this.registry.removeMaintainer({
+      name,
+      userId: user.userId,
+      actorUserId: actor.userId,
+    });
+    // Only a concurrent removal gets here; the pre-flight above saw the row.
+    if (!removed) throw new NotFoundError(`"${user.handle}" is not a maintainer of "${name}"`);
+    return this.registry.getMaintainers(name);
+  }
+
+  /**
+   * Pre-flight for maintainer changes: the package exists (404) and the actor
+   * owns it (403). The store re-checks ownership inside the write itself, so
+   * this only decides which error a caller sees, never whether a write lands.
+   */
+  private async requireOwner(actor: Actor, name: string): Promise<Maintainer[]> {
+    await this.get(name);
+    const maintainers = await this.registry.getMaintainers(name);
+    if (!maintainers.some((m) => m.userId === actor.userId && m.role === "owner")) {
+      throw new ForbiddenError(`Only the owner of "${name}" can manage its maintainers`);
+    }
+    return maintainers;
+  }
+
+  private async requireUser(handle: string): Promise<RegistryUser> {
+    const user = await this.registry.userByHandle(handle);
+    if (!user) throw new NotFoundError(`No account with the handle "${handle}"`);
+    return user;
   }
 
   async readTarball(name: string, version: string): Promise<Uint8Array> {

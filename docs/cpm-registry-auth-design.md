@@ -419,8 +419,9 @@ Machine surface, JSend, part of `openapi.yaml`:
 | `GET`    | `/me/packages`                          | bearer or session                | packages the actor maintains                                                 |
 | `PUT`    | `/packages/{name}/dist-tags/{tag}`      | bearer, `publish` scope          | maintainers only                                                             |
 | `POST`   | `/packages/{name}/deprecate`            | bearer, `publish` scope          | maintainers only                                                             |
-| `POST`   | `/packages/{name}/maintainers`          | session, or bearer with `manage` | owner only                                                                   |
-| `DELETE` | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only                                                                   |
+| `GET`    | `/packages/{name}/maintainers`          | public                           | owner first, then maintainers (shipped 2026-09)                              |
+| `PUT`    | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only, idempotent (shipped 2026-09)                                     |
+| `DELETE` | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only, never the owner row (shipped 2026-09)                            |
 | `POST`   | `/packages/{name}/transfer`             | session, or bearer with `manage` | owner nominates                                                              |
 | `POST`   | `/packages/{name}/transfer/accept`      | session                          | nominee accepts                                                              |
 
@@ -756,7 +757,10 @@ Resolved 2026-08-27:
    name parsing keep their current shapes. This is the explicit no.
 4. **Handles: seeded from the GitHub login at signup, immutable thereafter.** Maintainer references
    stay stable across GitHub renames. Collisions (a GitHub login already taken as a handle by a
-   deleted or earlier account) get a numeric suffix.
+   deleted or earlier account) get a numeric suffix. Shipped 2026-09 as `user.handle`
+   (`0008_handles.sql`, NOCASE unique): `mapProfileToUser` seeds it, a `user.create.before` hook
+   settles collisions, and a `user.update.before` hook rejects any later change. Accounts from
+   before the migration have no handle until backfilled by hand (see the migration).
 
 Still open:
 

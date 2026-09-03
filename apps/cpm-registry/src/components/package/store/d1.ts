@@ -8,8 +8,10 @@ import {
   type AddVersionInput,
   type MaintainedPackage,
   type Maintainer,
+  type MaintainerChange,
   type MaintainerRole,
   type RegistryStore,
+  type RegistryUser,
   type SearchOptions,
   bundlePath,
   tarballPath,
@@ -77,6 +79,16 @@ const SELECT_SUMMARIES = `
     END, p.name
   LIMIT ?4 OFFSET ?5`;
 const COUNT_SUMMARIES = `SELECT COUNT(*) AS total ${FROM_SUMMARIES}`;
+
+/**
+ * Guard folded into maintainer writes: the acting user, bound at `?<actorParam>`,
+ * must hold the owner row of the package bound at `?1`.
+ */
+function isOwner(actorParam: number): string {
+  return `EXISTS (
+    SELECT 1 FROM package_maintainers o
+    WHERE o.package_name = ?1 AND o.user_id = ?${actorParam} AND o.role = 'owner')`;
+}
 
 /** Escapes the LIKE wildcards in a user-supplied needle so they match literally. */
 export function likePattern(needle: string): string {
@@ -223,10 +235,74 @@ export class D1RegistryStore implements RegistryStore {
 
   async getMaintainers(name: string): Promise<Maintainer[]> {
     const { results } = await this.db
-      .prepare("SELECT user_id, role FROM package_maintainers WHERE package_name = ?")
+      .prepare(
+        `SELECT m.user_id, u.handle, m.role FROM package_maintainers m
+         JOIN "user" u ON u.id = m.user_id
+         WHERE m.package_name = ?
+         ORDER BY m.role = 'owner' DESC, m.added_at, m.user_id`,
+      )
       .bind(name)
-      .all<{ user_id: string; role: MaintainerRole }>();
-    return results.map((row) => ({ userId: row.user_id, role: row.role }));
+      .all<{ user_id: string; handle: string | null; role: MaintainerRole }>();
+    return results.map((row) => {
+      // Only an account from before 0008_handles.sql that was never backfilled.
+      if (!row.handle) throw new Error(`User ${row.user_id} has no handle, backfill user.handle`);
+      return { userId: row.user_id, handle: row.handle, role: row.role };
+    });
+  }
+
+  async addMaintainer({ name, userId, actorUserId }: MaintainerChange): Promise<void> {
+    // The owner check rides inside the insert, like the maintainer check in
+    // addVersion: a zero-change result is either the no-op of re-adding an
+    // existing maintainer, or the actor not being the owner (403).
+    const result = await this.db
+      .prepare(
+        `INSERT INTO package_maintainers (package_name, user_id, role, added_at, added_by)
+         SELECT ?1, ?2, 'maintainer', ?3, ?4 WHERE ${isOwner(4)}
+         ON CONFLICT(package_name, user_id) DO NOTHING`,
+      )
+      .bind(name, userId, Date.now(), actorUserId)
+      .run();
+    if (result.meta.changes > 0) return;
+    const held = await this.db
+      .prepare("SELECT 1 FROM package_maintainers WHERE package_name = ?1 AND user_id = ?2")
+      .bind(name, userId)
+      .first();
+    if (held === null) {
+      throw new ForbiddenError(`Only the owner of "${name}" can manage its maintainers`);
+    }
+  }
+
+  async removeMaintainer({ name, userId, actorUserId }: MaintainerChange): Promise<boolean> {
+    // `role = 'maintainer'` keeps the owner row out of reach even for a caller
+    // racing past the service's checks; ownership only moves by transfer.
+    const result = await this.db
+      .prepare(
+        `DELETE FROM package_maintainers
+         WHERE package_name = ?1 AND user_id = ?2 AND role = 'maintainer' AND ${isOwner(3)}`,
+      )
+      .bind(name, userId, actorUserId)
+      .run();
+    if (result.meta.changes > 0) return true;
+    // Nothing removed: either the target was not a maintainer, or the actor is
+    // not the owner. Only the latter is an authorization failure.
+    const owner = await this.db
+      .prepare(
+        "SELECT 1 FROM package_maintainers WHERE package_name = ?1 AND user_id = ?2 AND role = 'owner'",
+      )
+      .bind(name, actorUserId)
+      .first();
+    if (owner === null) {
+      throw new ForbiddenError(`Only the owner of "${name}" can manage its maintainers`);
+    }
+    return false;
+  }
+
+  async userByHandle(handle: string): Promise<RegistryUser | null> {
+    const row = await this.db
+      .prepare('SELECT id, handle FROM "user" WHERE handle = ? COLLATE NOCASE')
+      .bind(handle)
+      .first<{ id: string; handle: string }>();
+    return row ? { userId: row.id, handle: row.handle } : null;
   }
 
   async isReserved(name: string): Promise<boolean> {

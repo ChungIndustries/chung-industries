@@ -31,5 +31,5 @@ export const jsonFail = (description: string) => ({
 /** OpenAPI response entry for a JSend `error` (5xx). */
 export const serverError = {
   content: { "application/json": { schema: errorSchema } },
-  description: "Unexpected error",
+  description: "Something went wrong on the registry's side",
 };

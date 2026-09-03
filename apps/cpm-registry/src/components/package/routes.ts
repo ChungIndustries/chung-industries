@@ -4,6 +4,8 @@ import type { Context } from "hono";
 import type { AppEnv } from "@/components/auth/actor";
 import { requireActorScope } from "@/components/auth/middleware";
 import {
+  handleSchema,
+  maintainersSchema,
   packageSchema,
   packageVersionSchema,
   resolveRequestSchema,
@@ -80,6 +82,91 @@ const nameParam = z
   .openapi({ param: { name: "name", in: "path" }, example: "example" });
 const versionParam = semverSchema.openapi({ param: { name: "version", in: "path" } });
 const versionParams = z.object({ name: nameParam, version: versionParam });
+const handleParam = handleSchema.openapi({ param: { name: "handle", in: "path" } });
+const maintainerParams = z.object({ name: nameParam, handle: handleParam });
+
+/**
+ * Maintainer management (docs/cpm-registry-auth-design.md, section 8.2).
+ * Registered before `GET /packages/{name}/{version}`: Hono runs every matching
+ * route in registration order, and that route's semver validation would turn
+ * `/packages/{name}/maintainers` into a 400 before this handler ran.
+ */
+function registerMaintainerRoutes(app: App): void {
+  app.openapi(
+    createRoute({
+      tags: ["Maintainers"],
+      method: "get",
+      path: "/packages/{name}/maintainers",
+      summary: "List maintainers",
+      description:
+        "Lists who maintains the package: the owner first, then everyone else in the order they were added.",
+      request: { params: z.object({ name: nameParam }) },
+      responses: {
+        200: jsonSuccess(maintainersSchema, "The maintainers"),
+        404: jsonFail("Package not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const maintainers = await serviceFor(c.env).listMaintainers(c.req.valid("param").name);
+      return c.json({ status: "success" as const, data: { maintainers } }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Maintainers"],
+      method: "put",
+      path: "/packages/{name}/maintainers/{handle}",
+      summary: "Add maintainer",
+      description:
+        "Adds the account with this handle as a maintainer, so it can publish new versions. Only the owner can do this, and the credential needs the `manage` scope. Adding someone who already maintains the package does nothing. Responds with the updated list.",
+      middleware: [requireActorScope("manage")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: maintainerParams },
+      responses: {
+        200: jsonSuccess(maintainersSchema, "The updated maintainers"),
+        400: jsonFail("Invalid handle"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not the package owner, or missing the manage scope"),
+        404: jsonFail("Package or account not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, handle } = c.req.valid("param");
+      const maintainers = await serviceFor(c.env).addMaintainer(c.get("actor"), name, handle);
+      return c.json({ status: "success" as const, data: { maintainers } }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Maintainers"],
+      method: "delete",
+      path: "/packages/{name}/maintainers/{handle}",
+      summary: "Remove maintainer",
+      description:
+        "Removes the account with this handle from the maintainers, so it can no longer publish. Only the owner can do this, and the credential needs the `manage` scope. The owner cannot be removed this way; to change who owns the package, transfer it instead. Responds with the updated list.",
+      middleware: [requireActorScope("manage")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: maintainerParams },
+      responses: {
+        200: jsonSuccess(maintainersSchema, "The updated maintainers"),
+        400: jsonFail("Invalid handle, or the owner's handle"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not the package owner, or missing the manage scope"),
+        404: jsonFail("Package or account not found, or not a maintainer"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, handle } = c.req.valid("param");
+      const maintainers = await serviceFor(c.env).removeMaintainer(c.get("actor"), name, handle);
+      return c.json({ status: "success" as const, data: { maintainers } }, 200);
+    },
+  );
+}
 
 export function registerPackageRoutes(app: App): void {
   app.openapi(
@@ -88,7 +175,7 @@ export function registerPackageRoutes(app: App): void {
       method: "get",
       path: "/packages",
       summary: "List packages",
-      description: "Returns all CPM packages in the registry.",
+      description: "Lists every package in the registry, each with all of its versions.",
       responses: {
         200: jsonSuccess(z.object({ packages: z.array(packageSchema) }), "All packages"),
         500: serverError,
@@ -108,7 +195,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/search",
       summary: "Search packages",
       description:
-        "Searches the registry by package name, author, and description (case-insensitive substring match), returning one summary per matching package instead of the full package document. Results are ranked with exact name matches first, then name prefixes, then other name matches, then author or description matches, ties broken by name. An empty or omitted `q` matches every package, so this also serves as the paginated index. Page with `limit` and `offset`; `total` counts matches across all pages.",
+        "Searches package names, authors, and descriptions for `q` (case-insensitive, anywhere in the text) and returns one summary per match instead of the full package. Exact name matches come first, then names starting with the query, then other name matches, then matches on author or description, with ties ordered by name. Leave `q` empty to page through every package. `limit` and `offset` pick the page, and `total` counts matches across all pages.",
       request: { query: searchQuerySchema },
       responses: {
         200: jsonSuccess(searchResultsSchema, "Matching packages"),
@@ -129,7 +216,7 @@ export function registerPackageRoutes(app: App): void {
       method: "get",
       path: "/packages/{name}",
       summary: "Get package",
-      description: "Returns the CPM package entry for the given package name.",
+      description: "Returns the package with all of its versions and dist-tags.",
       request: { params: z.object({ name: nameParam }) },
       responses: {
         200: jsonSuccess(packageSchema, "The package"),
@@ -147,13 +234,15 @@ export function registerPackageRoutes(app: App): void {
       ),
   );
 
+  registerMaintainerRoutes(app);
+
   app.openapi(
     createRoute({
       tags: ["Packages"],
       method: "get",
       path: "/packages/{name}/{version}",
       summary: "Get package version",
-      description: "Returns the specific version entry for the given package.",
+      description: "Returns one version of the package.",
       request: { params: versionParams },
       responses: {
         200: jsonSuccess(packageVersionSchema, "The version"),
@@ -177,7 +266,7 @@ export function registerPackageRoutes(app: App): void {
       method: "post",
       path: "/packages",
       summary: "Publish package version",
-      description: `Creates a package if missing, or adds a new version to an existing one. Requires a publish token (\`Authorization: Bearer cpm_...\`); the first authenticated publish of a new name claims ownership, and later versions may only be published by its maintainers. Published versions are immutable: re-publishing an existing version returns 409. Send the tarball file as \`tarball\` in multipart/form-data; the \`cpm.json\` at the tarball root is the package metadata. The tarball must be a gzipped tar of the package files at its root (no wrapping directory), with relative forward-slash paths, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (rejected with 413 above that) and 512 KiB extracted; the registry derives the client-facing bundle from it.`,
+      description: `Publishes a version: creates the package if the name is new, or adds the version to an existing one. The first publish of a new name makes you its owner, and from then on only its maintainers can publish. The token needs the \`publish\` scope. Versions are immutable, so publishing an existing version again fails with 409. Send the tarball as the \`tarball\` field of a multipart form. It must be a gzipped tar with the package files at its root (no wrapping directory) and relative forward-slash paths, including the \`cpm.json\` that holds the package metadata, at most ${MAX_TARBALL_BYTES / 1024 / 1024} MiB compressed (413 above that) and 512 KiB extracted. The registry builds the bundle the in-game client installs from it.`,
       middleware: [requireActorScope("publish")] as const,
       security: [{ publishToken: [] }],
       request: {
@@ -189,7 +278,7 @@ export function registerPackageRoutes(app: App): void {
                 tarball: z.any().openapi({
                   type: "string",
                   format: "binary",
-                  description: "gzipped tarball bytes",
+                  description: "The gzipped tarball",
                 }),
               }),
             },
@@ -200,7 +289,7 @@ export function registerPackageRoutes(app: App): void {
         201: jsonSuccess(packageSchema, "Published"),
         400: jsonFail("Invalid request"),
         401: jsonFail("Not authenticated"),
-        403: jsonFail("Not allowed to publish this package"),
+        403: jsonFail("Not a maintainer of this package, or missing the publish scope"),
         409: jsonFail("Version already published"),
         413: jsonFail("Tarball too large"),
         500: serverError,
@@ -219,7 +308,7 @@ export function registerPackageRoutes(app: App): void {
       method: "get",
       path: "/packages/{name}/{version}/dist/tarball",
       summary: "Download tarball",
-      description: "Returns the gzipped tarball bytes for a specific package version.",
+      description: "Downloads the gzipped tarball exactly as it was published for this version.",
       request: { params: versionParams },
       responses: {
         200: {
@@ -228,10 +317,10 @@ export function registerPackageRoutes(app: App): void {
               schema: z.string().openapi({ type: "string", format: "binary" }),
             },
           },
-          description: "Tarball bytes",
+          description: "The tarball",
         },
         400: jsonFail("Invalid version"),
-        404: jsonFail("Not found"),
+        404: jsonFail("Package or version not found"),
         500: serverError,
       },
     }),
@@ -250,7 +339,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/packages/{name}/{version}/dist/bundle",
       summary: "Download bundle",
       description:
-        "Returns the bundle for a specific package version: the artifact the in-game cpm client installs from. Format: `<manifest byte length>\\n<minified manifest JSON><raw concatenated file bytes>`, where the manifest is `{ name, version, files: [{ path, offset, length }] }` with offsets relative to the first byte after the manifest. Served gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`; `dist.bundle.sha256` is the SHA-256 of the decoded bytes.",
+        "Downloads the bundle for this version, which is what the in-game cpm client installs from. It starts with the manifest's byte length and a newline, then the minified manifest JSON, then the raw file bytes back to back. The manifest is `{ name, version, files: [{ path, offset, length }] }`, with offsets counted from the first byte after the manifest. Clients that send `Accept-Encoding: gzip` get it gzip-encoded on the wire; `dist.bundle.sha256` is the SHA-256 of the decoded bytes.",
       request: { params: versionParams },
       responses: {
         200: {
@@ -259,10 +348,10 @@ export function registerPackageRoutes(app: App): void {
               schema: z.string().openapi({ type: "string", format: "binary" }),
             },
           },
-          description: "Bundle bytes",
+          description: "The bundle",
         },
         400: jsonFail("Invalid version"),
-        404: jsonFail("Not found"),
+        404: jsonFail("Package or version not found"),
         500: serverError,
       },
     }),
@@ -289,7 +378,7 @@ export function registerPackageRoutes(app: App): void {
       path: "/resolve",
       summary: "Resolve dependencies",
       description:
-        "Pins one version per package for the given root dependencies and their transitive dependencies. Each spec may be a semver range, an exact version, or a dist-tag. Every requester of a package must agree on a single version (the client installs into a flat store): the highest version satisfying all requested ranges is chosen, and unsatisfiable combinations fail. Results are ordered dependencies-first.",
+        "Picks one version for each of the given dependencies and for everything they depend on in turn. Each spec can be a semver range, an exact version, or a dist-tag. The client installs into a flat store, so every package gets a single version: the highest one that satisfies everyone asking for it. If no version can, the request fails. The result lists dependencies before the packages that need them.",
       request: {
         body: { required: true, content: { "application/json": { schema: resolveRequestSchema } } },
       },
@@ -314,15 +403,15 @@ export function registerPackageRoutes(app: App): void {
       path: "/install",
       summary: "Bootstrap installer",
       description:
-        "Serves the cpm bootstrap installer as plain Lua, taken from the latest published `cpm` package. On a fresh CC:Tweaked computer run: `wget run https://registry.cpm.chungindustries.com/install`.",
+        "Serves the cpm installer as plain Lua, straight from the latest published `cpm` package. On a fresh CC:Tweaked computer, run `wget run https://registry.cpm.chungindustries.com/install`.",
       responses: {
         200: {
           content: {
             "text/plain": { schema: z.string().openapi({ example: "-- cpm installer" }) },
           },
-          description: "Installer Lua source",
+          description: "The installer",
         },
-        404: jsonFail("cpm has not been published"),
+        404: jsonFail("cpm has not been published yet"),
         500: serverError,
       },
     }),

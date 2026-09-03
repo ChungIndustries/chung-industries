@@ -79,6 +79,10 @@ describe("PackageService", () => {
     blobs = new InMemoryBlobStore();
     registry = new InMemoryRegistryStore();
     service = new PackageService(registry, blobs);
+    // Every actor is a signed-up account with a handle, as in production.
+    registry.addUser({ userId: OWNER.userId, handle: "owner" });
+    registry.addUser({ userId: OTHER.userId, handle: "Other-Dev" });
+    registry.addUser({ userId: ADMIN.userId, handle: "admin" });
   });
 
   it("round-trips publish -> resolve latest -> download with a matching checksum", async () => {
@@ -420,7 +424,7 @@ describe("PackageService", () => {
     it("claims a new name for the first authenticated publisher", async () => {
       await publish(lib("1.0.0"));
       expect(await registry.getMaintainers("example")).toEqual([
-        { userId: OWNER.userId, role: "owner" },
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
       ]);
       expect(await service.maintainedBy(OWNER.userId)).toEqual([
         { name: "example", role: "owner" },
@@ -432,20 +436,24 @@ describe("PackageService", () => {
       await expect(publish(lib("1.1.0"), OTHER)).rejects.toMatchObject({ status: 403 });
       // Ownership is untouched and the version was never recorded.
       expect(await registry.getMaintainers("example")).toEqual([
-        { userId: OWNER.userId, role: "owner" },
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
       ]);
       await expect(service.getVersion("example", "1.1.0")).rejects.toMatchObject({ status: 404 });
     });
 
     it("lets an added maintainer publish new versions", async () => {
       await publish(lib("1.0.0"));
-      registry.addMaintainer("example", OTHER.userId);
+      await registry.addMaintainer({
+        name: "example",
+        userId: OTHER.userId,
+        actorUserId: OWNER.userId,
+      });
       const pkg = await publish(lib("1.1.0"), OTHER);
       expect(pkg["dist-tags"].latest).toBe("1.1.0");
       // Publishing as a maintainer never reassigns ownership.
       expect(await registry.getMaintainers("example")).toEqual([
-        { userId: OWNER.userId, role: "owner" },
-        { userId: OTHER.userId, role: "maintainer" },
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
+        { userId: OTHER.userId, handle: "Other-Dev", role: "maintainer" },
       ]);
     });
 
@@ -477,6 +485,106 @@ describe("PackageService", () => {
           publishedBy: OTHER.userId,
         }),
       ).rejects.toMatchObject({ status: 403 });
+    });
+  });
+
+  describe("maintainers", () => {
+    const lib = (v: string) => pack(meta(v), { "init.lua": `return '${v}'` });
+    // The owner acting from the website (sessions carry `manage`).
+    const MANAGER: Actor = { userId: OWNER.userId, scopes: ["publish", "manage"], via: "session" };
+    const OTHER_MANAGER: Actor = { ...OTHER, scopes: ["publish", "manage"], via: "session" };
+    const THIRD = { userId: "user-third", handle: "third" };
+
+    beforeEach(async () => {
+      registry.addUser(THIRD);
+      await publish(lib("1.0.0"));
+    });
+
+    it("lists the owner first, with handles, for anyone", async () => {
+      expect(await service.listMaintainers("example")).toEqual([
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
+      ]);
+      await expect(service.listMaintainers("nope")).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("lets the owner add a maintainer by handle, case-insensitively and idempotently", async () => {
+      const added = await service.addMaintainer(MANAGER, "example", "other-dev");
+      const expected = [
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
+        // The stored casing is what comes back, not what the caller typed.
+        { userId: OTHER.userId, handle: "Other-Dev", role: "maintainer" },
+      ];
+      expect(added).toEqual(expected);
+      expect(await service.addMaintainer(MANAGER, "example", "OTHER-DEV")).toEqual(expected);
+      // Re-adding the owner is a no-op too, never a demotion.
+      expect(await service.addMaintainer(MANAGER, "example", "owner")).toEqual(expected);
+
+      const pkg = await publish(lib("1.1.0"), OTHER);
+      expect(pkg["dist-tags"].latest).toBe("1.1.0");
+    });
+
+    it("rejects adding from anyone but the owner, and unknown packages or handles", async () => {
+      await service.addMaintainer(MANAGER, "example", "other-dev");
+      // A maintainer holding the manage scope still is not the owner.
+      await expect(
+        service.addMaintainer(OTHER_MANAGER, "example", THIRD.handle),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(service.addMaintainer(MANAGER, "nope", "other-dev")).rejects.toMatchObject({
+        status: 404,
+      });
+      await expect(service.addMaintainer(MANAGER, "example", "nobody")).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(await service.listMaintainers("example")).toHaveLength(2);
+    });
+
+    it("lets only the owner remove a maintainer, who then can no longer publish", async () => {
+      await service.addMaintainer(MANAGER, "example", "other-dev");
+      await service.addMaintainer(MANAGER, "example", THIRD.handle);
+      await expect(
+        service.removeMaintainer(OTHER_MANAGER, "example", THIRD.handle),
+      ).rejects.toMatchObject({ status: 403 });
+
+      expect(await service.removeMaintainer(MANAGER, "example", "OTHER-dev")).toEqual([
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
+        { userId: THIRD.userId, handle: THIRD.handle, role: "maintainer" },
+      ]);
+      await expect(publish(lib("1.1.0"), OTHER)).rejects.toMatchObject({ status: 403 });
+      expect(await service.maintainedBy(OTHER.userId)).toEqual([]);
+    });
+
+    it("never removes the owner, and 404s for non-maintainers and unknown handles", async () => {
+      await expect(service.removeMaintainer(MANAGER, "example", "owner")).rejects.toMatchObject({
+        status: 400,
+      });
+      await expect(service.removeMaintainer(MANAGER, "example", "other-dev")).rejects.toMatchObject(
+        { status: 404 },
+      );
+      await expect(service.removeMaintainer(MANAGER, "example", "nobody")).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(await service.listMaintainers("example")).toEqual([
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
+      ]);
+    });
+
+    it("enforces ownership in the store as the race backstop", async () => {
+      // Straight to the store, as a request that passed pre-flight before
+      // losing ownership would: neither write lands, and the owner row is
+      // untouchable even by the owner's own id.
+      const asOther = { name: "example", userId: THIRD.userId, actorUserId: OTHER.userId };
+      await expect(registry.addMaintainer(asOther)).rejects.toMatchObject({ status: 403 });
+      await expect(registry.removeMaintainer(asOther)).rejects.toMatchObject({ status: 403 });
+      expect(
+        await registry.removeMaintainer({
+          name: "example",
+          userId: OWNER.userId,
+          actorUserId: OWNER.userId,
+        }),
+      ).toBe(false);
+      expect(await service.listMaintainers("example")).toEqual([
+        { userId: OWNER.userId, handle: "owner", role: "owner" },
+      ]);
     });
   });
 

@@ -1,6 +1,8 @@
 import { z } from "@hono/zod-openapi";
 import semver from "semver";
 
+import { HANDLE_PATTERN } from "@/components/auth/handle";
+
 // Validity is delegated entirely to the `semver` package, consistent with
 // `semverRangeSchema` below. We intentionally don't keep a regex: it would be a
 // second, stricter source of truth (it rejects valid build metadata like
@@ -9,13 +11,13 @@ import semver from "semver";
 export const semverSchema = z
   .string()
   .refine((value) => semver.valid(value) !== null, "Invalid semantic version")
-  .openapi({ example: "1.0.0", description: "Semantic version string" });
+  .openapi({ example: "1.0.0", description: "A semantic version" });
 export type Semver = z.infer<typeof semverSchema>;
 
 const semverRangeSchema = z
   .string()
   .refine((value) => semver.validRange(value) !== null, "Invalid semantic version range")
-  .openapi({ example: "^1.2.0", description: "Semantic version range string" });
+  .openapi({ example: "^1.2.0", description: "A semver range" });
 
 const packageNameSchema = z
   .string()
@@ -33,19 +35,19 @@ const authorSchema = z.string().optional().openapi({ example: "chungindustries" 
 // is far above what a one-paragraph summary needs.
 const descriptionSchema = z.string().min(1).max(1024).optional().openapi({
   example: "Example utilities for CC:Tweaked computers",
-  description: "Short user-facing summary of what the package does",
+  description: "What the package does, in a sentence or two",
 });
 
 const createdAtSchema = z.iso.datetime().openapi({
   example: "2026-01-15T12:00:00.000Z",
-  description: "Publish timestamp, ISO 8601 UTC",
+  description: "When this version was published, as an ISO 8601 UTC timestamp",
 });
 
 // Existence of the referenced file inside the tarball is checked at publish.
 const startupSchema = z.string().min(1).optional().openapi({
   example: "startup.lua",
   description:
-    "Path, relative to the package root, of a Lua file the client runs at computer startup",
+    "A Lua file, relative to the package root, that the client runs when the computer boots",
 });
 
 const dependenciesSchema = z
@@ -53,20 +55,23 @@ const dependenciesSchema = z
   .optional()
   .openapi({
     example: { "cc-http": "^1.2.0" },
-    description: "Dependency map of package name to semver range",
+    description: "The packages this one needs, each with the semver range it accepts",
   });
 
 const tarballDistSchema = z
   .strictObject({
     url: z
       .string()
-      .openapi({ example: "/packages/example/1.0.0/dist/tarball", description: "Tarball path" }),
+      .openapi({
+        example: "/packages/example/1.0.0/dist/tarball",
+        description: "Where to download the tarball",
+      }),
     shasum: z
       .string()
       .regex(/^[a-f0-9]{40}$/)
       .openapi({
         example: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-        description: "SHA-1 hex digest of the tarball",
+        description: "SHA-1 of the tarball, in hex",
       }),
     integrity: z
       .string()
@@ -77,35 +82,36 @@ const tarballDistSchema = z
         description: "Subresource Integrity (SRI) sha512 digest of the tarball",
       }),
   })
-  .openapi({ description: "The publish artifact: a gzipped tar of the package files" });
+  .openapi({ description: "The tarball as it was published: a gzipped tar of the package files" });
 
 const bundleDistSchema = z
   .strictObject({
     url: z.string().openapi({
       example: "/packages/example/1.0.0/dist/bundle",
-      description: "Bundle path: the artifact the in-game cpm client downloads",
+      description:
+        "Where to download the bundle, which is what the in-game cpm client installs from",
     }),
     sha256: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
       .openapi({
         example: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        description: "Hex SHA-256 digest of the bundle bytes",
+        description: "SHA-256 of the bundle, in hex",
       }),
     size: z
       .number()
       .int()
       .nonnegative()
-      .openapi({ example: 4096, description: "Bundle size in bytes (before wire compression)" }),
+      .openapi({ example: 4096, description: "Bundle size in bytes, before any gzip on the wire" }),
   })
   .openapi({
     description:
-      "The derived install artifact: a length-prefixed JSON manifest plus raw file bytes",
+      "The bundle built from the tarball: a length-prefixed manifest followed by the raw file bytes",
   });
 
 const distSchema = z
   .strictObject({ tarball: tarballDistSchema, bundle: bundleDistSchema })
-  .openapi({ description: "Distribution artifacts, one entry per artifact kind" });
+  .openapi({ description: "The downloadable artifacts for this version" });
 
 const exampleDist: z.infer<typeof distSchema> = {
   tarball: {
@@ -178,7 +184,7 @@ export const distTagsSchema = z
   .catchall(semverSchema)
   .openapi("DistTags", {
     example: { latest: "1.0.0" },
-    description: "Distribution tags mapping tag names to versions",
+    description: "Named pointers to versions; `latest` is always set",
   });
 export type DistTags = z.infer<typeof distTagsSchema>;
 
@@ -186,7 +192,9 @@ export const packageSchema = z
   .strictObject({
     name: packageNameSchema,
     author: authorSchema,
-    createdAt: createdAtSchema.openapi({ description: "First-publish timestamp, ISO 8601 UTC" }),
+    createdAt: createdAtSchema.openapi({
+      description: "When the package was first published, as an ISO 8601 UTC timestamp",
+    }),
     "dist-tags": distTagsSchema,
     versions: z.record(semverSchema, packageVersionSchema).openapi({
       example: {
@@ -205,6 +213,37 @@ export const packageSchema = z
   .openapi("Package");
 export type Package = z.infer<typeof packageSchema>;
 
+export const handleSchema = z.string().regex(HANDLE_PATTERN).openapi({
+  example: "octocat",
+  description:
+    "The account's handle, which is its GitHub login from when it signed up. Case-insensitive.",
+});
+
+export const maintainerSchema = z
+  .strictObject({
+    userId: z.string().openapi({
+      example: "kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9",
+      description: "Stable account id",
+    }),
+    handle: handleSchema,
+    role: z.enum(["owner", "maintainer"]).openapi({
+      description:
+        "Every package has exactly one `owner`, the only one who can add or remove maintainers",
+    }),
+  })
+  .openapi("Maintainer", {
+    example: { userId: "kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9", handle: "octocat", role: "owner" },
+  });
+export type MaintainerEntry = z.infer<typeof maintainerSchema>;
+
+export const maintainersSchema = z
+  .strictObject({
+    maintainers: z
+      .array(maintainerSchema)
+      .openapi({ description: "The owner first, then everyone else in the order they were added" }),
+  })
+  .openapi("Maintainers");
+
 /** Default and ceiling for `GET /search` page sizes. */
 export const SEARCH_DEFAULT_LIMIT = 20;
 export const SEARCH_MAX_LIMIT = 100;
@@ -220,7 +259,7 @@ export const searchQuerySchema = z.object({
       ...queryParam("q"),
       example: "http",
       description:
-        "Text to match against package names, authors, and descriptions. Empty or omitted matches every package",
+        "Text to look for in package names, authors, and descriptions. Leave it empty to match every package",
     }),
   limit: z.coerce
     .number()
@@ -241,7 +280,7 @@ export const searchQuerySchema = z.object({
     .openapi({
       ...queryParam("offset"),
       example: 0,
-      description: "Number of matches to skip",
+      description: "How many matches to skip",
     }),
 });
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
@@ -255,14 +294,14 @@ export const packageSummarySchema = z
     name: packageNameSchema,
     author: authorSchema,
     description: descriptionSchema,
-    version: semverSchema.openapi({ description: "The version `dist-tags.latest` points at" }),
+    version: semverSchema.openapi({ description: "The version `latest` points at" }),
     versionCount: z
       .number()
       .int()
       .positive()
-      .openapi({ example: 3, description: "Number of published versions" }),
+      .openapi({ example: 3, description: "How many versions have been published" }),
     publishedAt: createdAtSchema.openapi({
-      description: "Publish timestamp of the latest version, ISO 8601 UTC",
+      description: "When the latest version was published, as an ISO 8601 UTC timestamp",
     }),
   })
   .openapi("PackageSummary", {
@@ -286,7 +325,7 @@ export const searchResultsSchema = z
       .number()
       .int()
       .nonnegative()
-      .openapi({ example: 1, description: "Number of matches across all pages" }),
+      .openapi({ example: 1, description: "How many packages matched, across all pages" }),
   })
   .openapi("SearchResults");
 export type SearchResults = z.infer<typeof searchResultsSchema>;

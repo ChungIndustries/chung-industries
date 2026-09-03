@@ -48,6 +48,24 @@ func (e ActorVia) Valid() bool {
 	}
 }
 
+// Defines values for MaintainerRole.
+const (
+	MaintainerRoleMaintainer MaintainerRole = "maintainer"
+	MaintainerRoleOwner      MaintainerRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the MaintainerRole enum.
+func (e MaintainerRole) Valid() bool {
+	switch e {
+	case MaintainerRoleMaintainer:
+		return true
+	case MaintainerRoleOwner:
+		return true
+	default:
+		return false
+	}
+}
+
 // Actor Example: {"name":"chrille0313","scopes":["publish"],"token":{"expiresAt":"2026-12-01T00:00:00.000Z","name":"laptop"},"userId":"3f2c1e9a","via":"token"}
 type Actor struct {
 	// Name The user's display name
@@ -74,15 +92,40 @@ type ActorScopes string
 // ActorVia How the caller authenticated
 type ActorVia string
 
-// DistTags Distribution tags mapping tag names to versions
+// DistTags Named pointers to versions; `latest` is always set
 //
 // Example: {"latest":"1.0.0"}
 type DistTags struct {
-	// Latest Semantic version string
+	// Latest A semantic version
 	//
 	// Example: 1.0.0
 	Latest               string            `json:"latest"`
 	AdditionalProperties map[string]string `json:"-"`
+}
+
+// Maintainer Example: {"handle":"octocat","role":"owner","userId":"kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9"}
+type Maintainer struct {
+	// Handle The account's handle, which is its GitHub login from when it signed up. Case-insensitive.
+	//
+	// Example: octocat
+	Handle string `json:"handle"`
+
+	// Role Every package has exactly one `owner`, the only one who can add or remove maintainers
+	Role MaintainerRole `json:"role"`
+
+	// UserId Stable account id
+	//
+	// Example: kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9
+	UserId string `json:"userId"`
+}
+
+// MaintainerRole Every package has exactly one `owner`, the only one who can add or remove maintainers
+type MaintainerRole string
+
+// Maintainers defines model for Maintainers.
+type Maintainers struct {
+	// Maintainers The owner first, then everyone else in the order they were added
+	Maintainers []Maintainer `json:"maintainers"`
 }
 
 // Package defines model for Package.
@@ -90,12 +133,12 @@ type Package struct {
 	// Author Example: chungindustries
 	Author *string `json:"author,omitempty"`
 
-	// CreatedAt First-publish timestamp, ISO 8601 UTC
+	// CreatedAt When the package was first published, as an ISO 8601 UTC timestamp
 	//
 	// Example: 2026-01-15T12:00:00.000Z
 	CreatedAt time.Time `json:"createdAt"`
 
-	// DistTags Distribution tags mapping tag names to versions
+	// DistTags Named pointers to versions; `latest` is always set
 	//
 	// Example: {"latest":"1.0.0"}
 	DistTags DistTags `json:"dist-tags"`
@@ -112,7 +155,7 @@ type PackageSummary struct {
 	// Author Example: chungindustries
 	Author *string `json:"author,omitempty"`
 
-	// Description Short user-facing summary of what the package does
+	// Description What the package does, in a sentence or two
 	//
 	// Example: Example utilities for CC:Tweaked computers
 	Description *string `json:"description,omitempty"`
@@ -120,17 +163,17 @@ type PackageSummary struct {
 	// Name Example: example
 	Name string `json:"name"`
 
-	// PublishedAt Publish timestamp of the latest version, ISO 8601 UTC
+	// PublishedAt When the latest version was published, as an ISO 8601 UTC timestamp
 	//
 	// Example: 2026-01-15T12:00:00.000Z
 	PublishedAt time.Time `json:"publishedAt"`
 
-	// Version The version `dist-tags.latest` points at
+	// Version The version `latest` points at
 	//
 	// Example: 1.0.0
 	Version string `json:"version"`
 
-	// VersionCount Number of published versions
+	// VersionCount How many versions have been published
 	//
 	// Example: 3
 	VersionCount int `json:"versionCount"`
@@ -141,54 +184,54 @@ type PackageVersion struct {
 	// Author Example: chungindustries
 	Author *string `json:"author,omitempty"`
 
-	// CreatedAt Publish timestamp, ISO 8601 UTC
+	// CreatedAt When this version was published, as an ISO 8601 UTC timestamp
 	//
 	// Example: 2026-01-15T12:00:00.000Z
 	CreatedAt time.Time `json:"createdAt"`
 
-	// Dependencies Dependency map of package name to semver range
+	// Dependencies The packages this one needs, each with the semver range it accepts
 	//
 	// Example: {"cc-http":"^1.2.0"}
 	Dependencies *map[string]string `json:"dependencies,omitempty"`
 
-	// Description Short user-facing summary of what the package does
+	// Description What the package does, in a sentence or two
 	//
 	// Example: Example utilities for CC:Tweaked computers
 	Description *string `json:"description,omitempty"`
 
-	// Dist Distribution artifacts, one entry per artifact kind
+	// Dist The downloadable artifacts for this version
 	Dist struct {
-		// Bundle The derived install artifact: a length-prefixed JSON manifest plus raw file bytes
+		// Bundle The bundle built from the tarball: a length-prefixed manifest followed by the raw file bytes
 		Bundle struct {
-			// Sha256 Hex SHA-256 digest of the bundle bytes
+			// Sha256 SHA-256 of the bundle, in hex
 			//
 			// Example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
 			Sha256 string `json:"sha256"`
 
-			// Size Bundle size in bytes (before wire compression)
+			// Size Bundle size in bytes, before any gzip on the wire
 			//
 			// Example: 4096
 			Size int `json:"size"`
 
-			// Url Bundle path: the artifact the in-game cpm client downloads
+			// Url Where to download the bundle, which is what the in-game cpm client installs from
 			//
 			// Example: /packages/example/1.0.0/dist/bundle
 			Url string `json:"url"`
 		} `json:"bundle"`
 
-		// Tarball The publish artifact: a gzipped tar of the package files
+		// Tarball The tarball as it was published: a gzipped tar of the package files
 		Tarball struct {
 			// Integrity Subresource Integrity (SRI) sha512 digest of the tarball
 			//
 			// Example: sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUdBeoGlODJ6+SfaPg==
 			Integrity string `json:"integrity"`
 
-			// Shasum SHA-1 hex digest of the tarball
+			// Shasum SHA-1 of the tarball, in hex
 			//
 			// Example: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
 			Shasum string `json:"shasum"`
 
-			// Url Tarball path
+			// Url Where to download the tarball
 			//
 			// Example: /packages/example/1.0.0/dist/tarball
 			Url string `json:"url"`
@@ -198,12 +241,12 @@ type PackageVersion struct {
 	// Name Example: example
 	Name string `json:"name"`
 
-	// Startup Path, relative to the package root, of a Lua file the client runs at computer startup
+	// Startup A Lua file, relative to the package root, that the client runs when the computer boots
 	//
 	// Example: startup.lua
 	Startup *string `json:"startup,omitempty"`
 
-	// Version Semantic version string
+	// Version A semantic version
 	//
 	// Example: 1.0.0
 	Version string `json:"version"`
@@ -214,12 +257,12 @@ type PackageVersionMetadata struct {
 	// Author Example: chungindustries
 	Author *string `json:"author,omitempty"`
 
-	// Dependencies Dependency map of package name to semver range
+	// Dependencies The packages this one needs, each with the semver range it accepts
 	//
 	// Example: {"cc-http":"^1.2.0"}
 	Dependencies *map[string]string `json:"dependencies,omitempty"`
 
-	// Description Short user-facing summary of what the package does
+	// Description What the package does, in a sentence or two
 	//
 	// Example: Example utilities for CC:Tweaked computers
 	Description *string `json:"description,omitempty"`
@@ -227,12 +270,12 @@ type PackageVersionMetadata struct {
 	// Name Example: example
 	Name string `json:"name"`
 
-	// Startup Path, relative to the package root, of a Lua file the client runs at computer startup
+	// Startup A Lua file, relative to the package root, that the client runs when the computer boots
 	//
 	// Example: startup.lua
 	Startup *string `json:"startup,omitempty"`
 
-	// Version Semantic version string
+	// Version A semantic version
 	//
 	// Example: 1.0.0
 	Version string `json:"version"`
@@ -249,7 +292,7 @@ type SearchResults struct {
 	// Results The requested page of matches
 	Results []PackageSummary `json:"results"`
 
-	// Total Number of matches across all pages
+	// Total How many packages matched, across all pages
 	//
 	// Example: 1
 	Total int `json:"total"`
