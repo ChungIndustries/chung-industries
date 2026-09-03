@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: CPM Registry
-  version: 0.0.7
+  version: 0.0.8
   description: "The registry behind the Chung Package Manager (cpm): where Lua
     packages for ComputerCraft are published, browsed, and installed from."
 servers:
