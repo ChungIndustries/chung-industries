@@ -2,27 +2,27 @@ openapi: 3.0.0
 info:
   title: CPM Registry
   version: 0.0.7
-  description: API for the CPM Registry, used by the Chung Package Manager (cpm)
-    to host and distribute ComputerCraft-focused Lua packages.
+  description: "The registry behind the Chung Package Manager (cpm): where Lua
+    packages for ComputerCraft are published, browsed, and installed from."
 servers:
   - url: https://registry.cpm.chungindustries.com
 tags:
   - name: Packages
-    description: Endpoints for browsing and retrieving cpm packages.
+    description: Browsing, downloading, and publishing packages.
   - name: Maintainers
     description: Who may publish a package, managed by its owner.
   - name: Bootstrap
     description: Getting cpm onto a fresh computer.
   - name: Account
-    description: The authenticated user and their packages.
+    description: The signed-in account and its packages.
 components:
   securitySchemes:
     publishToken:
       type: http
       scheme: bearer
-      description: "A cpm publish token, created from the account page at
-        https://cpm.chungindustries.com/account. Send as `Authorization: Bearer
-        cpm_...`"
+      description: "A publish token from your account page at
+        https://cpm.chungindustries.com/account, sent as `Authorization: Bearer
+        cpm_...`."
   schemas:
     Package:
       type: object
@@ -38,7 +38,7 @@ components:
           type: string
           format: date-time
           example: 2026-01-15T12:00:00.000Z
-          description: First-publish timestamp, ISO 8601 UTC
+          description: When the package was first published, as an ISO 8601 UTC timestamp
         dist-tags:
           $ref: "#/components/schemas/DistTags"
         versions:
@@ -75,16 +75,16 @@ components:
         latest:
           type: string
           example: 1.0.0
-          description: Semantic version string
+          description: A semantic version
       required:
         - latest
       additionalProperties:
         type: string
         example: 1.0.0
-        description: Semantic version string
+        description: A semantic version
       example:
         latest: 1.0.0
-      description: Distribution tags mapping tag names to versions
+      description: Named pointers to versions; `latest` is always set
     PackageVersion:
       type: object
       properties:
@@ -95,13 +95,13 @@ components:
         version:
           type: string
           example: 1.0.0
-          description: Semantic version string
+          description: A semantic version
         description:
           type: string
           minLength: 1
           maxLength: 1024
           example: Example utilities for CC:Tweaked computers
-          description: Short user-facing summary of what the package does
+          description: What the package does, in a sentence or two
         author:
           type: string
           example: chungindustries
@@ -110,16 +110,16 @@ components:
           additionalProperties:
             type: string
             example: ^1.2.0
-            description: Semantic version range string
+            description: A semver range
           example:
             cc-http: ^1.2.0
-          description: Dependency map of package name to semver range
+          description: The packages this one needs, each with the semver range it accepts
         startup:
           type: string
           minLength: 1
           example: startup.lua
-          description: Path, relative to the package root, of a Lua file the client runs
-            at computer startup
+          description: A Lua file, relative to the package root, that the client runs when
+            the computer boots
         dist:
           type: object
           properties:
@@ -129,12 +129,12 @@ components:
                 url:
                   type: string
                   example: /packages/example/1.0.0/dist/tarball
-                  description: Tarball path
+                  description: Where to download the tarball
                 shasum:
                   type: string
                   pattern: ^[a-f0-9]{40}$
                   example: a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
-                  description: SHA-1 hex digest of the tarball
+                  description: SHA-1 of the tarball, in hex
                 integrity:
                   type: string
                   pattern: ^sha512-[A-Za-z0-9+/]+={0,2}$
@@ -145,41 +145,43 @@ components:
                 - shasum
                 - integrity
               additionalProperties: false
-              description: "The publish artifact: a gzipped tar of the package files"
+              description: "The tarball as it was published: a gzipped tar of the package
+                files"
             bundle:
               type: object
               properties:
                 url:
                   type: string
                   example: /packages/example/1.0.0/dist/bundle
-                  description: "Bundle path: the artifact the in-game cpm client downloads"
+                  description: Where to download the bundle, which is what the in-game cpm client
+                    installs from
                 sha256:
                   type: string
                   pattern: ^[a-f0-9]{64}$
                   example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
-                  description: Hex SHA-256 digest of the bundle bytes
+                  description: SHA-256 of the bundle, in hex
                 size:
                   type: integer
                   minimum: 0
                   example: 4096
-                  description: Bundle size in bytes (before wire compression)
+                  description: Bundle size in bytes, before any gzip on the wire
               required:
                 - url
                 - sha256
                 - size
               additionalProperties: false
-              description: "The derived install artifact: a length-prefixed JSON manifest plus
-                raw file bytes"
+              description: "The bundle built from the tarball: a length-prefixed manifest
+                followed by the raw file bytes"
           required:
             - tarball
             - bundle
           additionalProperties: false
-          description: Distribution artifacts, one entry per artifact kind
+          description: The downloadable artifacts for this version
         createdAt:
           type: string
           format: date-time
           example: 2026-01-15T12:00:00.000Z
-          description: Publish timestamp, ISO 8601 UTC
+          description: When this version was published, as an ISO 8601 UTC timestamp
       required:
         - name
         - version
@@ -207,7 +209,7 @@ components:
           type: integer
           minimum: 0
           example: 1
-          description: Number of matches across all pages
+          description: How many packages matched, across all pages
       required:
         - results
         - total
@@ -227,22 +229,22 @@ components:
           minLength: 1
           maxLength: 1024
           example: Example utilities for CC:Tweaked computers
-          description: Short user-facing summary of what the package does
+          description: What the package does, in a sentence or two
         version:
           type: string
           example: 1.0.0
-          description: The version `dist-tags.latest` points at
+          description: The version `latest` points at
         versionCount:
           type: integer
           minimum: 0
           exclusiveMinimum: true
           example: 3
-          description: Number of published versions
+          description: How many versions have been published
         publishedAt:
           type: string
           format: date-time
           example: 2026-01-15T12:00:00.000Z
-          description: Publish timestamp of the latest version, ISO 8601 UTC
+          description: When the latest version was published, as an ISO 8601 UTC timestamp
       required:
         - name
         - version
@@ -341,7 +343,7 @@ paths:
       tags:
         - Packages
       summary: List packages
-      description: Returns all CPM packages in the registry.
+      description: Lists every package in the registry, each with all of its versions.
       responses:
         "200":
           description: All packages
@@ -367,7 +369,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -387,17 +389,17 @@ paths:
       tags:
         - Packages
       summary: Publish package version
-      description: "Creates a package if missing, or adds a new version to an existing
-        one. Requires a publish token (`Authorization: Bearer cpm_...`); the
-        first authenticated publish of a new name claims ownership, and later
-        versions may only be published by its maintainers. Published versions
-        are immutable: re-publishing an existing version returns 409. Send the
-        tarball file as `tarball` in multipart/form-data; the `cpm.json` at the
-        tarball root is the package metadata. The tarball must be a gzipped tar
-        of the package files at its root (no wrapping directory), with relative
-        forward-slash paths, at most 5 MiB compressed (rejected with 413 above
-        that) and 512 KiB extracted; the registry derives the client-facing
-        bundle from it."
+      description: "Publishes a version: creates the package if the name is new, or
+        adds the version to an existing one. The first publish of a new name
+        makes you its owner, and from then on only its maintainers can publish.
+        The token needs the `publish` scope. Versions are immutable, so
+        publishing an existing version again fails with 409. Send the tarball as
+        the `tarball` field of a multipart form. It must be a gzipped tar with
+        the package files at its root (no wrapping directory) and relative
+        forward-slash paths, including the `cpm.json` that holds the package
+        metadata, at most 5 MiB compressed (413 above that) and 512 KiB
+        extracted. The registry builds the bundle the in-game client installs
+        from it."
       security:
         - publishToken: []
       requestBody:
@@ -410,7 +412,7 @@ paths:
                 tarball:
                   type: string
                   format: binary
-                  description: gzipped tarball bytes
+                  description: The gzipped tarball
       responses:
         "201":
           description: Published
@@ -473,7 +475,7 @@ paths:
                   - status
                   - data
         "403":
-          description: Not allowed to publish this package
+          description: Not a maintainer of this package, or missing the publish scope
           content:
             application/json:
               schema:
@@ -539,7 +541,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -560,24 +562,23 @@ paths:
       tags:
         - Packages
       summary: Search packages
-      description: Searches the registry by package name, author, and description
-        (case-insensitive substring match), returning one summary per matching
-        package instead of the full package document. Results are ranked with
-        exact name matches first, then name prefixes, then other name matches,
-        then author or description matches, ties broken by name. An empty or
-        omitted `q` matches every package, so this also serves as the paginated
-        index. Page with `limit` and `offset`; `total` counts matches across all
-        pages.
+      description: Searches package names, authors, and descriptions for `q`
+        (case-insensitive, anywhere in the text) and returns one summary per
+        match instead of the full package. Exact name matches come first, then
+        names starting with the query, then other name matches, then matches on
+        author or description, with ties ordered by name. Leave `q` empty to
+        page through every package. `limit` and `offset` pick the page, and
+        `total` counts matches across all pages.
       parameters:
         - schema:
             type: string
             default: ""
             example: http
-            description: Text to match against package names, authors, and descriptions.
-              Empty or omitted matches every package
+            description: Text to look for in package names, authors, and descriptions. Leave
+              it empty to match every package
           required: false
-          description: Text to match against package names, authors, and descriptions.
-            Empty or omitted matches every package
+          description: Text to look for in package names, authors, and descriptions. Leave
+            it empty to match every package
           name: q
           in: query
         - schema:
@@ -597,9 +598,9 @@ paths:
             minimum: 0
             default: 0
             example: 0
-            description: Number of matches to skip
+            description: How many matches to skip
           required: false
-          description: Number of matches to skip
+          description: How many matches to skip
           name: offset
           in: query
       responses:
@@ -642,7 +643,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -663,7 +664,7 @@ paths:
       tags:
         - Packages
       summary: Get package
-      description: Returns the CPM package entry for the given package name.
+      description: Returns the package with all of its versions and dist-tags.
       parameters:
         - schema:
             type: string
@@ -712,7 +713,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -783,7 +784,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -935,7 +936,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1087,7 +1088,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1108,7 +1109,7 @@ paths:
       tags:
         - Packages
       summary: Get package version
-      description: Returns the specific version entry for the given package.
+      description: Returns one version of the package.
       parameters:
         - schema:
             type: string
@@ -1120,9 +1121,9 @@ paths:
         - schema:
             type: string
             example: 1.0.0
-            description: Semantic version string
+            description: A semantic version
           required: true
-          description: Semantic version string
+          description: A semantic version
           name: version
           in: path
       responses:
@@ -1187,7 +1188,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1208,7 +1209,8 @@ paths:
       tags:
         - Packages
       summary: Download tarball
-      description: Returns the gzipped tarball bytes for a specific package version.
+      description: Downloads the gzipped tarball exactly as it was published for this
+        version.
       parameters:
         - schema:
             type: string
@@ -1220,14 +1222,14 @@ paths:
         - schema:
             type: string
             example: 1.0.0
-            description: Semantic version string
+            description: A semantic version
           required: true
-          description: Semantic version string
+          description: A semantic version
           name: version
           in: path
       responses:
         "200":
-          description: Tarball bytes
+          description: The tarball
           content:
             application/gzip:
               schema:
@@ -1256,7 +1258,7 @@ paths:
                   - status
                   - data
         "404":
-          description: Not found
+          description: Package or version not found
           content:
             application/json:
               schema:
@@ -1278,7 +1280,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1299,13 +1301,13 @@ paths:
       tags:
         - Packages
       summary: Download bundle
-      description: "Returns the bundle for a specific package version: the artifact
-        the in-game cpm client installs from. Format: `<manifest byte
-        length>\\n<minified manifest JSON><raw concatenated file bytes>`, where
-        the manifest is `{ name, version, files: [{ path, offset, length }] }`
-        with offsets relative to the first byte after the manifest. Served
-        gzip-encoded on the wire to clients that send `Accept-Encoding: gzip`;
-        `dist.bundle.sha256` is the SHA-256 of the decoded bytes."
+      description: "Downloads the bundle for this version, which is what the in-game
+        cpm client installs from. It starts with the manifest's byte length and
+        a newline, then the minified manifest JSON, then the raw file bytes back
+        to back. The manifest is `{ name, version, files: [{ path, offset,
+        length }] }`, with offsets counted from the first byte after the
+        manifest. Clients that send `Accept-Encoding: gzip` get it gzip-encoded
+        on the wire; `dist.bundle.sha256` is the SHA-256 of the decoded bytes."
       parameters:
         - schema:
             type: string
@@ -1317,14 +1319,14 @@ paths:
         - schema:
             type: string
             example: 1.0.0
-            description: Semantic version string
+            description: A semantic version
           required: true
-          description: Semantic version string
+          description: A semantic version
           name: version
           in: path
       responses:
         "200":
-          description: Bundle bytes
+          description: The bundle
           content:
             application/octet-stream:
               schema:
@@ -1353,7 +1355,7 @@ paths:
                   - status
                   - data
         "404":
-          description: Not found
+          description: Package or version not found
           content:
             application/json:
               schema:
@@ -1375,7 +1377,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1396,12 +1398,12 @@ paths:
       tags:
         - Packages
       summary: Resolve dependencies
-      description: "Pins one version per package for the given root dependencies and
-        their transitive dependencies. Each spec may be a semver range, an exact
-        version, or a dist-tag. Every requester of a package must agree on a
-        single version (the client installs into a flat store): the highest
-        version satisfying all requested ranges is chosen, and unsatisfiable
-        combinations fail. Results are ordered dependencies-first."
+      description: "Picks one version for each of the given dependencies and for
+        everything they depend on in turn. Each spec can be a semver range, an
+        exact version, or a dist-tag. The client installs into a flat store, so
+        every package gets a single version: the highest one that satisfies
+        everyone asking for it. If no version can, the request fails. The result
+        lists dependencies before the packages that need them."
       requestBody:
         required: true
         content:
@@ -1477,7 +1479,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1498,19 +1500,19 @@ paths:
       tags:
         - Bootstrap
       summary: Bootstrap installer
-      description: "Serves the cpm bootstrap installer as plain Lua, taken from the
-        latest published `cpm` package. On a fresh CC:Tweaked computer run:
-        `wget run https://registry.cpm.chungindustries.com/install`."
+      description: Serves the cpm installer as plain Lua, straight from the latest
+        published `cpm` package. On a fresh CC:Tweaked computer, run `wget run
+        https://registry.cpm.chungindustries.com/install`.
       responses:
         "200":
-          description: Installer Lua source
+          description: The installer
           content:
             text/plain:
               schema:
                 type: string
                 example: -- cpm installer
         "404":
-          description: cpm has not been published
+          description: cpm has not been published yet
           content:
             application/json:
               schema:
@@ -1532,7 +1534,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1553,14 +1555,14 @@ paths:
       tags:
         - Account
       summary: Who am I
-      description: "Returns the authenticated identity behind the supplied credential:
-        a publish token (`Authorization: Bearer cpm_...`) or a browser session.
-        Useful as a token smoke test in CI and tooling."
+      description: Tells you which account your publish token or browser session
+        belongs to, and which scopes it holds. Handy for checking a token from
+        CI.
       security:
         - publishToken: []
       responses:
         "200":
-          description: The authenticated actor
+          description: Your account and scopes
           content:
             application/json:
               schema:
@@ -1598,7 +1600,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:
@@ -1619,12 +1621,12 @@ paths:
       tags:
         - Account
       summary: List my packages
-      description: Returns the packages the authenticated user owns or maintains.
+      description: Lists the packages you own or maintain.
       security:
         - publishToken: []
       responses:
         "200":
-          description: Maintained packages
+          description: Your packages
           content:
             application/json:
               schema:
@@ -1680,7 +1682,7 @@ paths:
                   - status
                   - data
         "500":
-          description: Unexpected error
+          description: Something went wrong on the registry's side
           content:
             application/json:
               schema:

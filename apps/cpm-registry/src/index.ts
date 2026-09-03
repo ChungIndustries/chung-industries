@@ -19,14 +19,14 @@ export const openApiBase = {
     // released version.
     version: packageJson.version,
     description:
-      "API for the CPM Registry, used by the Chung Package Manager (cpm) to host and distribute ComputerCraft-focused Lua packages.",
+      "The registry behind the Chung Package Manager (cpm): where Lua packages for ComputerCraft are published, browsed, and installed from.",
   },
   servers: [{ url: "https://registry.cpm.chungindustries.com" }],
   tags: [
-    { name: "Packages", description: "Endpoints for browsing and retrieving cpm packages." },
+    { name: "Packages", description: "Browsing, downloading, and publishing packages." },
     { name: "Maintainers", description: "Who may publish a package, managed by its owner." },
     { name: "Bootstrap", description: "Getting cpm onto a fresh computer." },
-    { name: "Account", description: "The authenticated user and their packages." },
+    { name: "Account", description: "The signed-in account and its packages." },
   ],
 };
 
@@ -68,7 +68,7 @@ app.openAPIRegistry.registerComponent("securitySchemes", "publishToken", {
   type: "http",
   scheme: "bearer",
   description:
-    "A cpm publish token, created from the account page at https://cpm.chungindustries.com/account. Send as `Authorization: Bearer cpm_...`",
+    "A publish token from your account page at https://cpm.chungindustries.com/account, sent as `Authorization: Bearer cpm_...`.",
 });
 
 registerPackageRoutes(app);
