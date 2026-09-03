@@ -1,3 +1,14 @@
+## 0.0.5 (2026-09-03)
+
+### 🚀 Features
+
+- `cpm search` now asks the registry's search endpoint instead of downloading the whole package list and filtering on the computer, so it also matches authors and descriptions, shows each package's description, and says how many more matches there are beyond the first page. ([#85](https://github.com/ChungIndustries/chung-industries/issues/85))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5.1
+
 ## 0.0.4 (2026-09-01)
 
 ### 🚀 Features
