@@ -99,7 +99,7 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers",
       summary: "List maintainers",
       description:
-        "Returns the package's maintainers: the owner first, then maintainers in the order they were added.",
+        "Lists who maintains the package: the owner first, then everyone else in the order they were added.",
       request: { params: z.object({ name: nameParam }) },
       responses: {
         200: jsonSuccess(maintainersSchema, "The maintainers"),
@@ -120,7 +120,7 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers/{handle}",
       summary: "Add maintainer",
       description:
-        "Adds the account with the given handle as a maintainer, letting it publish new versions. Owner only, and requires the `manage` scope. Idempotent: re-adding a maintainer or the owner changes nothing. Returns the updated list.",
+        "Adds the account with this handle as a maintainer, so it can publish new versions. Only the owner can do this, and the credential needs the `manage` scope. Adding someone who already maintains the package does nothing. Responds with the updated list.",
       middleware: [requireActorScope("manage")] as const,
       security: [{ publishToken: [] }],
       request: { params: maintainerParams },
@@ -147,7 +147,7 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers/{handle}",
       summary: "Remove maintainer",
       description:
-        "Removes the account with the given handle from the maintainers, so it can no longer publish. Owner only, and requires the `manage` scope. The owner cannot be removed; that is an ownership transfer. Returns the updated list.",
+        "Removes the account with this handle from the maintainers, so it can no longer publish. Only the owner can do this, and the credential needs the `manage` scope. The owner cannot be removed this way; to change who owns the package, transfer it instead. Responds with the updated list.",
       middleware: [requireActorScope("manage")] as const,
       security: [{ publishToken: [] }],
       request: { params: maintainerParams },

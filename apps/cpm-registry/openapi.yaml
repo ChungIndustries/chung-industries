@@ -263,7 +263,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Maintainer"
-          description: The owner first, then maintainers in the order added
+          description: The owner first, then everyone else in the order they were added
       required:
         - maintainers
       additionalProperties: false
@@ -278,15 +278,15 @@ components:
           type: string
           pattern: ^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38}$
           example: octocat
-          description: "The account's handle: its GitHub login at signup, matched
-            case-insensitively"
+          description: The account's handle, which is its GitHub login from when it signed
+            up. Case-insensitive.
         role:
           type: string
           enum:
             - owner
             - maintainer
-          description: One maintainer is the `owner`, who alone may add or remove
-            maintainers
+          description: Every package has exactly one `owner`, the only one who can add or
+            remove maintainers
       required:
         - userId
         - handle
@@ -733,8 +733,8 @@ paths:
       tags:
         - Maintainers
       summary: List maintainers
-      description: "Returns the package's maintainers: the owner first, then
-        maintainers in the order they were added."
+      description: "Lists who maintains the package: the owner first, then everyone
+        else in the order they were added."
       parameters:
         - schema:
             type: string
@@ -804,10 +804,10 @@ paths:
       tags:
         - Maintainers
       summary: Add maintainer
-      description: "Adds the account with the given handle as a maintainer, letting it
-        publish new versions. Owner only, and requires the `manage` scope.
-        Idempotent: re-adding a maintainer or the owner changes nothing. Returns
-        the updated list."
+      description: Adds the account with this handle as a maintainer, so it can
+        publish new versions. Only the owner can do this, and the credential
+        needs the `manage` scope. Adding someone who already maintains the
+        package does nothing. Responds with the updated list.
       security:
         - publishToken: []
       parameters:
@@ -822,11 +822,11 @@ paths:
             type: string
             pattern: ^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38}$
             example: octocat
-            description: "The account's handle: its GitHub login at signup, matched
-              case-insensitively"
+            description: The account's handle, which is its GitHub login from when it signed
+              up. Case-insensitive.
           required: true
-          description: "The account's handle: its GitHub login at signup, matched
-            case-insensitively"
+          description: The account's handle, which is its GitHub login from when it signed
+            up. Case-insensitive.
           name: handle
           in: path
       responses:
@@ -955,9 +955,10 @@ paths:
       tags:
         - Maintainers
       summary: Remove maintainer
-      description: Removes the account with the given handle from the maintainers, so
-        it can no longer publish. Owner only, and requires the `manage` scope.
-        The owner cannot be removed; that is an ownership transfer. Returns the
+      description: Removes the account with this handle from the maintainers, so it
+        can no longer publish. Only the owner can do this, and the credential
+        needs the `manage` scope. The owner cannot be removed this way; to
+        change who owns the package, transfer it instead. Responds with the
         updated list.
       security:
         - publishToken: []
@@ -973,11 +974,11 @@ paths:
             type: string
             pattern: ^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38}$
             example: octocat
-            description: "The account's handle: its GitHub login at signup, matched
-              case-insensitively"
+            description: The account's handle, which is its GitHub login from when it signed
+              up. Case-insensitive.
           required: true
-          description: "The account's handle: its GitHub login at signup, matched
-            case-insensitively"
+          description: The account's handle, which is its GitHub login from when it signed
+            up. Case-insensitive.
           name: handle
           in: path
       responses:

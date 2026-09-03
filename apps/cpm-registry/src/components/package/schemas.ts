@@ -200,7 +200,8 @@ export type Package = z.infer<typeof packageSchema>;
 
 export const handleSchema = z.string().regex(HANDLE_PATTERN).openapi({
   example: "octocat",
-  description: "The account's handle: its GitHub login at signup, matched case-insensitively",
+  description:
+    "The account's handle, which is its GitHub login from when it signed up. Case-insensitive.",
 });
 
 export const maintainerSchema = z
@@ -211,7 +212,8 @@ export const maintainerSchema = z
     }),
     handle: handleSchema,
     role: z.enum(["owner", "maintainer"]).openapi({
-      description: "One maintainer is the `owner`, who alone may add or remove maintainers",
+      description:
+        "Every package has exactly one `owner`, the only one who can add or remove maintainers",
     }),
   })
   .openapi("Maintainer", {
@@ -223,7 +225,7 @@ export const maintainersSchema = z
   .strictObject({
     maintainers: z
       .array(maintainerSchema)
-      .openapi({ description: "The owner first, then maintainers in the order added" }),
+      .openapi({ description: "The owner first, then everyone else in the order they were added" }),
   })
   .openapi("Maintainers");
 
