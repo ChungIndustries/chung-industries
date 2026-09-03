@@ -22,7 +22,23 @@ export type MaintainerRole = "owner" | "maintainer";
 
 export interface Maintainer {
   userId: string;
+  handle: string;
   role: MaintainerRole;
+}
+
+/** A user as the maintainer endpoints address one: by handle, resolved to an id. */
+export interface RegistryUser {
+  userId: string;
+  /** The stored casing, which may differ from what the caller typed. */
+  handle: string;
+}
+
+export interface MaintainerChange {
+  name: string;
+  /** The maintainer being added or removed. */
+  userId: string;
+  /** The owner performing the change; the store re-checks their role atomically. */
+  actorUserId: string;
 }
 
 /** One row of "packages this user maintains", for `GET /me/packages`. */
@@ -64,7 +80,23 @@ export interface RegistryStore {
    * backstop behind the service's friendlier pre-flight checks.
    */
   addVersion(input: AddVersionInput): Promise<Package>;
+  /** The package's maintainers, owner first, then in the order they were added. */
   getMaintainers(name: string): Promise<Maintainer[]>;
+  /**
+   * Adds `userId` as a `maintainer`, a no-op if they already hold a row (the
+   * owner included). The owner check is folded into the insert so an actor
+   * who lost ownership between the service's pre-flight and the write changes
+   * nothing and gets `ForbiddenError`, mirroring `addVersion`.
+   */
+  addMaintainer(change: MaintainerChange): Promise<void>;
+  /**
+   * Removes `userId`'s `maintainer` row, guarded by the actor's ownership like
+   * {@link addMaintainer}. Never removes an `owner` row: that is a transfer.
+   * Resolves to whether a row was removed.
+   */
+  removeMaintainer(change: MaintainerChange): Promise<boolean>;
+  /** Case-insensitive lookup of an account by handle. */
+  userByHandle(handle: string): Promise<RegistryUser | null>;
   isReserved(name: string): Promise<boolean>;
   packagesByMaintainer(userId: string): Promise<MaintainedPackage[]>;
 }

@@ -4,6 +4,8 @@ import type { Context } from "hono";
 import type { AppEnv } from "@/components/auth/actor";
 import { requireActorScope } from "@/components/auth/middleware";
 import {
+  handleSchema,
+  maintainersSchema,
   packageSchema,
   packageVersionSchema,
   resolveRequestSchema,
@@ -80,6 +82,91 @@ const nameParam = z
   .openapi({ param: { name: "name", in: "path" }, example: "example" });
 const versionParam = semverSchema.openapi({ param: { name: "version", in: "path" } });
 const versionParams = z.object({ name: nameParam, version: versionParam });
+const handleParam = handleSchema.openapi({ param: { name: "handle", in: "path" } });
+const maintainerParams = z.object({ name: nameParam, handle: handleParam });
+
+/**
+ * Maintainer management (docs/cpm-registry-auth-design.md, section 8.2).
+ * Registered before `GET /packages/{name}/{version}`: Hono runs every matching
+ * route in registration order, and that route's semver validation would turn
+ * `/packages/{name}/maintainers` into a 400 before this handler ran.
+ */
+function registerMaintainerRoutes(app: App): void {
+  app.openapi(
+    createRoute({
+      tags: ["Maintainers"],
+      method: "get",
+      path: "/packages/{name}/maintainers",
+      summary: "List maintainers",
+      description:
+        "Lists who maintains the package: the owner first, then everyone else in the order they were added.",
+      request: { params: z.object({ name: nameParam }) },
+      responses: {
+        200: jsonSuccess(maintainersSchema, "The maintainers"),
+        404: jsonFail("Package not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const maintainers = await serviceFor(c.env).listMaintainers(c.req.valid("param").name);
+      return c.json({ status: "success" as const, data: { maintainers } }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Maintainers"],
+      method: "put",
+      path: "/packages/{name}/maintainers/{handle}",
+      summary: "Add maintainer",
+      description:
+        "Adds the account with this handle as a maintainer, so it can publish new versions. Only the owner can do this, and the credential needs the `manage` scope. Adding someone who already maintains the package does nothing. Responds with the updated list.",
+      middleware: [requireActorScope("manage")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: maintainerParams },
+      responses: {
+        200: jsonSuccess(maintainersSchema, "The updated maintainers"),
+        400: jsonFail("Invalid handle"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not the package owner, or missing the manage scope"),
+        404: jsonFail("Package or account not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, handle } = c.req.valid("param");
+      const maintainers = await serviceFor(c.env).addMaintainer(c.get("actor"), name, handle);
+      return c.json({ status: "success" as const, data: { maintainers } }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Maintainers"],
+      method: "delete",
+      path: "/packages/{name}/maintainers/{handle}",
+      summary: "Remove maintainer",
+      description:
+        "Removes the account with this handle from the maintainers, so it can no longer publish. Only the owner can do this, and the credential needs the `manage` scope. The owner cannot be removed this way; to change who owns the package, transfer it instead. Responds with the updated list.",
+      middleware: [requireActorScope("manage")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: maintainerParams },
+      responses: {
+        200: jsonSuccess(maintainersSchema, "The updated maintainers"),
+        400: jsonFail("Invalid handle, or the owner's handle"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not the package owner, or missing the manage scope"),
+        404: jsonFail("Package or account not found, or not a maintainer"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, handle } = c.req.valid("param");
+      const maintainers = await serviceFor(c.env).removeMaintainer(c.get("actor"), name, handle);
+      return c.json({ status: "success" as const, data: { maintainers } }, 200);
+    },
+  );
+}
 
 export function registerPackageRoutes(app: App): void {
   app.openapi(
@@ -146,6 +233,8 @@ export function registerPackageRoutes(app: App): void {
         200,
       ),
   );
+
+  registerMaintainerRoutes(app);
 
   app.openapi(
     createRoute({

@@ -24,6 +24,7 @@ export const openApiBase = {
   servers: [{ url: "https://registry.cpm.chungindustries.com" }],
   tags: [
     { name: "Packages", description: "Endpoints for browsing and retrieving cpm packages." },
+    { name: "Maintainers", description: "Who may publish a package, managed by its owner." },
     { name: "Bootstrap", description: "Getting cpm onto a fresh computer." },
     { name: "Account", description: "The authenticated user and their packages." },
   ],

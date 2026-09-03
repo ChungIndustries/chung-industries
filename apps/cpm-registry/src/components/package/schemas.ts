@@ -1,6 +1,8 @@
 import { z } from "@hono/zod-openapi";
 import semver from "semver";
 
+import { HANDLE_PATTERN } from "@/components/auth/handle";
+
 // Validity is delegated entirely to the `semver` package, consistent with
 // `semverRangeSchema` below. We intentionally don't keep a regex: it would be a
 // second, stricter source of truth (it rejects valid build metadata like
@@ -195,6 +197,37 @@ export const packageSchema = z
   })
   .openapi("Package");
 export type Package = z.infer<typeof packageSchema>;
+
+export const handleSchema = z.string().regex(HANDLE_PATTERN).openapi({
+  example: "octocat",
+  description:
+    "The account's handle, which is its GitHub login from when it signed up. Case-insensitive.",
+});
+
+export const maintainerSchema = z
+  .strictObject({
+    userId: z.string().openapi({
+      example: "kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9",
+      description: "Stable account id",
+    }),
+    handle: handleSchema,
+    role: z.enum(["owner", "maintainer"]).openapi({
+      description:
+        "Every package has exactly one `owner`, the only one who can add or remove maintainers",
+    }),
+  })
+  .openapi("Maintainer", {
+    example: { userId: "kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9", handle: "octocat", role: "owner" },
+  });
+export type MaintainerEntry = z.infer<typeof maintainerSchema>;
+
+export const maintainersSchema = z
+  .strictObject({
+    maintainers: z
+      .array(maintainerSchema)
+      .openapi({ description: "The owner first, then everyone else in the order they were added" }),
+  })
+  .openapi("Maintainers");
 
 /** Default and ceiling for `GET /search` page sizes. */
 export const SEARCH_DEFAULT_LIMIT = 20;

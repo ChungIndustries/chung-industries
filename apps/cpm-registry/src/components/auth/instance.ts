@@ -1,6 +1,8 @@
 import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 
+import { handleTaken, pickHandle, userAdditionalFields } from "@/components/auth/handle";
 import { parseEnv } from "@/env";
 
 const NINETY_DAYS_S = 90 * 24 * 60 * 60;
@@ -23,10 +25,38 @@ export function authFor(env: Env) {
     baseURL: secrets.BETTER_AUTH_URL,
     basePath: "/auth",
     secret: secrets.BETTER_AUTH_SECRET,
+    // Mirrored in auth-schema.config.ts and migrations/0008_handles.sql.
+    user: { additionalFields: userAdditionalFields },
+    databaseHooks: {
+      user: {
+        create: {
+          // The login `mapProfileToUser` copied in may already be somebody's
+          // handle (a GitHub login renamed away and re-registered); settle it
+          // here, where the database is reachable, before the row is written.
+          before: async (user) => {
+            if (typeof user.handle !== "string" || user.handle === "") return;
+            const handle = await pickHandle(user.handle, (h) => handleTaken(env.DB, h));
+            return { data: { handle } };
+          },
+        },
+        update: {
+          // Handles are immutable (design decision 4). Sign-ins never carry one
+          // (`overrideUserInfoOnSignIn` is off), so the only update that can is
+          // a client calling `/auth/update-user` to pick its own address.
+          before: async (data) => {
+            if ("handle" in data) {
+              throw new APIError("BAD_REQUEST", { message: "Handles cannot be changed" });
+            }
+          },
+        },
+      },
+    },
     socialProviders: {
       github: {
         clientId: secrets.GITHUB_CLIENT_ID,
         clientSecret: secrets.GITHUB_CLIENT_SECRET,
+        // Seeds the handle at signup; existing accounts are never re-mapped.
+        mapProfileToUser: (profile) => ({ handle: profile.login }),
       },
     },
     plugins: [
