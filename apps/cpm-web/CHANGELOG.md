@@ -1,3 +1,14 @@
+## 0.0.4 (2026-09-07)
+
+### 🚀 Features
+
+- The package index now searches through the registry's search endpoint instead of downloading every package and filtering in the browser. Results arrive in pages with a "Show more" button, name matches rank first, and the landing page's "Try:" names come from the same endpoint. ([#85](https://github.com/ChungIndustries/chung-industries/issues/85), [#106](https://github.com/ChungIndustries/chung-industries/issues/106))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5.1
+
 ## 0.0.3 (2026-09-01)
 
 ### 🚀 Features
