@@ -32,7 +32,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260707.1",
     "@total-typescript/tsconfig": "^1.0.4",
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.4.1",
     "@types/semver": "^7.7.1",
     "@workspace/lint-config": "workspace:*",
     "tsx": "^4.23.12",
