@@ -60,12 +60,10 @@ const dependenciesSchema = z
 
 const tarballDistSchema = z
   .strictObject({
-    url: z
-      .string()
-      .openapi({
-        example: "/packages/example/1.0.0/dist/tarball",
-        description: "Where to download the tarball",
-      }),
+    url: z.string().openapi({
+      example: "/packages/example/1.0.0/dist/tarball",
+      description: "Where to download the tarball",
+    }),
     shasum: z
       .string()
       .regex(/^[a-f0-9]{40}$/)

@@ -15,8 +15,9 @@ import { ConflictError, ForbiddenError } from "@/errors";
  * In-memory {@link RegistryStore} used by the service unit tests. It mirrors the
  * atomicity contract of the D1 store (duplicate version -> `ConflictError`,
  * non-maintainer publish -> `ForbiddenError`, first publish claims ownership,
- * original author preserved, owner-guarded maintainer writes) without needing
- * a real database, so the tests are fast and portable.
+ * original author preserved, owner-guarded maintainer writes) and its
+ * unpublish visibility rules without needing a real database, so the tests
+ * are fast and portable.
  */
 export class InMemoryRegistryStore implements RegistryStore {
   private readonly packages = new Map<string, Package>();
@@ -25,6 +26,7 @@ export class InMemoryRegistryStore implements RegistryStore {
   private readonly reserved = new Set<string>();
   /** Mirrors the `user` table's id and handle columns, keyed by user id. */
   private readonly users = new Map<string, RegistryUser>();
+  private readonly unpublished = new Set<string>();
 
   /** Test helper mirroring a row in `reserved_names`. */
   reserve(name: string): void {
@@ -36,13 +38,26 @@ export class InMemoryRegistryStore implements RegistryStore {
     this.users.set(user.userId, user);
   }
 
+  /**
+   * Test helper mirroring `packages.unpublished_at` being set: the package,
+   * its versions, and its maintainers all stay in place (unserved), exactly
+   * like an unpublish in D1. Reserving the name is a separate step, as it is
+   * in the real unpublish (see `reserve`).
+   */
+  markUnpublished(name: string): void {
+    if (!this.packages.has(name)) throw new Error(`Cannot unpublish unknown package "${name}"`);
+    this.unpublished.add(name);
+  }
+
   async list(): Promise<Package[]> {
-    return Array.from(this.packages.values(), clone);
+    return Array.from(this.packages.values())
+      .filter((pkg) => !this.unpublished.has(pkg.name))
+      .map(clone);
   }
 
   async get(name: string): Promise<Package | null> {
     const pkg = this.packages.get(name);
-    return pkg ? clone(pkg) : null;
+    return pkg && !this.unpublished.has(name) ? clone(pkg) : null;
   }
 
   async search(query: string, { limit, offset }: SearchOptions): Promise<SearchResults> {
@@ -58,6 +73,7 @@ export class InMemoryRegistryStore implements RegistryStore {
       return 3;
     };
     const matches = Array.from(this.packages.values())
+      .filter((pkg) => !this.unpublished.has(pkg.name))
       .filter((pkg) => has(pkg.name) || has(pkg.author) || has(latestEntry(pkg).description))
       // Byte-order tie break, matching SQLite's default collation on `name`.
       .sort((a, b) => rank(a) - rank(b) || (a.name < b.name ? -1 : 1));
@@ -65,6 +81,10 @@ export class InMemoryRegistryStore implements RegistryStore {
       results: matches.slice(offset, offset + limit).map(summarize),
       total: matches.length,
     };
+  }
+
+  async isUnpublished(name: string): Promise<boolean> {
+    return this.unpublished.has(name);
   }
 
   async getMaintainers(name: string): Promise<Maintainer[]> {
@@ -102,6 +122,7 @@ export class InMemoryRegistryStore implements RegistryStore {
 
   async packagesByMaintainer(userId: string): Promise<MaintainedPackage[]> {
     return Array.from(this.maintainers.entries())
+      .filter(([name]) => !this.unpublished.has(name))
       .flatMap(([name, rows]) =>
         rows.filter((m) => m.userId === userId).map((m) => ({ name, role: m.role })),
       )
