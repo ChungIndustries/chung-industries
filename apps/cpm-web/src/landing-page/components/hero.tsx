@@ -8,7 +8,7 @@ import { Search } from "lucide-react";
 import { Fragment, useState } from "react";
 
 import { HeroTerminal } from "@/landing-page/components/hero-terminal";
-import { packagesQueryOptions } from "@/package/queries";
+import { tryPackagesQueryOptions } from "@/package/queries";
 
 function HeroSearch() {
   const navigate = useNavigate();
@@ -51,8 +51,8 @@ function HeroSearch() {
  * place of the names while they load.
  */
 function TryPackages() {
-  const packages = useQuery(packagesQueryOptions);
-  const names = (packages.data ?? []).slice(0, 3).map((pkg) => pkg.name);
+  const packages = useQuery(tryPackagesQueryOptions);
+  const names = (packages.data?.results ?? []).map((pkg) => pkg.name);
 
   return (
     <div className="text-muted-foreground mt-4 flex h-5 items-center gap-2 text-sm">
