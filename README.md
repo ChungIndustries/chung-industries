@@ -14,12 +14,11 @@ ChungIndustries rebuilds real internet infrastructure inside Minecraft using Com
 
 ## Projects
 
-| Project                             | Stack                   | Description                                                                     |
-| ----------------------------------- | ----------------------- | ------------------------------------------------------------------------------- |
-| [`cpm-registry`](apps/cpm-registry) | TypeScript · Express    | Registry API for the Chung Package Manager; hosts package metadata and tarballs |
-| [`web`](apps/web)                   | React · Vite · Supabase | Web app (currently template boilerplate)                                        |
-| [`docs`](apps/docs)                 | Hono · Scalar           | API docs site (docs.chungindustries.com), serves the CPM Registry reference     |
-| [`packages/*`](packages)            | TypeScript              | `@workspace/*` shared configuration and libraries                               |
+| Project                             | Stack                | Description                                                                     |
+| ----------------------------------- | -------------------- | ------------------------------------------------------------------------------- |
+| [`cpm-registry`](apps/cpm-registry) | TypeScript · Express | Registry API for the Chung Package Manager; hosts package metadata and tarballs |
+| [`docs`](apps/docs)                 | Hono · Scalar        | API docs site (docs.chungindustries.com), serves the CPM Registry reference     |
+| [`packages/*`](packages)            | TypeScript           | `@workspace/*` shared configuration and libraries                               |
 
 See each project's own README for how to run and configure it.
 
@@ -29,13 +28,11 @@ See each project's own README for how to run and configure it.
 - [**pnpm**](https://pnpm.io) workspaces
 - [**TypeScript**](https://www.typescriptlang.org/)
 - [**oxlint**](https://oxc.rs) + [**oxfmt**](https://oxc.rs) for linting and formatting
-- [**Supabase**](https://supabase.com/) for the web app's backend
 - [**Commitlint**](https://commitlint.js.org/) + [**Husky**](https://typicode.github.io/husky/) for Conventional Commits
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 24, [pnpm](https://pnpm.io/) >= 10
-- [Docker](https://www.docker.com/) for the web app's local Supabase
 
 ## Getting started
 
@@ -57,7 +54,6 @@ nx graph                 # visualize the project graph
 | `pnpm dev` / `build` / `lint` / `typecheck` / `test` | Run the target across projects |
 | `pnpm format` / `format:check`                       | Format with oxfmt              |
 | `pnpm release`                                       | Run `nx release` (see below)   |
-| `pnpm db:start` / `db:reset` / `db:gen-types`        | Local Supabase (web app)       |
 
 ## Branching & releases
 
@@ -73,12 +69,11 @@ nx graph                 # visualize the project graph
 
 ## CI
 
-| Workflow                                     | Trigger             | What                                                        |
-| -------------------------------------------- | ------------------- | ----------------------------------------------------------- |
-| `ci.yml`                                     | PR / push to `main` | `nx affected` typecheck / lint / test / build + oxfmt check |
-| `commitlint.yml`                             | PR                  | Conventional commit validation                              |
-| `release.yml`                                | push to `main`      | `nx release` when version plans are present                 |
-| `generate-types.yml` / `deploy-supabase.yml` | supabase changes    | Supabase types check / deploy                               |
+| Workflow         | Trigger             | What                                                        |
+| ---------------- | ------------------- | ----------------------------------------------------------- |
+| `ci.yml`         | PR / push to `main` | `nx affected` typecheck / lint / test / build + oxfmt check |
+| `commitlint.yml` | PR                  | Conventional commit validation                              |
+| `release.yml`    | push to `main`      | `nx release` when version plans are present                 |
 
 ## License
 
