@@ -8,9 +8,7 @@ NX + pnpm monorepo.
 
 - `apps/`: deployable apps and end-user tools
   - `cpm-registry`: TypeScript/Express registry API for the Chung Package Manager (cpm)
-  - `web`: React/Supabase app (currently template boilerplate)
 - `packages/`: shared libraries: TypeScript (`@workspace/*`), and ComputerCraft packages published to the cpm registry under `packages/cc/*` (`cli`)
-- `supabase/`: Supabase config, migrations, edge functions (Deno runtime, NOT a workspace package)
 
 ## Conventions
 
@@ -20,9 +18,8 @@ NX + pnpm monorepo.
 
 ## Environment & secrets
 
-- Each deployable validates its env once in an `env.ts` (zod handles defaults, coercion, validation) and exports a typed `env`. Nothing else reads `process.env` / `Deno.env` / `import.meta.env`.
-- Multiple environments use the standard `.env` cascade (`.env` committed defaults → `.env.<mode>` → `.env.local` gitignored secrets); real process env wins. Loaded by Vite (web), `dotenv-flow` (cpm-registry), and the edge runtime (supabase functions).
-- Supabase `config.toml` secrets use `env(VAR)`; mirror them as `secrets.*` in `deploy-supabase.yml`.
+- Each deployable validates its env once in an `env.ts` (zod handles defaults, coercion, validation) and exports a typed `env`. Nothing else reads `process.env` / `import.meta.env`.
+- Workers read non-secret config from `wrangler.toml` vars; secrets come from `.dev.vars` locally and `wrangler secret put` in production.
 
 ## Branching & releases
 

@@ -1,2 +1,0 @@
--- Seed data for local development
--- Add your seed data here
