@@ -273,8 +273,8 @@ CREATE UNIQUE INDEX package_maintainers_single_owner
 CREATE INDEX package_maintainers_by_user ON package_maintainers (user_id);
 
 -- Names nobody may claim: the cpm/chung prefixes, anything shipped in the
--- default install, and names freed by a removal (kept as tombstones so a
--- removed package name can never be re-registered by someone else).
+-- default install, and names retired by an unpublish (kept as tombstones so
+-- an unpublished package name can never be re-registered by someone else).
 CREATE TABLE reserved_names (
   name       TEXT    NOT NULL PRIMARY KEY,
   reason     TEXT,
@@ -287,7 +287,7 @@ CREATE TABLE audit_events (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   actor_user_id TEXT,
   action        TEXT    NOT NULL, -- publish | transfer | maintainer.add | maintainer.remove |
-                                  -- token.create | token.revoke | deprecate | remove
+                                  -- token.create | token.revoke | deprecate | unpublish
   package_name  TEXT,
   detail        TEXT,             -- JSON, action-specific
   created_at    INTEGER NOT NULL
@@ -304,10 +304,10 @@ CREATE INDEX audit_events_by_package ON audit_events (package_name, created_at);
 -- Keeping both means the display name stays cosmetic and never load-bearing.
 ALTER TABLE versions  ADD COLUMN published_by TEXT REFERENCES user (id);
 
--- Soft delete only. The row survives so the name stays claimed (see
+-- Unpublish is soft. The row survives so the name stays claimed (see
 -- reserved_names), and tarballs are never deleted from R2.
 ALTER TABLE packages ADD COLUMN deprecated_message TEXT;
-ALTER TABLE packages ADD COLUMN deleted_at         INTEGER;
+ALTER TABLE packages ADD COLUMN unpublished_at     INTEGER;
 ```
 
 Deliberately **not** added: any ownership column on `packages`. A single ACL table is one source of
@@ -340,11 +340,11 @@ before anyone else can race for it (the wipe and the token flip happen in the sa
 | Deprecate                  | yes   | yes        |
 | Add or remove a maintainer | yes   | no         |
 | Transfer ownership         | yes   | no         |
-| Remove the package         | yes   | no         |
+| Unpublish the package      | yes   | no         |
 
 Maintainers are added by user handle, and the target must already have an account. No email invites.
 
-### 8.3 Transfer and removal
+### 8.3 Transfer and unpublish
 
 **Transfer** is two-step: the owner nominates a new owner, and the nominee accepts before anything
 changes. One-step transfer lets anyone dump an unwanted package on a stranger's account. On accept,
@@ -352,18 +352,20 @@ in one transaction: the old owner's row becomes `maintainer`, the nominee's row 
 an `audit_events` row is written. The partial unique index means a botched transfer fails loudly
 rather than producing two owners.
 
-**Removal is soft and never frees the name.** Set `packages.deleted_at`, insert into `reserved_names`
+**Unpublish is soft and never frees the name.** Set `packages.unpublished_at`, insert into `reserved_names`
 with the reason, leave `versions` and the R2 objects untouched. Published versions stay immutable; that
-property is load-bearing for anyone who has already installed one. Removed packages disappear from
+property is load-bearing for anyone who has already installed one. Unpublished packages disappear from
 `GET /packages`, `GET /search`, and `GET /me/packages`, return 404 from `GET /packages/{name}` and
 `GET /packages/{name}/{version}`, cannot be pinned by `POST /resolve` (a root or transitive dependency
 on one fails with 404, so a dependent's install breaks loudly instead of silently), 404 their tarball
 and bundle downloads, and refuse every publish with 403, admins included, so reviving a package is
-never a side effect of a publish. This is npm's split: `unpublish` stops serving everything, and
-`deprecate` is the path that keeps a package installable. "Untouched" above means storage only, so
-a removed package can be recovered; nothing about it is served. Note the edge caches artifacts for
-a year as `immutable`, so a removal that must stop distribution immediately also needs a cache purge.
-Read-path behaviour implemented 2026-09-02; the removal endpoint itself is phase 4.
+never a side effect of a publish. This is npm's split, and npm's word: `unpublish` stops serving
+everything, and `deprecate` is the path that keeps a package installable. It is deliberately not
+called "remove", which is the client's uninstall command (`cpm remove <name>`). "Untouched" above
+means storage only, so an unpublished package can be recovered; nothing about it is served. Note the
+edge caches artifacts for a year as `immutable`, so an unpublish that must stop distribution
+immediately also needs a cache purge. Read-path behaviour implemented 2026-09-02 (the column was
+renamed from `deleted_at` in `0009_unpublish.sql`); the unpublish endpoint itself is phase 4.
 
 **Deprecation** is the soft alternative: `packages.deprecated_message` is returned in the package
 document, the client prints it on install, and nothing else changes. This should be the common path.
@@ -377,7 +379,7 @@ atomic backstop in the storage layer).
 orphan bytes and the caller gets a specific message:
 
 1. `reserved_names` contains the name and the actor is not an admin, `403`.
-2. The package exists, is not soft-deleted, and the actor has no `package_maintainers` row, `403`.
+2. The package exists, is not unpublished, and the actor has no `package_maintainers` row, `403`.
 3. Everything else proceeds exactly as today.
 
 **Atomic backstop, in `D1RegistryStore.addVersion`,** inside the existing `batch()`. The version
@@ -574,7 +576,7 @@ in 4.2 means rewriting this function and nothing else.
 Under `tests/`, Vitest, no runtime required:
 
 - Ownership rules against the in-memory store: first publish claims, second publisher gets 403,
-  maintainer may publish, non-maintainer may not, reserved name rejected, soft-deleted package 404s.
+  maintainer may publish, non-maintainer may not, reserved name rejected, unpublished package 404s.
 - Transfer: nominate then accept, single-owner invariant holds, non-owner cannot nominate.
 - `resolveActor`: missing header, malformed header, wrong scope, expired token, each mapping to the
   right status.
@@ -644,7 +646,7 @@ in a URL.
 | Scope     | Grants                                                            | Default?        |
 | --------- | ----------------------------------------------------------------- | --------------- |
 | `publish` | Create versions and set dist-tags for packages the user maintains | yes             |
-| `manage`  | Add and remove maintainers, transfer, remove                      | no              |
+| `manage`  | Add and remove maintainers, transfer, unpublish                   | no              |
 | `admin`   | Reserved-name overrides, registry-wide operations                 | no, humans only |
 
 Reads need no scope. A publish token is publish-only unless the user deliberately widens it, so the
@@ -727,7 +729,7 @@ closes the open publish endpoint.
 author-side publish tooling emerges from the client design's open question (a small TS CLI on real
 machines). No in-game work: the shipped `cpm` client does not publish.
 
-**Phase 4, the rest.** Maintainer management, transfer with accept, deprecate, soft removal, audit
+**Phase 4, the rest.** Maintainer management, transfer with accept, deprecate, unpublish, audit
 events surfaced wherever the UI ends up.
 
 **Phase 5, device flow (parked).** RFC 8628 login from in game. Only relevant if an in-game publish

@@ -583,7 +583,7 @@ describe("PackageService", () => {
     });
   });
 
-  describe("removal", () => {
+  describe("unpublish", () => {
     const lib = (v: string) => pack(meta(v), { "init.lua": `return '${v}'` });
 
     beforeEach(async () => {
@@ -595,10 +595,10 @@ describe("PackageService", () => {
           { "init.lua": "x" },
         ),
       );
-      registry.markRemoved("example");
+      registry.markUnpublished("example");
     });
 
-    it("hides a removed package from the index, search, its document, and its versions", async () => {
+    it("hides an unpublished package from the index, search, its document, and its versions", async () => {
       expect((await service.list()).map((p) => p.name)).toEqual(["dependent"]);
       // Neither a match nor a count: the empty query is the paginated index.
       expect(await service.search("example", { limit: 20, offset: 0 })).toEqual({
@@ -621,10 +621,10 @@ describe("PackageService", () => {
       });
     });
 
-    it("stops serving its artifacts, like an npm unpublish, while keeping the bytes", async () => {
+    it("stops serving its artifacts while keeping the bytes in storage", async () => {
       await expect(service.readTarball("example", "1.0.0")).rejects.toMatchObject({ status: 404 });
       await expect(service.readBundle("example", "1.1.0")).rejects.toMatchObject({ status: 404 });
-      // Storage is untouched by a removal, so the package can be recovered.
+      // Storage is untouched by an unpublish, so the package can be recovered.
       expect(await blobs.get(tarballKey("example", sha1(lib("1.0.0"))))).not.toBeNull();
     });
 
