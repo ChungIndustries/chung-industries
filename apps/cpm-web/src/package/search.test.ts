@@ -1,61 +1,27 @@
 import { describe, expect, it } from "vitest";
 
-import type { Package } from "@/package/schemas";
 import {
   formatBytes,
   formatTimeAgo,
-  searchPackages,
+  nextPageOffset,
   sortVersionsDesc,
   tagsFor,
 } from "@/package/search";
 
-function pkg(name: string, author?: string, description?: string): Package {
-  const dist = {
-    tarball: { url: "", shasum: "", integrity: "" },
-    bundle: { url: "", sha256: "", size: 0 },
-  };
-  return {
-    name,
-    author,
-    "dist-tags": { latest: "1.0.0" },
-    versions: { "1.0.0": { name, version: "1.0.0", description, dist } },
-  };
-}
-
-describe("searchPackages", () => {
-  const packages = [
-    pkg("zeta"),
-    pkg("cc-http", "chungindustries"),
-    pkg("mail", "alice", "Send letters between computers"),
-  ];
-
-  it("returns everything alphabetically for an empty query", () => {
-    expect(searchPackages(packages, "").map((p) => p.name)).toEqual(["cc-http", "mail", "zeta"]);
+describe("nextPageOffset", () => {
+  it("advances by the page size while matches remain", () => {
+    expect(nextPageOffset(0, 20, 45)).toBe(20);
+    expect(nextPageOffset(20, 20, 45)).toBe(40);
   });
 
-  it("matches name substrings case-insensitively", () => {
-    expect(searchPackages(packages, "HTTP").map((p) => p.name)).toEqual(["cc-http"]);
+  it("stops once the total is shown, including an exact final page", () => {
+    expect(nextPageOffset(40, 5, 45)).toBeUndefined();
+    expect(nextPageOffset(0, 20, 20)).toBeUndefined();
+    expect(nextPageOffset(0, 3, 3)).toBeUndefined();
   });
 
-  it("matches author substrings", () => {
-    expect(searchPackages(packages, "alice").map((p) => p.name)).toEqual(["mail"]);
-  });
-
-  it("matches the latest version's description", () => {
-    expect(searchPackages(packages, "letters").map((p) => p.name)).toEqual(["mail"]);
-  });
-
-  it("trims the query", () => {
-    expect(searchPackages(packages, "  mail  ").map((p) => p.name)).toEqual(["mail"]);
-  });
-
-  it("returns nothing for a miss", () => {
-    expect(searchPackages(packages, "nope")).toEqual([]);
-  });
-
-  it("does not mutate the input order", () => {
-    searchPackages(packages, "");
-    expect(packages[0]!.name).toBe("zeta");
+  it("never loops on an empty page", () => {
+    expect(nextPageOffset(20, 0, 45)).toBeUndefined();
   });
 });
 

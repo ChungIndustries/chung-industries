@@ -1,13 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { Separator } from "@workspace/ui/components/separator";
 
-import type { Package } from "@/package/schemas";
-import { formatTimeAgo, latestEntry } from "@/package/search";
+import type { PackageSummary } from "@/package/schemas";
+import { formatTimeAgo } from "@/package/search";
 
-/** One package in the index, rendered as a full-width row. */
-export function PackageRow({ pkg }: { pkg: Package }) {
-  const versionCount = Object.keys(pkg.versions).length;
-  const latest = latestEntry(pkg);
+/** One search result in the index, rendered as a full-width row. */
+export function PackageRow({ pkg }: { pkg: PackageSummary }) {
   return (
     <li>
       <Link
@@ -22,27 +20,23 @@ export function PackageRow({ pkg }: { pkg: Package }) {
           {pkg.author && (
             <span className="text-muted-foreground ml-3 text-sm">by {pkg.author}</span>
           )}
-          {latest?.description && (
+          {pkg.description && (
             <span className="text-muted-foreground mt-1 line-clamp-2 text-sm">
-              {latest.description}
+              {pkg.description}
             </span>
           )}
         </span>
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
-          <span className="text-foreground">v{pkg["dist-tags"].latest}</span>
+          <span className="text-foreground">v{pkg.version}</span>
           <Separator orientation="vertical" className="my-1" />
           <span>
-            {versionCount} {versionCount === 1 ? "version" : "versions"}
+            {pkg.versionCount} {pkg.versionCount === 1 ? "version" : "versions"}
           </span>
-          {latest?.createdAt && (
-            <>
-              <Separator orientation="vertical" className="my-1" />
-              {/* Relative time drifts between server render and hydration. */}
-              <time dateTime={latest.createdAt} suppressHydrationWarning>
-                published {formatTimeAgo(latest.createdAt)}
-              </time>
-            </>
-          )}
+          <Separator orientation="vertical" className="my-1" />
+          {/* Relative time drifts between server render and hydration. */}
+          <time dateTime={pkg.publishedAt} suppressHydrationWarning>
+            published {formatTimeAgo(pkg.publishedAt)}
+          </time>
         </div>
       </Link>
     </li>

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { readReadme } from "@/package/bundle";
 import { type JSend, RegistryError, unwrapJSend } from "@/package/jsend";
-import { packageSchema } from "@/package/schemas";
+import { packageSchema, searchResultsSchema } from "@/package/schemas";
 
 /**
  * Server functions fetching registry data over the REGISTRY service binding.
@@ -34,12 +34,26 @@ function parseRegistry<T>(schema: z.ZodType<T>, data: unknown): T {
   return result.data;
 }
 
-export const fetchPackages = createServerFn({ method: "GET" }).handler(async () => {
-  const data = await registryJson<unknown>("/packages");
-  // /packages never 404s; a null here would be a contract violation.
-  if (data === null) throw new RegistryError("Package list unavailable");
-  return parseRegistry(z.object({ packages: z.array(packageSchema) }), data).packages;
+// Bounds mirror the registry's own (`GET /search` caps `limit` at 100).
+const searchInputSchema = z.object({
+  q: z.string(),
+  limit: z.number().int().min(1).max(100),
+  offset: z.number().int().min(0),
 });
+
+/**
+ * One page of the registry's search, which does the matching and ranking. An
+ * empty `q` pages through the whole index.
+ */
+export const fetchSearch = createServerFn({ method: "GET" })
+  .validator(searchInputSchema)
+  .handler(async ({ data: { q, limit, offset } }) => {
+    const params = new URLSearchParams({ q, limit: String(limit), offset: String(offset) });
+    const data = await registryJson<unknown>(`/search?${params}`);
+    // /search never 404s; a null here would be a contract violation.
+    if (data === null) throw new RegistryError("Package search unavailable");
+    return parseRegistry(searchResultsSchema, data);
+  });
 
 export const fetchPackage = createServerFn({ method: "GET" })
   .validator((name: string) => name)

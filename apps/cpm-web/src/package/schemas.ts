@@ -43,6 +43,23 @@ export const packageSchema = z.object({
   createdAt: z.string().optional(),
 });
 
+/** One `GET /search` result: what an index row renders, without the version map. */
+export const packageSummarySchema = z.object({
+  name: z.string(),
+  author: z.string().optional(),
+  description: z.string().optional(),
+  version: z.string(),
+  versionCount: z.number(),
+  publishedAt: z.string(),
+});
+
+export const searchResultsSchema = z.object({
+  results: z.array(packageSummarySchema),
+  total: z.number(),
+});
+
+export type PackageSummary = z.infer<typeof packageSummarySchema>;
+export type SearchResults = z.infer<typeof searchResultsSchema>;
 export type TarballDist = z.infer<typeof tarballDistSchema>;
 export type BundleDist = z.infer<typeof bundleDistSchema>;
 export type PackageVersion = z.infer<typeof packageVersionSchema>;

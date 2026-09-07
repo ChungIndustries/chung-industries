@@ -1,28 +1,20 @@
 import semver from "semver";
 
-import type { Package, PackageVersion } from "@/package/schemas";
-
-/** The version entry `dist-tags.latest` points at: what the index rows show. */
-export function latestEntry(pkg: Package): PackageVersion | undefined {
-  return pkg.versions[pkg["dist-tags"].latest];
-}
-
 /**
- * Interim client-side search: the index page loads the full package list and
- * filters it here. Once the registry grows a real search endpoint (issue #85,
- * `GET /search?q=...`), this filter should be replaced by a call to it.
+ * Offset of the search page after the one that started at `offset` and held
+ * `pageSize` results, or undefined once every one of `total` matches is shown.
+ * Matching and ranking happen on the registry (`GET /search`); the site only
+ * pages through its results.
  */
-export function searchPackages(packages: Package[], query: string): Package[] {
-  const needle = query.trim().toLowerCase();
-  const matches = needle
-    ? packages.filter(
-        (pkg) =>
-          pkg.name.toLowerCase().includes(needle) ||
-          (pkg.author?.toLowerCase().includes(needle) ?? false) ||
-          (latestEntry(pkg)?.description?.toLowerCase().includes(needle) ?? false),
-      )
-    : [...packages];
-  return matches.sort((a, b) => a.name.localeCompare(b.name));
+export function nextPageOffset(
+  offset: number,
+  pageSize: number,
+  total: number,
+): number | undefined {
+  // An empty page can only mean the index shrank under us; never loop on it.
+  if (pageSize === 0) return undefined;
+  const next = offset + pageSize;
+  return next < total ? next : undefined;
 }
 
 /** Version strings of a package, newest first. */
