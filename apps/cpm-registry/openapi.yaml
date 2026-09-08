@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: CPM Registry
-  version: 0.0.7
+  version: 0.0.8
   description: "The registry behind the Chung Package Manager (cpm): where Lua
     packages for ComputerCraft are published, browsed, and installed from."
 servers:
@@ -23,6 +23,12 @@ components:
       description: "A publish token from your account page at
         https://cpm.chungindustries.com/account, sent as `Authorization: Bearer
         cpm_...`."
+    session:
+      type: apiKey
+      in: cookie
+      name: __Secure-better-auth.session_token
+      description: Your sign-in on https://cpm.chungindustries.com, which the website
+        sends for you. Publish tokens are not accepted here.
   schemas:
     Package:
       type: object
@@ -847,11 +853,12 @@ paths:
         - Maintainers
       summary: Add maintainer
       description: Adds the account with this handle as a maintainer, so it can
-        publish new versions. Only the owner can do this, and the credential
-        needs the `manage` scope. Adding someone who already maintains the
-        package does nothing. Responds with the updated list.
+        publish new versions. Only the owner can do this, signed in on the
+        website; publish tokens cannot change maintainers. Adding someone who
+        already maintains the package does nothing. Responds with the updated
+        list.
       security:
-        - publishToken: []
+        - session: []
       parameters:
         - schema:
             type: string
@@ -933,7 +940,7 @@ paths:
                   - status
                   - data
         "403":
-          description: Not the package owner, or missing the manage scope
+          description: Not the package owner, or not signed in on the website
           content:
             application/json:
               schema:
@@ -998,12 +1005,12 @@ paths:
         - Maintainers
       summary: Remove maintainer
       description: Removes the account with this handle from the maintainers, so it
-        can no longer publish. Only the owner can do this, and the credential
-        needs the `manage` scope. The owner cannot be removed this way; to
-        change who owns the package, transfer it instead. Responds with the
-        updated list.
+        can no longer publish. Only the owner can do this, signed in on the
+        website; publish tokens cannot change maintainers. The owner cannot be
+        removed this way; to change who owns the package, transfer it instead.
+        Responds with the updated list.
       security:
-        - publishToken: []
+        - session: []
       parameters:
         - schema:
             type: string
@@ -1085,7 +1092,7 @@ paths:
                   - status
                   - data
         "403":
-          description: Not the package owner, or missing the manage scope
+          description: Not the package owner, or not signed in on the website
           content:
             application/json:
               schema:
@@ -1602,6 +1609,7 @@ paths:
         from CI.
       security:
         - publishToken: []
+        - session: []
       responses:
         "200":
           description: Your account and scopes
@@ -1666,6 +1674,7 @@ paths:
       description: Lists the packages you own or maintain.
       security:
         - publishToken: []
+        - session: []
       responses:
         "200":
           description: Your packages

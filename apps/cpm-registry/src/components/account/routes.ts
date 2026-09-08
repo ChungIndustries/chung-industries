@@ -58,7 +58,7 @@ export function registerAccountRoutes(app: App): void {
       description:
         "Tells you which account your publish token or browser session belongs to, which scopes it holds, and, for a token, its name and expiry. This is what `cpm whoami` prints; handy for checking a token from CI.",
       middleware: [requireActor()] as const,
-      security: [{ publishToken: [] }],
+      security: [{ publishToken: [] }, { session: [] }],
       responses: {
         200: jsonSuccess(actorSchema, "Your account and scopes"),
         401: jsonFail("Not authenticated"),
@@ -82,7 +82,7 @@ export function registerAccountRoutes(app: App): void {
       summary: "List my packages",
       description: "Lists the packages you own or maintain.",
       middleware: [requireActor()] as const,
-      security: [{ publishToken: [] }],
+      security: [{ publishToken: [] }, { session: [] }],
       responses: {
         200: jsonSuccess(maintainedPackagesSchema, "Your packages"),
         401: jsonFail("Not authenticated"),

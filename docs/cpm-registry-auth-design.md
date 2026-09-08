@@ -1,7 +1,8 @@
 # CPM Registry: authentication and package ownership
 
 Status: phases 0-2 implemented (accounts, tokens, ownership enforcement); account/token UI shipped
-in `apps/cpm-web` 2026-09-01 (see section 12, decision 2); phases 3+ pending
+in `apps/cpm-web` 2026-09-01 (see section 12, decision 2); phase 4 in progress (maintainers shipped
+2026-09; scope, admin, and expiry decisions settled 2026-09-07, see section 12, decisions 9-11)
 Scope: `apps/cpm-registry`, the publish tooling that authenticates to it (CI and author terminals today, possibly an in-game client later), and the minimal browser surface accounts need
 Date: 2026-08-27
 
@@ -41,6 +42,9 @@ Fixed constraints:
 | 6   | **First publish wins** the name, recorded in a `package_maintainers` ACL with exactly one owner                                                                             | Simplest rule that is also npm's rule; multi-maintainer support falls out of the same table                                                                              |
 | 7   | Token onboarding is **paste-a-token**; the **RFC 8628 device flow** is parked unless in-game publishing ships                                                               | The shipped client has no publish command (updated 2026-08-27), so today's consumers are CI secrets and real terminals, where pasting is the normal thing                |
 | 8   | The account/token UI is **deferred**; any interim surface is a minimal stopgap, and the real UI ships later as **its own app** (not `apps/web`, not folded into the Worker) | Decided 2026-08-27. Building UI is explicitly not part of this phase; the API is designed so a browser is only strictly needed for the GitHub redirect and token display |
+| 9   | **`manage` and `admin` are session-only**; a publish token is capped at `publish` in `resolveActor`                                                                         | Decided 2026-09-07. A leaked CI secret can publish a bad version (recoverable) but never take a package away; Better Auth cannot mint wider keys from a browser anyway   |
+| 10  | **`admin` is Better Auth's admin plugin**: `user.role` holding `admin`, first one set by hand in D1                                                                         | Decided 2026-09-07. The column is in the data, the plugin's set-role endpoint covers the rest, and no env-seeded list to keep in sync                                    |
+| 11  | **Token expiry: 90 days default, 1 year maximum, never non-expiring**; CI uses a 1 year token and rotates                                                                   | Decided 2026-09-07. Already what the plugin enforces; a token that never dies is the wrong answer to a calendar problem                                                  |
 
 ## 3. The two surfaces
 
@@ -422,18 +426,22 @@ against the in-memory store exactly as it is today.
 
 Machine surface, JSend, part of `openapi.yaml`:
 
-| Method   | Path                                    | Auth                             | Notes                                                                        |
-| -------- | --------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------- |
-| `POST`   | `/packages`                             | bearer, `publish` scope          | now `401` / `403`                                                            |
-| `GET`    | `/me`                                   | bearer or session                | whoami: user handle, token scopes, expiry; also how CI smoke-tests its token |
-| `GET`    | `/me/packages`                          | bearer or session                | packages the actor maintains                                                 |
-| `PUT`    | `/packages/{name}/dist-tags/{tag}`      | bearer, `publish` scope          | maintainers only                                                             |
-| `POST`   | `/packages/{name}/deprecate`            | bearer, `publish` scope          | maintainers only                                                             |
-| `GET`    | `/packages/{name}/maintainers`          | public                           | owner first, then maintainers (shipped 2026-09)                              |
-| `PUT`    | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only, idempotent (shipped 2026-09)                                     |
-| `DELETE` | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only, never the owner row (shipped 2026-09)                            |
-| `POST`   | `/packages/{name}/transfer`             | session, or bearer with `manage` | owner nominates                                                              |
-| `POST`   | `/packages/{name}/transfer/accept`      | session                          | nominee accepts                                                              |
+| Method   | Path                                    | Auth                    | Notes                                                                        |
+| -------- | --------------------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
+| `POST`   | `/packages`                             | bearer, `publish` scope | now `401` / `403`                                                            |
+| `GET`    | `/me`                                   | bearer or session       | whoami: user handle, token scopes, expiry; also how CI smoke-tests its token |
+| `GET`    | `/me/packages`                          | bearer or session       | packages the actor maintains                                                 |
+| `PUT`    | `/packages/{name}/dist-tags/{tag}`      | bearer, `publish` scope | maintainers only                                                             |
+| `POST`   | `/packages/{name}/deprecate`            | bearer, `publish` scope | maintainers only                                                             |
+| `GET`    | `/packages/{name}/maintainers`          | public                  | owner first, then maintainers (shipped 2026-09)                              |
+| `PUT`    | `/packages/{name}/maintainers/{handle}` | session (`manage`)      | owner only, idempotent (shipped 2026-09)                                     |
+| `DELETE` | `/packages/{name}/maintainers/{handle}` | session (`manage`)      | owner only, never the owner row (shipped 2026-09)                            |
+| `POST`   | `/packages/{name}/transfer`             | session (`manage`)      | owner nominates                                                              |
+| `POST`   | `/packages/{name}/transfer/accept`      | session                 | nominee accepts                                                              |
+
+`manage` is session-only (decision 9, 2026-09-07): a bearer token sent to a `manage` route gets a
+403 telling it to sign in on the website. The OpenAPI document carries a second security scheme,
+`session`, for those routes.
 
 Reads stay **public and unauthenticated**: `GET /packages`, `GET /packages/{name}`, the tarball and
 bundle downloads, and also `POST /resolve` and `GET /install` (added by the client work, 2026-08).
@@ -644,15 +652,24 @@ in a URL.
 
 ### 10.3 Scopes
 
-| Scope     | Grants                                                            | Default?        |
-| --------- | ----------------------------------------------------------------- | --------------- |
-| `publish` | Create versions and set dist-tags for packages the user maintains | yes             |
-| `manage`  | Add and remove maintainers, transfer, unpublish                   | no              |
-| `admin`   | Reserved-name overrides, registry-wide operations                 | no, humans only |
+| Scope     | Grants                                                            | Held by                                        |
+| --------- | ----------------------------------------------------------------- | ---------------------------------------------- |
+| `publish` | Create versions and set dist-tags for packages the user maintains | every token, every session                     |
+| `manage`  | Add and remove maintainers, transfer, unpublish                   | sessions only                                  |
+| `admin`   | Reserved-name overrides, registry-wide operations                 | sessions of users whose `user.role` is `admin` |
 
-Reads need no scope. A publish token is publish-only unless the user deliberately widens it, so the
-blast radius of the expected leak is "someone publishes a bad version of a package you maintain",
-which is recoverable, rather than "someone takes your packages", which is not.
+Reads need no scope. A publish token is publish-only, full stop (decision 9, 2026-09-07): `resolveActor`
+caps token actors at `publish` whatever the key's stored permissions say, so the blast radius of the
+expected leak is "someone publishes a bad version of a package you maintain", which is recoverable,
+rather than "someone takes your packages", which is not. This costs scripted maintainer
+administration, which nothing needs. It also matches what Better Auth allows: `permissions` on an
+API key is a server-only field, so the website could never have minted a wider token anyway.
+
+`admin` comes from Better Auth's admin plugin (decision 10, 2026-09-07): `user.role` (`0010_admin.sql`),
+`input: false` so no sign-up or profile update can set it, read once per request by the session
+gateway. Nothing in the registry grants it: the first admin is a hand-run `UPDATE "user" SET role =
+'admin'`, further ones use the plugin's `/auth/admin/set-role` as that admin. The plugin's ban and
+impersonation features come along but are unused.
 
 Package-scoped tokens (npm granular style, a token limited to a named list of packages) are the
 obvious next tightening. The `permissions` field on Better Auth's API keys can carry the list, so this
@@ -661,7 +678,11 @@ is additive; not v1.
 ### 10.4 Expiry, revocation, and hygiene
 
 - **Default expiry 90 days**, matching where npm landed for write-capable tokens. Maximum 1 year.
-  No non-expiring tokens.
+  No non-expiring tokens. Confirmed 2026-09-07 (decision 11) as the policy for CI too, and already
+  what the plugin enforces: `keyExpiration.defaultExpiresIn` is 90 days, the plugin's client cap is
+  365, and a key can only skip expiry when no default is configured. The release workflow's
+  `CPM_REGISTRY_TOKEN` is minted for 1 year and rotated when the account page's expiry column says
+  so, or when the release job goes red with a 401, which is the failure mode and is loud.
 - **Revocation is immediate**: the key row is deleted or flagged, and the next verify fails. If a KV
   verification cache is added later, that cache must be invalidated on revoke or given a TTL short
   enough that "revoked" means something.
@@ -772,22 +793,27 @@ Resolved 2026-08-27:
    settles collisions, and a `user.update.before` hook rejects any later change. Accounts from
    before the migration have no handle until backfilled by hand (see the migration).
 
+Resolved 2026-09-07 (the three questions from the phase 4 kickoff, tracked as issue #117):
+
+9. **`manage` is session-only.** `resolveActor` caps every token at `publish`; maintainer changes,
+   transfers, and unpublish take the website sign-in, and a token sent there gets a 403 that says
+   so. Section 9.1 lists those routes as `session (manage)`. No scripted administration, which
+   nothing needs; and Better Auth's API key `permissions` are server-only, so no wider token ever
+   existed to break.
+10. **`admin` is Better Auth's admin plugin.** `user.role` (`0010_admin.sql`), `adminRoles:
+["admin"]`, read by the session gateway; tokens never carry `admin`. Chosen over an env-seeded
+    id list (invisible in the data, one more secret to keep in sync) and over a bespoke column
+    (the plugin's set-role endpoint is the management surface a column would have needed anyway).
+    The first admin is set by hand in D1 after deploying the migration.
+11. **Token expiry: 90 days default, 1 year maximum, never non-expiring**, for CI as well. The
+    release workflow's token is minted for a year and rotated on the red job or the account page's
+    expiry column. Section 10.4 has the enforcement detail.
+
 Still open:
 
 1. **Better Auth schema generation on native D1.** The `generate`-against-throwaway-SQLite workaround
    is plausible but unproven. This is phase 0's second question and the most likely source of friction.
-2. **Should `manage` operations be possible from a token at all,** or session-only? Session-only is
-   safer (a leaked computer token can never transfer a package away) at the cost of no scripted
-   administration. Leaning session-only, listed as bearer-or-session in section 9.1 pending a call.
-3. **Admin.** Who holds `admin`, and is it a column on `user` or a hard-coded list of user ids in a
-   secret? A column is more honest; a secret is faster to ship.
-4. **Token expiry default.** 90 days matches npm, but the main consumer is now the release
-   workflow's secret, and an expired CI token silently breaks the registry publish of the next
-   cpm-cli release (it degrades to a red job, not data loss). Options: a long-lived (1 year) CI
-   token with `last used` visibility, or a calendar reminder, or exempting `admin`-minted CI tokens
-   from the cap. Any future in-game tokens have the same problem in a worse shape (a world nobody
-   loads for weeks), which argues for 180 days there.
-5. **Who owns the `cpm` package?** Resolved 2026-08-27: the personal GitHub-backed account. CI's
+2. **Who owns the `cpm` package?** Resolved 2026-08-27: the personal GitHub-backed account. CI's
    `CPM_REGISTRY_TOKEN` is a publish-scoped token minted by that account.
 
 ## Sources

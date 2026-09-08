@@ -63,12 +63,22 @@ app.onError((err, c) => {
 // JSend envelope and the generated OpenAPI document.
 app.on(["GET", "POST"], "/auth/*", (c) => authFor(c.env).handler(c.req.raw));
 
-// Publish tokens in the OpenAPI document; routes opt in via `security`.
+// The two credentials in the OpenAPI document; routes opt in via `security`.
+// A publish token only ever publishes; changing who owns or maintains a
+// package needs the website sign-in (docs/cpm-registry-auth-design.md, 10.3).
 app.openAPIRegistry.registerComponent("securitySchemes", "publishToken", {
   type: "http",
   scheme: "bearer",
   description:
     "A publish token from your account page at https://cpm.chungindustries.com/account, sent as `Authorization: Bearer cpm_...`.",
+});
+app.openAPIRegistry.registerComponent("securitySchemes", "session", {
+  type: "apiKey",
+  in: "cookie",
+  // Better Auth's default name, `__Secure-` prefixed because BETTER_AUTH_URL is https.
+  name: "__Secure-better-auth.session_token",
+  description:
+    "Your sign-in on https://cpm.chungindustries.com, which the website sends for you. Publish tokens are not accepted here.",
 });
 
 registerPackageRoutes(app);

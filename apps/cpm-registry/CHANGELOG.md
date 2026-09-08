@@ -1,3 +1,20 @@
+## 0.0.8 (2026-09-07)
+
+### 🚀 Features
+
+- Package owners can now manage who may publish: `GET /packages/{name}/maintainers` lists a package's maintainers (owner first, public), and `PUT` / `DELETE /packages/{name}/maintainers/{handle}` add or remove one (owner only, with a browser session or a `manage`-scoped token). Accounts are addressed by handle, seeded from the GitHub login at signup and immutable afterwards; accounts created before this release get theirs from a one-off backfill. ([#113](https://github.com/ChungIndustries/chung-industries/issues/113), [#112](https://github.com/ChungIndustries/chung-industries/issues/112))
+- New `GET /search?q=` endpoint matching package names, authors, and descriptions, returning one summary per package (name, author, description, latest version, version count, publish time) instead of the full package document. Results rank name matches first and page with `limit` and `offset`; an empty query serves as the paginated index. ([#85](https://github.com/ChungIndustries/chung-industries/issues/85))
+- Unpublished packages (`packages.unpublished_at`, renamed from `deleted_at`) are now honoured by every read, matching npm's `unpublish`: they disappear from `GET /packages`, `GET /search`, and `GET /me/packages`, `GET /packages/{name}` and its version endpoint respond 404, `POST /resolve` fails with 404 when a root or transitive dependency has been unpublished, `POST /packages` refuses the retired name with 403, and tarball and bundle downloads respond 404. Nothing is deleted from storage, so an unpublished package can be recovered; deprecation remains the path that keeps a package installable. ([d24764f](https://github.com/ChungIndustries/chung-industries/commit/d24764f))
+
+### 🩹 Fixes
+
+- The API reference now reads in plain language: every endpoint, response, and field description was rewritten to say what it does in ordinary sentences, without repeating what the spec already shows. ([d845573](https://github.com/ChungIndustries/chung-industries/commit/d845573))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5.1
+
 ## 0.0.7 (2026-09-01)
 
 ### 🩹 Fixes
