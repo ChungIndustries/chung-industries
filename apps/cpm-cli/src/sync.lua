@@ -29,6 +29,22 @@ function sync.resolve(roots)
   return data.packages
 end
 
+-- A deprecated version still installs: the registry only attaches a message, and the client's
+-- whole job is to make sure the user sees it. Printed for every pinned version, not just the
+-- ones about to be downloaded, so a bad release already on disk is called out on every sync.
+local function warnDeprecated(resolved)
+  for _, pkg in ipairs(resolved) do
+    if pkg.deprecated then
+      local previous = term.getTextColour()
+      if term.isColour() then
+        term.setTextColour(colours.yellow)
+      end
+      print(string.format("%s@%s is deprecated: %s", pkg.name, pkg.version, pkg.deprecated))
+      term.setTextColour(previous)
+    end
+  end
+end
+
 -- Disk is the scarce resource on CC (1 MB by default), so refuse up front rather than fail
 -- halfway through extraction with a full drive.
 local function checkFreeSpace(toInstall)
@@ -98,6 +114,7 @@ function sync.apply(roots)
   if next(roots) ~= nil then
     print("Resolving...")
     resolved = sync.resolve(roots)
+    warnDeprecated(resolved)
   end
 
   local resolvedByName = {}
