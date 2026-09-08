@@ -16,6 +16,7 @@ import { DatabaseSync } from "node:sqlite";
 
 import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
+import { admin } from "better-auth/plugins";
 
 import { userAdditionalFields } from "./src/components/auth/handle";
 
@@ -25,5 +26,5 @@ export const auth = betterAuth({
   socialProviders: {
     github: { clientId: "schema-gen-only", clientSecret: "schema-gen-only" },
   },
-  plugins: [apiKey()],
+  plugins: [apiKey(), admin()],
 });
