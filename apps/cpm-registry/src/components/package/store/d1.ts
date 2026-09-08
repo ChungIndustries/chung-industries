@@ -10,13 +10,15 @@ import {
   type Maintainer,
   type MaintainerChange,
   type MaintainerRole,
+  type PackageDeprecationChange,
   type RegistryStore,
   type RegistryUser,
   type SearchOptions,
+  type VersionDeprecationChange,
   bundlePath,
   tarballPath,
 } from "@/components/package/store/types";
-import { ConflictError, ForbiddenError } from "@/errors";
+import { ConflictError, ForbiddenError, NotFoundError } from "@/errors";
 
 interface PackageRow {
   name: string;
@@ -34,6 +36,7 @@ interface VersionRow {
   bundle_sha256: string;
   bundle_size: number;
   created_at: number;
+  deprecated_message: string | null;
 }
 interface TagRow {
   package_name: string;
@@ -47,11 +50,12 @@ interface SummaryRow {
   version: string;
   version_count: number;
   published_at: number;
+  deprecated_message: string | null;
 }
 
 const SELECT_PACKAGES = "SELECT name, author, created_at FROM packages";
 const SELECT_VERSIONS =
-  "SELECT package_name, version, description, author, dependencies, shasum, integrity, bundle_sha256, bundle_size, created_at FROM versions";
+  "SELECT package_name, version, description, author, dependencies, shasum, integrity, bundle_sha256, bundle_size, created_at, deprecated_message FROM versions";
 const SELECT_TAGS = "SELECT package_name, tag, version FROM dist_tags";
 // Unpublished rows are kept (name stays claimed, blobs stay in storage) but
 // every read filters them out, downloads included; see RegistryStore.
@@ -72,7 +76,7 @@ const FROM_SUMMARIES = `
       OR p.author LIKE ?2 ESCAPE '\\'
       OR v.description LIKE ?2 ESCAPE '\\')`;
 const SELECT_SUMMARIES = `
-  SELECT p.name, p.author, v.description, v.version, v.created_at AS published_at,
+  SELECT p.name, p.author, v.description, v.version, v.created_at AS published_at, v.deprecated_message,
     (SELECT COUNT(*) FROM versions WHERE package_name = p.name) AS version_count
   ${FROM_SUMMARIES}
   ORDER BY CASE
@@ -92,6 +96,18 @@ function isOwner(actorParam: number): string {
   return `EXISTS (
     SELECT 1 FROM package_maintainers o
     WHERE o.package_name = ?1 AND o.user_id = ?${actorParam} AND o.role = 'owner')`;
+}
+
+/** Like {@link isOwner}, for writes any maintainer may make. */
+function isMaintainer(actorParam: number): string {
+  return `EXISTS (
+    SELECT 1 FROM package_maintainers m
+    WHERE m.package_name = ?1 AND m.user_id = ?${actorParam})`;
+}
+
+/** The `audit_events` action a deprecation change records. */
+function deprecationAction(message: string | null): "deprecate" | "undeprecate" {
+  return message === null ? "undeprecate" : "deprecate";
 }
 
 /** Escapes the LIKE wildcards in a user-supplied needle so they match literally. */
@@ -175,7 +191,6 @@ export class D1RegistryStore implements RegistryStore {
     // maintainer row. A losing racer or a non-maintainer therefore inserts
     // zero version rows, detected below and surfaced as 403; the version
     // primary key stays the 409 backstop for duplicate versions.
-    const isMaintainer = `EXISTS (SELECT 1 FROM package_maintainers WHERE package_name = ?1 AND user_id = ?2)`;
     const statements: D1PreparedStatement[] = [
       // Preserve the original author on re-publish: only set it on first insert.
       this.db
@@ -194,7 +209,7 @@ export class D1RegistryStore implements RegistryStore {
         .prepare(
           `INSERT INTO versions (package_name, version, description, author, dependencies, shasum, integrity, tarball_key, bundle_sha256, bundle_size, bundle_key, published_by, created_at)
            SELECT ?1, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?2, ?13
-           WHERE ${isMaintainer}`,
+           WHERE ${isMaintainer(2)}`,
         )
         .bind(
           name,
@@ -219,7 +234,7 @@ export class D1RegistryStore implements RegistryStore {
             // Guarded like the version insert so a rejected publish can never
             // move dist-tags. The WHERE also disambiguates the upsert parse.
             `INSERT INTO dist_tags (package_name, tag, version)
-             SELECT ?1, ?3, ?4 WHERE ${isMaintainer}
+             SELECT ?1, ?3, ?4 WHERE ${isMaintainer(2)}
              ON CONFLICT(package_name, tag) DO UPDATE SET version = excluded.version`,
           )
           .bind(name, publishedBy, tag, version),
@@ -311,6 +326,89 @@ export class D1RegistryStore implements RegistryStore {
     return false;
   }
 
+  async setVersionDeprecation({
+    name,
+    version,
+    message,
+    actorUserId,
+  }: VersionDeprecationChange): Promise<void> {
+    // The audit row is guarded by the same conditions as the update, so it is
+    // written exactly when the update lands. Both run in one D1 batch, which
+    // is a single transaction.
+    const exists = "EXISTS (SELECT 1 FROM versions WHERE package_name = ?1 AND version = ?3)";
+    const [update] = await this.db.batch([
+      this.db
+        .prepare(
+          `UPDATE versions SET deprecated_message = ?4
+           WHERE package_name = ?1 AND version = ?3 AND ${isMaintainer(2)}`,
+        )
+        .bind(name, actorUserId, version, message),
+      this.auditDeprecation(
+        { name, actorUserId, message, version },
+        `${exists} AND ${isMaintainer(2)}`,
+      ),
+    ]);
+    if ((update?.meta.changes ?? 0) > 0) return;
+    // Nothing changed: either the version is unknown or the actor is not a
+    // maintainer. Only the latter is an authorization failure.
+    await this.requireMaintainerRow(name, actorUserId);
+    throw new NotFoundError(`Version ${version} of "${name}" not found`);
+  }
+
+  async setPackageDeprecation({
+    name,
+    message,
+    actorUserId,
+  }: PackageDeprecationChange): Promise<void> {
+    const exists = "EXISTS (SELECT 1 FROM versions WHERE package_name = ?1)";
+    const [update] = await this.db.batch([
+      this.db
+        .prepare(
+          `UPDATE versions SET deprecated_message = ?3
+           WHERE package_name = ?1 AND ${isMaintainer(2)}`,
+        )
+        .bind(name, actorUserId, message),
+      this.auditDeprecation(
+        { name, actorUserId, message, version: null },
+        `${exists} AND ${isMaintainer(2)}`,
+      ),
+    ]);
+    if ((update?.meta.changes ?? 0) > 0) return;
+    // A package always has at least one version, so nothing changing means
+    // the actor is not a maintainer, or the package does not exist at all.
+    await this.requireMaintainerRow(name, actorUserId);
+    throw new NotFoundError("Package not found");
+  }
+
+  /**
+   * The `audit_events` insert for a deprecation change. `guard` may reference
+   * `?1` (name), `?2` (actor), and `?3` (version, `null` for a package-level
+   * change) and should repeat the update's own conditions, so the row is
+   * written exactly when the update it rides with landed.
+   */
+  private auditDeprecation(
+    change: Omit<VersionDeprecationChange, "version"> & { version: string | null },
+    guard: string,
+  ): D1PreparedStatement {
+    const { name, actorUserId, message, version } = change;
+    const detail = JSON.stringify({ version, ...(message === null ? {} : { message }) });
+    return this.db
+      .prepare(
+        `INSERT INTO audit_events (actor_user_id, action, package_name, detail, created_at)
+         SELECT ?2, ?4, ?1, ?5, ?6 WHERE ${guard}`,
+      )
+      .bind(name, actorUserId, version, deprecationAction(message), detail, Date.now());
+  }
+
+  /** 403 unless the actor holds a maintainer row; the "why did nothing change" check. */
+  private async requireMaintainerRow(name: string, actorUserId: string): Promise<void> {
+    const held = await this.db
+      .prepare("SELECT 1 FROM package_maintainers WHERE package_name = ?1 AND user_id = ?2")
+      .bind(name, actorUserId)
+      .first();
+    if (held === null) throw new ForbiddenError(`You are not a maintainer of "${name}"`);
+  }
+
   async userByHandle(handle: string): Promise<RegistryUser | null> {
     const row = await this.db
       .prepare('SELECT id, handle FROM "user" WHERE handle = ? COLLATE NOCASE')
@@ -367,6 +465,7 @@ function assemble(pkg: PackageRow, versions: VersionRow[], tags: TagRow[]): Pack
         },
       },
       createdAt: new Date(v.created_at).toISOString(),
+      ...(v.deprecated_message ? { deprecated: v.deprecated_message } : {}),
     };
   }
   const distTags: Record<string, string> = {};
@@ -388,6 +487,7 @@ function summarize(row: SummaryRow): PackageSummary {
     version: row.version,
     versionCount: row.version_count,
     publishedAt: new Date(row.published_at).toISOString(),
+    ...(row.deprecated_message ? { deprecated: row.deprecated_message } : {}),
   };
 }
 

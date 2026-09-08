@@ -158,6 +158,13 @@ components:
               format: date-time
               example: 2026-01-15T12:00:00.000Z
               description: When this version was published, as an ISO 8601 UTC timestamp
+            deprecated:
+              type: string
+              minLength: 1
+              maxLength: 1024
+              example: Corrupts the state file, upgrade to 1.0.1
+              description: The deprecation message, present only while the version is
+                deprecated. Installs keep working
           required:
             - dist
             - createdAt
@@ -262,6 +269,13 @@ components:
           format: date-time
           example: 2026-01-15T12:00:00.000Z
           description: When the latest version was published, as an ISO 8601 UTC timestamp
+        deprecated:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          example: Corrupts the state file, upgrade to 1.0.1
+          description: The `latest` version's deprecation message, present only while that
+            version is deprecated
       required:
         - name
         - version
@@ -315,6 +329,20 @@ components:
         userId: kq3vw7s5q1m9e8x2c4n6b0z1a7y5r3t9
         handle: octocat
         role: owner
+    Deprecation:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          example: Corrupts the state file, upgrade to 1.0.1
+          description: Why this version should not be installed, and what to do instead
+      required:
+        - message
+      additionalProperties: false
+      example:
+        message: Corrupts the state file, upgrade to 1.0.1
     ResolveRequest:
       type: object
       properties:
@@ -1115,6 +1143,572 @@ paths:
                   - data
         "404":
           description: Package or account not found, or not a maintainer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Something went wrong on the registry's side
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /packages/{name}/{version}/deprecation:
+    put:
+      tags:
+        - Packages
+      summary: Deprecate version
+      description: "Attaches a warning to one version without changing what is served:
+        it stays listed, resolvable, and downloadable, and the cpm client prints
+        the message when it installs or updates to it. Any maintainer can do
+        this, and the credential needs the `publish` scope. Deprecating an
+        already deprecated version replaces its message. Responds with the
+        updated version."
+      security: &a2
+        - publishToken: []
+        - session: []
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+        - schema:
+            type: string
+            example: 1.0.0
+            description: A semantic version
+          required: true
+          description: A semantic version
+          name: version
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Deprecation"
+      responses:
+        "200":
+          description: The updated version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/PackageVersion"
+                required:
+                  - status
+                  - data
+        "400":
+          description: Invalid version or message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "403":
+          description: Not a maintainer of this package, or missing the publish scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package or version not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Something went wrong on the registry's side
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+    delete:
+      tags:
+        - Packages
+      summary: Undeprecate version
+      description: Clears the version's deprecation message. Any maintainer can do
+        this, and the credential needs the `publish` scope. Clearing a version
+        that is not deprecated does nothing. Responds with the updated version.
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+        - schema:
+            type: string
+            example: 1.0.0
+            description: A semantic version
+          required: true
+          description: A semantic version
+          name: version
+          in: path
+      responses:
+        "200":
+          description: The updated version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/PackageVersion"
+                required:
+                  - status
+                  - data
+        "400":
+          description: Invalid version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "403":
+          description: Not a maintainer of this package, or missing the publish scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package or version not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Something went wrong on the registry's side
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+  /packages/{name}/deprecation:
+    put:
+      tags:
+        - Packages
+      summary: Deprecate package
+      description: Sets the same deprecation message on every version of the package.
+        Versions published afterwards are not deprecated. Any maintainer can do
+        this, and the credential needs the `publish` scope. Responds with the
+        updated package.
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Deprecation"
+      responses:
+        "200":
+          description: The updated package
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/Package"
+                required:
+                  - status
+                  - data
+        "400":
+          description: Invalid message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "403":
+          description: Not a maintainer of this package, or missing the publish scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "500":
+          description: Something went wrong on the registry's side
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                  message:
+                    type: string
+                    minLength: 1
+                required:
+                  - status
+                  - message
+    delete:
+      tags:
+        - Packages
+      summary: Undeprecate package
+      description: Clears the deprecation message from every version of the package.
+        Any maintainer can do this, and the credential needs the `publish`
+        scope. Responds with the updated package.
+      security: *a2
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            example: example
+          required: true
+          name: name
+          in: path
+      responses:
+        "200":
+          description: The updated package
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - success
+                  data:
+                    $ref: "#/components/schemas/Package"
+                required:
+                  - status
+                  - data
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "403":
+          description: Not a maintainer of this package, or missing the publish scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - fail
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        minLength: 1
+                    required:
+                      - message
+                required:
+                  - status
+                  - data
+        "404":
+          description: Package not found
           content:
             application/json:
               schema:

@@ -1,5 +1,8 @@
+import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
+import { TriangleAlert } from "lucide-react";
 
+import { DeprecatedBadge } from "@/package/components/deprecated-badge";
 import type { Package, PackageVersion } from "@/package/schemas";
 import { tagsFor } from "@/package/search";
 
@@ -17,12 +20,20 @@ export function PackageHeader({ pkg, version }: { pkg: Package; version: Package
               {tag}
             </Badge>
           ))}
+          {version.deprecated && <DeprecatedBadge />}
         </div>
       </div>
       {version.description && (
         <p className="text-muted-foreground mt-2 max-w-prose">{version.description}</p>
       )}
       {version.author && <p className="text-muted-foreground mt-1 text-sm">by {version.author}</p>}
+      {version.deprecated && (
+        <Alert variant="destructive" className="mt-4 rounded-none">
+          <TriangleAlert aria-hidden="true" />
+          <AlertTitle>This version is deprecated</AlertTitle>
+          <AlertDescription>{version.deprecated}</AlertDescription>
+        </Alert>
+      )}
     </header>
   );
 }

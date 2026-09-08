@@ -1,21 +1,37 @@
-import type { Package, PackageSummary, SearchResults } from "@/components/package/schemas";
+import type {
+  Package,
+  PackageSummary,
+  PackageVersion,
+  SearchResults,
+} from "@/components/package/schemas";
 import type {
   AddVersionInput,
   BlobStore,
   MaintainedPackage,
   Maintainer,
   MaintainerChange,
+  PackageDeprecationChange,
   RegistryStore,
   RegistryUser,
   SearchOptions,
+  VersionDeprecationChange,
 } from "@/components/package/store/types";
-import { ConflictError, ForbiddenError } from "@/errors";
+import { ConflictError, ForbiddenError, NotFoundError } from "@/errors";
+
+/** An `audit_events` row as the D1 store writes it, for tests to assert on. */
+export interface AuditEvent {
+  actorUserId: string;
+  action: string;
+  packageName: string;
+  detail: Record<string, unknown>;
+}
 
 /**
  * In-memory {@link RegistryStore} used by the service unit tests. It mirrors the
  * atomicity contract of the D1 store (duplicate version -> `ConflictError`,
  * non-maintainer publish -> `ForbiddenError`, first publish claims ownership,
- * original author preserved, owner-guarded maintainer writes) and its
+ * original author preserved, owner-guarded maintainer writes,
+ * maintainer-guarded deprecation writes with their audit rows) and its
  * unpublish visibility rules without needing a real database, so the tests
  * are fast and portable.
  */
@@ -27,6 +43,8 @@ export class InMemoryRegistryStore implements RegistryStore {
   /** Mirrors the `user` table's id and handle columns, keyed by user id. */
   private readonly users = new Map<string, RegistryUser>();
   private readonly unpublished = new Set<string>();
+  /** Mirrors `audit_events`, in insertion order. */
+  readonly audit: AuditEvent[] = [];
 
   /** Test helper mirroring a row in `reserved_names`. */
   reserve(name: string): void {
@@ -108,6 +126,49 @@ export class InMemoryRegistryStore implements RegistryStore {
     return kept.length < rows.length;
   }
 
+  async setVersionDeprecation({
+    name,
+    version,
+    message,
+    actorUserId,
+  }: VersionDeprecationChange): Promise<void> {
+    // Same precedence as the D1 store: a non-maintainer learns nothing about
+    // which versions exist.
+    this.requireMaintainer(name, actorUserId);
+    const entry = this.packages.get(name)?.versions[version];
+    if (!entry) throw new NotFoundError(`Version ${version} of "${name}" not found`);
+    setDeprecated(entry, message);
+    this.recordDeprecation({ name, actorUserId, message, version });
+  }
+
+  async setPackageDeprecation({
+    name,
+    message,
+    actorUserId,
+  }: PackageDeprecationChange): Promise<void> {
+    this.requireMaintainer(name, actorUserId);
+    const pkg = this.packages.get(name);
+    if (!pkg) throw new NotFoundError("Package not found");
+    for (const entry of Object.values(pkg.versions)) setDeprecated(entry, message);
+    this.recordDeprecation({ name, actorUserId, message, version: null });
+  }
+
+  /** The D1 store's `audit_events` insert riding with a deprecation update. */
+  private recordDeprecation(change: {
+    name: string;
+    actorUserId: string;
+    message: string | null;
+    version: string | null;
+  }): void {
+    const { name, actorUserId, message, version } = change;
+    this.audit.push({
+      actorUserId,
+      action: message === null ? "undeprecate" : "deprecate",
+      packageName: name,
+      detail: { version, ...(message === null ? {} : { message }) },
+    });
+  }
+
   async userByHandle(handle: string): Promise<RegistryUser | null> {
     const needle = handle.toLowerCase();
     for (const user of this.users.values()) {
@@ -167,13 +228,21 @@ export class InMemoryRegistryStore implements RegistryStore {
     return clone(pkg);
   }
 
-  /** The D1 store's `IS_OWNER` guard on maintainer writes. */
+  /** The D1 store's `isOwner` guard on maintainer writes. */
   private requireOwner(name: string, actorUserId: string): Omit<Maintainer, "handle">[] {
     const rows = this.maintainers.get(name) ?? [];
     if (!rows.some((m) => m.userId === actorUserId && m.role === "owner")) {
       throw new ForbiddenError(`Only the owner of "${name}" can manage its maintainers`);
     }
     return rows;
+  }
+
+  /** The D1 store's `isMaintainer` guard on deprecation writes. */
+  private requireMaintainer(name: string, actorUserId: string): void {
+    const rows = this.maintainers.get(name) ?? [];
+    if (!rows.some((m) => m.userId === actorUserId)) {
+      throw new ForbiddenError(`You are not a maintainer of "${name}"`);
+    }
   }
 
   /** The D1 store's `JOIN user`; tests register every actor with `addUser` first. */
@@ -202,6 +271,12 @@ function clone(pkg: Package): Package {
   return structuredClone(pkg);
 }
 
+/** `deprecated_message = ?` on one version row: absent, not `undefined`, when cleared. */
+function setDeprecated(entry: PackageVersion, message: string | null): void {
+  if (message === null) delete entry.deprecated;
+  else entry.deprecated = message;
+}
+
 function latestEntry(pkg: Package) {
   const latest = pkg.versions[pkg["dist-tags"].latest];
   if (!latest) throw new Error(`Package "${pkg.name}" has a dangling latest tag`);
@@ -218,5 +293,6 @@ function summarize(pkg: Package): PackageSummary {
     version: latest.version,
     versionCount: Object.keys(pkg.versions).length,
     publishedAt: latest.createdAt,
+    ...(latest.deprecated ? { deprecated: latest.deprecated } : {}),
   };
 }

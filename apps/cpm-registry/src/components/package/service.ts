@@ -82,8 +82,12 @@ function parseManifest(bytes: Uint8Array | undefined): PackageVersionMetadata {
  * 404, `resolve` cannot pin it (so a dependent's install fails loudly rather
  * than silently pinning a withdrawn package), and its retired name cannot be
  * published to. The rows and blobs survive in storage for recovery, they are
- * just no longer served. Deprecation, not unpublishing, is the path that keeps
- * a package installable (docs/cpm-registry-auth-design.md, section 8.3).
+ * just no longer served.
+ *
+ * Deprecation is the soft, common path (docs/cpm-registry-auth-design.md,
+ * section 8.3): per version, as in npm, it attaches a message that every read
+ * surfaces as `deprecated` and the client prints on install, and changes
+ * nothing else. Any maintainer can set or clear it.
  */
 export class PackageService {
   constructor(
@@ -273,6 +277,75 @@ export class PackageService {
       throw new ForbiddenError(`Only the owner of "${name}" can manage its maintainers`);
     }
     return maintainers;
+  }
+
+  /** Marks one version deprecated, replacing any earlier message. Returns the updated version. */
+  async deprecateVersion(
+    actor: Actor,
+    name: string,
+    version: string,
+    message: string,
+  ): Promise<PackageVersion> {
+    return this.setVersionDeprecation(actor, name, version, message);
+  }
+
+  /** Clears one version's deprecation; a no-op if it was not deprecated. Returns the updated version. */
+  async undeprecateVersion(actor: Actor, name: string, version: string): Promise<PackageVersion> {
+    return this.setVersionDeprecation(actor, name, version, null);
+  }
+
+  /**
+   * Marks every version deprecated with the same message, which is what
+   * `npm deprecate <pkg>` with no version does. Versions published afterwards
+   * are not deprecated. Returns the updated package.
+   */
+  async deprecatePackage(actor: Actor, name: string, message: string): Promise<Package> {
+    return this.setPackageDeprecation(actor, name, message);
+  }
+
+  /** Clears the deprecation of every version. Returns the updated package. */
+  async undeprecatePackage(actor: Actor, name: string): Promise<Package> {
+    return this.setPackageDeprecation(actor, name, null);
+  }
+
+  private async setVersionDeprecation(
+    actor: Actor,
+    name: string,
+    version: string,
+    message: string | null,
+  ): Promise<PackageVersion> {
+    await this.requireMaintainer(actor, name);
+    await this.getVersion(name, version);
+    await this.registry.setVersionDeprecation({
+      name,
+      version,
+      message,
+      actorUserId: actor.userId,
+    });
+    return this.getVersion(name, version);
+  }
+
+  private async setPackageDeprecation(
+    actor: Actor,
+    name: string,
+    message: string | null,
+  ): Promise<Package> {
+    await this.requireMaintainer(actor, name);
+    await this.registry.setPackageDeprecation({ name, message, actorUserId: actor.userId });
+    return this.get(name);
+  }
+
+  /**
+   * Pre-flight for changes any maintainer may make: the package exists (404)
+   * and the actor maintains it (403). Like {@link requireOwner}, the store
+   * re-checks inside the write; this only picks the error.
+   */
+  private async requireMaintainer(actor: Actor, name: string): Promise<void> {
+    await this.get(name);
+    const maintainers = await this.registry.getMaintainers(name);
+    if (!maintainers.some((m) => m.userId === actor.userId)) {
+      throw new ForbiddenError(`You are not a maintainer of "${name}"`);
+    }
   }
 
   private async requireUser(handle: string): Promise<RegistryUser> {

@@ -31,6 +31,8 @@ export const packageVersionSchema = z.object({
   startup: z.string().optional(),
   dist: z.object({ tarball: tarballDistSchema, bundle: bundleDistSchema }),
   createdAt: z.string().optional(),
+  /** The deprecation message, present only while the version is deprecated. */
+  deprecated: z.string().optional(),
 });
 
 export const distTagsSchema = z.object({ latest: z.string() }).catchall(z.string());
@@ -51,6 +53,8 @@ export const packageSummarySchema = z.object({
   version: z.string(),
   versionCount: z.number(),
   publishedAt: z.string(),
+  /** The `latest` version's deprecation message, present only while it is deprecated. */
+  deprecated: z.string().optional(),
 });
 
 export const searchResultsSchema = z.object({

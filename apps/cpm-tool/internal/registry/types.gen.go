@@ -92,6 +92,14 @@ type ActorScopes string
 // ActorVia How the caller authenticated
 type ActorVia string
 
+// Deprecation Example: {"message":"Corrupts the state file, upgrade to 1.0.1"}
+type Deprecation struct {
+	// Message Why this version should not be installed, and what to do instead
+	//
+	// Example: Corrupts the state file, upgrade to 1.0.1
+	Message string `json:"message"`
+}
+
 // DistTags Named pointers to versions; `latest` is always set
 //
 // Example: {"latest":"1.0.0"}
@@ -155,6 +163,11 @@ type PackageSummary struct {
 	// Author Example: chungindustries
 	Author *string `json:"author,omitempty"`
 
+	// Deprecated The `latest` version's deprecation message, present only while that version is deprecated
+	//
+	// Example: Corrupts the state file, upgrade to 1.0.1
+	Deprecated *string `json:"deprecated,omitempty"`
+
 	// Description What the package does, in a sentence or two
 	//
 	// Example: Example utilities for CC:Tweaked computers
@@ -193,6 +206,11 @@ type PackageVersion struct {
 	//
 	// Example: {"cc-http":"^1.2.0"}
 	Dependencies *map[string]string `json:"dependencies,omitempty"`
+
+	// Deprecated The deprecation message, present only while the version is deprecated. Installs keep working
+	//
+	// Example: Corrupts the state file, upgrade to 1.0.1
+	Deprecated *string `json:"deprecated,omitempty"`
 
 	// Description What the package does, in a sentence or two
 	//
