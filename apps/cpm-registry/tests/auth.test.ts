@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Scope } from "@/components/auth/actor";
 import { resolveActor, type AuthGateway } from "@/components/auth/middleware";
 
-/** Gateway fake: one known token, one known session cookie. */
+/** Gateway fake: one known token, one known session cookie, one admin cookie. */
 function gateway(
   overrides: Partial<Record<"token", { userId: string; scopes: Scope[] } | null>> = {},
 ): AuthGateway {
@@ -13,7 +13,14 @@ function gateway(
       return token === "cpm_good" ? { userId: "user-1", scopes: ["publish"] } : null;
     },
     async sessionUser(headers) {
-      return headers.get("cookie") === "session=valid" ? { userId: "user-2" } : null;
+      switch (headers.get("cookie")) {
+        case "session=valid":
+          return { userId: "user-2", admin: false };
+        case "session=admin":
+          return { userId: "user-3", admin: true };
+        default:
+          return null;
+      }
     },
   };
 }
@@ -62,5 +69,24 @@ describe("resolveActor", () => {
   it("resolves a browser session when no token is supplied", async () => {
     const actor = await resolveActor(headers({ Cookie: "session=valid" }), gateway());
     expect(actor).toEqual({ userId: "user-2", scopes: ["publish", "manage"], via: "session" });
+  });
+
+  it("caps a token at publish, whatever permissions it was minted with", async () => {
+    // manage and admin are session-only; a leaked CI token must never be
+    // able to change maintainers, even if its stored permissions say so.
+    const actor = await resolveActor(
+      headers({ Authorization: "Bearer cpm_wide" }),
+      gateway({ token: { userId: "user-1", scopes: ["publish", "manage", "admin"] } }),
+    );
+    expect(actor).toEqual({ userId: "user-1", scopes: ["publish"], via: "token" });
+  });
+
+  it("grants admin only to the session of an admin user", async () => {
+    const actor = await resolveActor(headers({ Cookie: "session=admin" }), gateway());
+    expect(actor).toEqual({
+      userId: "user-3",
+      scopes: ["publish", "manage", "admin"],
+      via: "session",
+    });
   });
 });

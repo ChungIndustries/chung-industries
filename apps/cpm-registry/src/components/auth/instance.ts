@@ -1,8 +1,10 @@
 import { apiKey } from "@better-auth/api-key";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
+import { admin } from "better-auth/plugins";
 
 import { handleTaken, pickHandle, userAdditionalFields } from "@/components/auth/handle";
+import { ADMIN_ROLES } from "@/components/auth/role";
 import { parseEnv } from "@/env";
 
 const NINETY_DAYS_S = 90 * 24 * 60 * 60;
@@ -27,6 +29,8 @@ export function authFor(env: Env) {
     secret: secrets.BETTER_AUTH_SECRET,
     // Mirrored in auth-schema.config.ts and migrations/0008_handles.sql.
     user: { additionalFields: userAdditionalFields },
+    // Plugins are mirrored in auth-schema.config.ts; their columns live in
+    // migrations/0003_auth.sql (apiKey) and 0010_admin.sql (admin).
     databaseHooks: {
       user: {
         create: {
@@ -74,6 +78,11 @@ export function authFor(env: Env) {
         // deliberately (docs/cpm-registry-auth-design.md, section 10.3).
         permissions: { defaultPermissions: { registry: ["publish"] } },
       }),
+      // Where `admin` lives (docs/cpm-registry-auth-design.md, section 12,
+      // decision 10): `user.role`, read by the session gateway. The plugin's
+      // own endpoints (`/auth/admin/*`, set-role, ban, list users) are open
+      // only to holders of these roles; nothing else in the registry uses them.
+      admin({ adminRoles: [...ADMIN_ROLES] }),
     ],
   });
 }
