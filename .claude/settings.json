@@ -12,7 +12,6 @@
       "WebFetch(domain:ui.shadcn.com)",
       "WebFetch(domain:radix-ui.com)",
       "WebFetch(domain:tailwindcss.com)",
-      "WebFetch(domain:supabase.com)",
       "WebFetch(domain:zod.dev)",
       "WebFetch(domain:env.t3.gg)",
       "WebFetch(domain:lucide.dev)",
@@ -53,9 +52,7 @@
       "Bash(pnpm format:*)",
       "Bash(pnpm format:check:*)",
       "Bash(pnpm test:*)",
-      "Bash(pnpm outdated:*)",
-      "Bash(pnpm db:*)",
-      "Bash(npx supabase:*)"
+      "Bash(pnpm outdated:*)"
     ]
   },
   "enabledPlugins": {

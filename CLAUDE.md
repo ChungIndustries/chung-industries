@@ -12,9 +12,7 @@ NX + pnpm monorepo.
   - `cpm-cli`: the in-game cpm client, Lua, published to the registry as the `cpm` package
   - `cpm-tool`: Go/Cobra CLI for real computers (`cpm login|logout|whoami|pack|publish`); its registry types are generated from `cpm-registry`'s `openapi.yaml`
   - `docs`: API docs site
-  - `web`: React/Supabase app (currently template boilerplate)
 - `packages/`: shared libraries: TypeScript (`@workspace/*`), and ComputerCraft packages published to the cpm registry under `packages/cc/*` (`cli`)
-- `supabase/`: Supabase config, migrations, edge functions (Deno runtime, NOT a workspace package)
 
 ## Conventions
 
@@ -25,9 +23,8 @@ NX + pnpm monorepo.
 
 ## Environment & secrets
 
-- Each deployable validates its env once in an `env.ts` (zod handles defaults, coercion, validation) and exports a typed `env`. Nothing else reads `process.env` / `Deno.env` / `import.meta.env`.
-- Multiple environments use the standard `.env` cascade (`.env` committed defaults → `.env.<mode>` → `.env.local` gitignored secrets); real process env wins. Loaded by Vite (web), `dotenv-flow` (cpm-registry), and the edge runtime (supabase functions).
-- Supabase `config.toml` secrets use `env(VAR)`; mirror them as `secrets.*` in `deploy-supabase.yml`.
+- Each deployable validates its env once in an `env.ts` (zod handles defaults, coercion, validation) and exports a typed `env`. Nothing else reads `process.env` / `import.meta.env`.
+- Workers read non-secret config from `wrangler.toml` vars; secrets come from `.dev.vars` locally and `wrangler secret put` in production.
 
 ## Branching & releases
 

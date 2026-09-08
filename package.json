@@ -14,10 +14,6 @@
     "graph": "nx graph",
     "affected": "nx affected",
     "release": "node tools/release.mjs prepare --dry-run",
-    "db:start": "supabase start",
-    "db:stop": "supabase stop",
-    "db:reset": "supabase db reset",
-    "db:gen-types": "supabase gen types typescript --local > packages/supabase/src/types.gen.ts",
     "prepare": "husky"
   },
   "devDependencies": {
