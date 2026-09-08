@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Separator } from "@workspace/ui/components/separator";
 
+import { DeprecatedBadge } from "@/package/components/deprecated-badge";
 import type { PackageSummary } from "@/package/schemas";
 import { formatTimeAgo } from "@/package/search";
 
@@ -19,6 +20,11 @@ export function PackageRow({ pkg }: { pkg: PackageSummary }) {
           </span>
           {pkg.author && (
             <span className="text-muted-foreground ml-3 text-sm">by {pkg.author}</span>
+          )}
+          {pkg.deprecated && (
+            <span className="ml-3 inline-flex align-text-bottom">
+              <DeprecatedBadge />
+            </span>
           )}
           {pkg.description && (
             <span className="text-muted-foreground mt-1 line-clamp-2 text-sm">
