@@ -12,8 +12,8 @@ import { ForbiddenError, UnauthorizedError } from "@/errors";
  * leaked CI secret can publish a bad version but never take a package away.
  */
 const TOKEN_SCOPES: readonly Scope[] = ["publish"];
-const SESSION_SCOPES: readonly Scope[] = ["publish", "manage"];
-const ADMIN_SESSION_SCOPES: readonly Scope[] = ["publish", "manage", "admin"];
+const SESSION_SCOPES: readonly Scope[] = [...TOKEN_SCOPES, "manage"];
+const ADMIN_SESSION_SCOPES: readonly Scope[] = [...SESSION_SCOPES, "admin"];
 
 /**
  * The two credential lookups the registry needs from the auth system, as an
