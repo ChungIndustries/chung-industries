@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 
+import { DeprecatedBadge } from "@/package/components/deprecated-badge";
 import type { Package } from "@/package/schemas";
 import { formatTimeAgo, sortVersionsDesc, tagsFor } from "@/package/search";
 
@@ -9,7 +10,8 @@ export function VersionsTab({ pkg, current }: { pkg: Package; current: string })
   return (
     <ul className="divide-border divide-y">
       {versions.map((v) => {
-        const createdAt = pkg.versions[v]?.createdAt;
+        const entry = pkg.versions[v];
+        const createdAt = entry?.createdAt;
         return (
           <li key={v} className="flex items-center justify-between gap-3 py-2 text-sm">
             <span className="flex items-center gap-2">
@@ -29,6 +31,7 @@ export function VersionsTab({ pkg, current }: { pkg: Package; current: string })
                   v{v}
                 </Link>
               )}
+              {entry?.deprecated && <DeprecatedBadge />}
             </span>
             <span className="flex items-center gap-3">
               <span className="flex gap-1.5">

@@ -38,6 +38,22 @@ const descriptionSchema = z.string().min(1).max(1024).optional().openapi({
   description: "What the package does, in a sentence or two",
 });
 
+/** Ceiling on a deprecation message, the same as a description. */
+export const MAX_DEPRECATION_MESSAGE = 1024;
+
+const deprecationMessageSchema = z.string().min(1).max(MAX_DEPRECATION_MESSAGE).openapi({
+  example: "Corrupts the state file, upgrade to 1.0.1",
+  description: "Why this version should not be installed, and what to do instead",
+});
+
+// Deprecation attaches a warning and changes nothing else: a deprecated
+// version stays listed, resolvable, and downloadable, and the client prints
+// the message when it installs one (docs/cpm-registry-auth-design.md, 8.3).
+const deprecatedSchema = deprecationMessageSchema.optional().openapi({
+  description:
+    "The deprecation message, present only while the version is deprecated. Installs keep working",
+});
+
 const createdAtSchema = z.iso.datetime().openapi({
   example: "2026-01-15T12:00:00.000Z",
   description: "When this version was published, as an ISO 8601 UTC timestamp",
@@ -151,10 +167,11 @@ export const packageVersionMetadataSchema = z.strictObject({
 });
 export type PackageVersionMetadata = z.infer<typeof packageVersionMetadataSchema>;
 
-// `createdAt` is assigned by the store at publish, so it is part of the
-// response contract but not of the manifest metadata above.
+// `createdAt` is assigned by the store at publish and `deprecated` by a
+// maintainer afterwards, so both are part of the response contract but not of
+// the manifest metadata above.
 export const packageVersionSchema = packageVersionMetadataSchema
-  .extend({ dist: distSchema, createdAt: createdAtSchema })
+  .extend({ dist: distSchema, createdAt: createdAtSchema, deprecated: deprecatedSchema })
   .openapi("PackageVersion", {
     example: {
       name: "example",
@@ -233,6 +250,11 @@ export const maintainersSchema = z
   })
   .openapi("Maintainers");
 
+export const deprecationSchema = z
+  .strictObject({ message: deprecationMessageSchema })
+  .openapi("Deprecation", { example: { message: "Corrupts the state file, upgrade to 1.0.1" } });
+export type Deprecation = z.infer<typeof deprecationSchema>;
+
 /** Default and ceiling for `GET /search` page sizes. */
 export const SEARCH_DEFAULT_LIMIT = 20;
 export const SEARCH_MAX_LIMIT = 100;
@@ -291,6 +313,10 @@ export const packageSummarySchema = z
       .openapi({ example: 3, description: "How many versions have been published" }),
     publishedAt: createdAtSchema.openapi({
       description: "When the latest version was published, as an ISO 8601 UTC timestamp",
+    }),
+    deprecated: deprecatedSchema.openapi({
+      description:
+        "The `latest` version's deprecation message, present only while that version is deprecated",
     }),
   })
   .openapi("PackageSummary", {

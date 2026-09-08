@@ -636,6 +636,153 @@ describe("PackageService", () => {
     });
   });
 
+  describe("deprecation", () => {
+    const lib = (v: string) => pack(meta(v), { "init.lua": `return '${v}'` });
+    const MANAGER: Actor = { userId: OWNER.userId, scopes: ["publish", "manage"], via: "session" };
+    const page = { limit: 20, offset: 0 };
+
+    beforeEach(async () => {
+      await publish(lib("1.0.0"));
+      await publish(lib("1.1.0"));
+      await publish(
+        pack(
+          { name: "dependent", version: "1.0.0", dependencies: { example: "1.0.0" } },
+          { "init.lua": "x" },
+        ),
+      );
+    });
+
+    it("attaches the message to one version on every read path and leaves the rest alone", async () => {
+      const updated = await service.deprecateVersion(OWNER, "example", "1.0.0", "Corrupts state");
+      expect(updated.deprecated).toBe("Corrupts state");
+
+      const pkg = await service.get("example");
+      expect(pkg.versions["1.0.0"]?.deprecated).toBe("Corrupts state");
+      expect(pkg.versions["1.1.0"]?.deprecated).toBeUndefined();
+      expect((await service.getVersion("example", "1.0.0")).deprecated).toBe("Corrupts state");
+      // Resolve still pins it (installs keep working) and carries the message
+      // through, so the client can print it.
+      const pinned = await service.resolve({ dependent: "latest" });
+      expect(pinned.map((p) => [p.name, p.version, p.deprecated])).toEqual([
+        ["example", "1.0.0", "Corrupts state"],
+        ["dependent", "1.0.0", undefined],
+      ]);
+      // The summary follows `latest`, which is not the deprecated version.
+      expect((await service.search("example", page)).results[0]?.deprecated).toBeUndefined();
+    });
+
+    it("badges the search summary with the latest version's message", async () => {
+      await service.deprecateVersion(OWNER, "example", "1.1.0", "Use 1.0.0");
+      expect((await service.search("example", page)).results[0]?.deprecated).toBe("Use 1.0.0");
+    });
+
+    it("keeps a deprecated version downloadable", async () => {
+      await service.deprecateVersion(OWNER, "example", "1.0.0", "Corrupts state");
+      expect(sha1(await service.readTarball("example", "1.0.0"))).toBe(sha1(lib("1.0.0")));
+      expect(await service.readBundle("example", "1.0.0")).toBeInstanceOf(Uint8Array);
+    });
+
+    it("replaces the message on re-deprecation and clears it on undeprecation", async () => {
+      await service.deprecateVersion(OWNER, "example", "1.0.0", "First");
+      expect((await service.deprecateVersion(OWNER, "example", "1.0.0", "Second")).deprecated).toBe(
+        "Second",
+      );
+      const cleared = await service.undeprecateVersion(OWNER, "example", "1.0.0");
+      expect(cleared.deprecated).toBeUndefined();
+      expect("deprecated" in cleared).toBe(false);
+      // Undeprecating a version that is not deprecated is a no-op, not an error.
+      expect((await service.undeprecateVersion(OWNER, "example", "1.1.0")).deprecated).toBe(
+        undefined,
+      );
+    });
+
+    it("deprecates every version at once, but not ones published afterwards", async () => {
+      const pkg = await service.deprecatePackage(OWNER, "example", "Abandoned");
+      expect(Object.values(pkg.versions).map((v) => v.deprecated)).toEqual([
+        "Abandoned",
+        "Abandoned",
+      ]);
+      expect((await service.search("example", page)).results[0]?.deprecated).toBe("Abandoned");
+
+      const revived = await publish(lib("1.2.0"));
+      expect(revived.versions["1.2.0"]?.deprecated).toBeUndefined();
+
+      const cleared = await service.undeprecatePackage(OWNER, "example");
+      expect(Object.values(cleared.versions).every((v) => v.deprecated === undefined)).toBe(true);
+    });
+
+    it("lets any maintainer deprecate, from a token or a session", async () => {
+      await service.addMaintainer(MANAGER, "example", "other-dev");
+      const byMaintainer = await service.deprecateVersion(OTHER, "example", "1.0.0", "Broken");
+      expect(byMaintainer.deprecated).toBe("Broken");
+      const bySession = await service.undeprecatePackage(MANAGER, "example");
+      expect(bySession.versions["1.0.0"]?.deprecated).toBeUndefined();
+    });
+
+    it("rejects non-maintainers with 403 and unknown packages or versions with 404", async () => {
+      await expect(
+        service.deprecateVersion(OTHER, "example", "1.0.0", "Nope"),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(service.undeprecatePackage(OTHER, "example")).rejects.toMatchObject({
+        status: 403,
+      });
+      await expect(service.deprecatePackage(OWNER, "nope", "Nope")).rejects.toMatchObject({
+        status: 404,
+      });
+      await expect(
+        service.deprecateVersion(OWNER, "example", "9.9.9", "Nope"),
+      ).rejects.toMatchObject({ status: 404 });
+      // An unpublished package is not served, so it cannot be deprecated either.
+      registry.markUnpublished("example");
+      await expect(
+        service.deprecateVersion(OWNER, "example", "1.0.0", "Nope"),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(registry.audit).toEqual([]);
+    });
+
+    it("enforces maintainership in the store as the race backstop", async () => {
+      const asOther = { name: "example", message: "Nope", actorUserId: OTHER.userId };
+      await expect(
+        registry.setVersionDeprecation({ ...asOther, version: "1.0.0" }),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(registry.setPackageDeprecation(asOther)).rejects.toMatchObject({ status: 403 });
+      expect((await service.get("example")).versions["1.0.0"]?.deprecated).toBeUndefined();
+    });
+
+    it("writes an audit event for every change that lands", async () => {
+      await service.deprecateVersion(OWNER, "example", "1.0.0", "Broken");
+      await service.undeprecateVersion(OWNER, "example", "1.0.0");
+      await service.deprecatePackage(OWNER, "example", "Abandoned");
+      await service.undeprecatePackage(OWNER, "example");
+      expect(registry.audit).toEqual([
+        {
+          actorUserId: OWNER.userId,
+          action: "deprecate",
+          packageName: "example",
+          detail: { version: "1.0.0", message: "Broken" },
+        },
+        {
+          actorUserId: OWNER.userId,
+          action: "undeprecate",
+          packageName: "example",
+          detail: { version: "1.0.0" },
+        },
+        {
+          actorUserId: OWNER.userId,
+          action: "deprecate",
+          packageName: "example",
+          detail: { version: null, message: "Abandoned" },
+        },
+        {
+          actorUserId: OWNER.userId,
+          action: "undeprecate",
+          packageName: "example",
+          detail: { version: null },
+        },
+      ]);
+    });
+  });
+
   it("serves the bootstrap installer from the latest cpm package", async () => {
     await expect(service.readInstaller()).rejects.toMatchObject({ status: 404 });
 
