@@ -135,10 +135,14 @@ jobs:
       project: cpm-registry
     secrets: inherit
 
+  # The website calls the registry over a service binding, so a release shipping
+  # both must never put a site build live ahead of the API it expects. Same
+  # !failure() guard as the publish jobs below: the site still deploys when the
+  # release did not include the registry.
   deploy-cpm-web:
     name: Deploy CPM Website
-    needs: release
-    if: needs.release.outputs.cpm-web-version != ''
+    needs: [release, deploy-cpm-registry]
+    if: ${{ !failure() && !cancelled() && needs.release.outputs.cpm-web-version != '' }}
     uses: ./.github/workflows/deploy-worker.yml
     with:
       project: cpm-web

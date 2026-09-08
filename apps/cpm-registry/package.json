@@ -1,6 +1,6 @@
 {
   "name": "cpm-registry",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": true,
   "description": "Cloudflare Workers API for the official CPM registry, hosting Lua-based cpm packages.",
   "author": "chrille0313",
@@ -32,7 +32,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260707.1",
     "@total-typescript/tsconfig": "^1.0.4",
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.4.1",
     "@types/semver": "^7.7.1",
     "@workspace/lint-config": "workspace:*",
     "tsx": "^4.23.12",

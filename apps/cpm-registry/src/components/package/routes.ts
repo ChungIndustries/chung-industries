@@ -1,4 +1,4 @@
-import { type OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { type OpenAPIHono, type RouteConfig, createRoute, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
 import type { AppEnv } from "@/components/auth/actor";
@@ -121,15 +121,15 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers/{handle}",
       summary: "Add maintainer",
       description:
-        "Adds the account with this handle as a maintainer, so it can publish new versions. Only the owner can do this, and the credential needs the `manage` scope. Adding someone who already maintains the package does nothing. Responds with the updated list.",
+        "Adds the account with this handle as a maintainer, so it can publish new versions. Only the owner can do this, signed in on the website; publish tokens cannot change maintainers. Adding someone who already maintains the package does nothing. Responds with the updated list.",
       middleware: [requireActorScope("manage")] as const,
-      security: [{ publishToken: [] }],
+      security: [{ session: [] }],
       request: { params: maintainerParams },
       responses: {
         200: jsonSuccess(maintainersSchema, "The updated maintainers"),
         400: jsonFail("Invalid handle"),
         401: jsonFail("Not authenticated"),
-        403: jsonFail("Not the package owner, or missing the manage scope"),
+        403: jsonFail("Not the package owner, or not signed in on the website"),
         404: jsonFail("Package or account not found"),
         500: serverError,
       },
@@ -148,15 +148,15 @@ function registerMaintainerRoutes(app: App): void {
       path: "/packages/{name}/maintainers/{handle}",
       summary: "Remove maintainer",
       description:
-        "Removes the account with this handle from the maintainers, so it can no longer publish. Only the owner can do this, and the credential needs the `manage` scope. The owner cannot be removed this way; to change who owns the package, transfer it instead. Responds with the updated list.",
+        "Removes the account with this handle from the maintainers, so it can no longer publish. Only the owner can do this, signed in on the website; publish tokens cannot change maintainers. The owner cannot be removed this way; to change who owns the package, transfer it instead. Responds with the updated list.",
       middleware: [requireActorScope("manage")] as const,
-      security: [{ publishToken: [] }],
+      security: [{ session: [] }],
       request: { params: maintainerParams },
       responses: {
         200: jsonSuccess(maintainersSchema, "The updated maintainers"),
         400: jsonFail("Invalid handle, or the owner's handle"),
         401: jsonFail("Not authenticated"),
-        403: jsonFail("Not the package owner, or missing the manage scope"),
+        403: jsonFail("Not the package owner, or not signed in on the website"),
         404: jsonFail("Package or account not found, or not a maintainer"),
         500: serverError,
       },
@@ -181,6 +181,10 @@ function registerDeprecationRoutes(app: App): void {
     required: true,
     content: { "application/json": { schema: deprecationSchema } },
   };
+  // Deprecation needs only `publish`, which every credential holds, so both
+  // schemes apply. Typed explicitly: a two-element literal here widens the
+  // route's inferred config and turns `c.req.valid` into `never`.
+  const anyCredential: RouteConfig["security"] = [{ publishToken: [] }, { session: [] }];
 
   app.openapi(
     createRoute({
@@ -191,7 +195,7 @@ function registerDeprecationRoutes(app: App): void {
       description:
         "Attaches a warning to one version without changing what is served: it stays listed, resolvable, and downloadable, and the cpm client prints the message when it installs or updates to it. Any maintainer can do this, and the credential needs the `publish` scope. Deprecating an already deprecated version replaces its message. Responds with the updated version.",
       middleware: [requireActorScope("publish")] as const,
-      security: [{ publishToken: [] }],
+      security: anyCredential,
       request: { params: versionParams, body: deprecationBody },
       responses: {
         200: jsonSuccess(packageVersionSchema, "The updated version"),
@@ -219,7 +223,7 @@ function registerDeprecationRoutes(app: App): void {
       description:
         "Clears the version's deprecation message. Any maintainer can do this, and the credential needs the `publish` scope. Clearing a version that is not deprecated does nothing. Responds with the updated version.",
       middleware: [requireActorScope("publish")] as const,
-      security: [{ publishToken: [] }],
+      security: anyCredential,
       request: { params: versionParams },
       responses: {
         200: jsonSuccess(packageVersionSchema, "The updated version"),
@@ -246,7 +250,7 @@ function registerDeprecationRoutes(app: App): void {
       description:
         "Sets the same deprecation message on every version of the package, which is what `npm deprecate` without a version does. Versions published afterwards are not deprecated. Any maintainer can do this, and the credential needs the `publish` scope. Responds with the updated package.",
       middleware: [requireActorScope("publish")] as const,
-      security: [{ publishToken: [] }],
+      security: anyCredential,
       request: { params: z.object({ name: nameParam }), body: deprecationBody },
       responses: {
         200: jsonSuccess(packageSchema, "The updated package"),
@@ -274,7 +278,7 @@ function registerDeprecationRoutes(app: App): void {
       description:
         "Clears the deprecation message from every version of the package. Any maintainer can do this, and the credential needs the `publish` scope. Responds with the updated package.",
       middleware: [requireActorScope("publish")] as const,
-      security: [{ publishToken: [] }],
+      security: anyCredential,
       request: { params: z.object({ name: nameParam }) },
       responses: {
         200: jsonSuccess(packageSchema, "The updated package"),
