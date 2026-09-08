@@ -41,6 +41,18 @@ export interface MaintainerChange {
   actorUserId: string;
 }
 
+export interface VersionDeprecationChange {
+  name: string;
+  version: string;
+  /** The message to attach, or `null` to clear the deprecation. */
+  message: string | null;
+  /** The maintainer performing the change; the store re-checks their row atomically. */
+  actorUserId: string;
+}
+
+/** Like {@link VersionDeprecationChange}, applied to every version of the package. */
+export type PackageDeprecationChange = Omit<VersionDeprecationChange, "version">;
+
 /** One row of "packages this user maintains", for `GET /me/packages`. */
 export interface MaintainedPackage {
   name: string;
@@ -106,6 +118,20 @@ export interface RegistryStore {
    * Resolves to whether a row was removed.
    */
   removeMaintainer(change: MaintainerChange): Promise<boolean>;
+  /**
+   * Sets or clears one version's `deprecated_message` and records an
+   * `audit_events` row, in one atomic unit. The maintainer check is folded
+   * into the write like {@link addVersion}'s: an actor who is not a
+   * maintainer changes nothing and gets `ForbiddenError`, and an unknown
+   * version `NotFoundError`.
+   */
+  setVersionDeprecation(change: VersionDeprecationChange): Promise<void>;
+  /**
+   * {@link setVersionDeprecation} for every version of the package at once,
+   * which is what a package-level deprecation is. Versions published
+   * afterwards are unaffected.
+   */
+  setPackageDeprecation(change: PackageDeprecationChange): Promise<void>;
   /** Case-insensitive lookup of an account by handle. */
   userByHandle(handle: string): Promise<RegistryUser | null>;
   isReserved(name: string): Promise<boolean>;

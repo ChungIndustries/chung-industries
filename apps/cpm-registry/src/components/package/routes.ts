@@ -4,6 +4,7 @@ import type { Context } from "hono";
 import type { AppEnv } from "@/components/auth/actor";
 import { requireActorScope } from "@/components/auth/middleware";
 import {
+  deprecationSchema,
   handleSchema,
   maintainersSchema,
   packageSchema,
@@ -168,6 +169,129 @@ function registerMaintainerRoutes(app: App): void {
   );
 }
 
+/**
+ * Deprecation (docs/cpm-registry-auth-design.md, section 8.3). Registered
+ * after the maintainer routes: `PUT /packages/{name}/maintainers/{handle}`
+ * and `PUT /packages/{name}/{version}/deprecation` have the same shape, and
+ * a handle of "deprecation" must reach the maintainer handler rather than
+ * fail the version route's semver validation first.
+ */
+function registerDeprecationRoutes(app: App): void {
+  const deprecationBody = {
+    required: true,
+    content: { "application/json": { schema: deprecationSchema } },
+  };
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "put",
+      path: "/packages/{name}/{version}/deprecation",
+      summary: "Deprecate version",
+      description:
+        "Attaches a warning to one version without changing what is served: it stays listed, resolvable, and downloadable, and the cpm client prints the message when it installs or updates to it. Any maintainer can do this, and the credential needs the `publish` scope. Deprecating an already deprecated version replaces its message. Responds with the updated version.",
+      middleware: [requireActorScope("publish")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: versionParams, body: deprecationBody },
+      responses: {
+        200: jsonSuccess(packageVersionSchema, "The updated version"),
+        400: jsonFail("Invalid version or message"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not a maintainer of this package, or missing the publish scope"),
+        404: jsonFail("Package or version not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, version } = c.req.valid("param");
+      const { message } = c.req.valid("json");
+      const data = await serviceFor(c.env).deprecateVersion(c.get("actor"), name, version, message);
+      return c.json({ status: "success" as const, data }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "delete",
+      path: "/packages/{name}/{version}/deprecation",
+      summary: "Undeprecate version",
+      description:
+        "Clears the version's deprecation message. Any maintainer can do this, and the credential needs the `publish` scope. Clearing a version that is not deprecated does nothing. Responds with the updated version.",
+      middleware: [requireActorScope("publish")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: versionParams },
+      responses: {
+        200: jsonSuccess(packageVersionSchema, "The updated version"),
+        400: jsonFail("Invalid version"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not a maintainer of this package, or missing the publish scope"),
+        404: jsonFail("Package or version not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name, version } = c.req.valid("param");
+      const data = await serviceFor(c.env).undeprecateVersion(c.get("actor"), name, version);
+      return c.json({ status: "success" as const, data }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "put",
+      path: "/packages/{name}/deprecation",
+      summary: "Deprecate package",
+      description:
+        "Sets the same deprecation message on every version of the package, which is what `npm deprecate` without a version does. Versions published afterwards are not deprecated. Any maintainer can do this, and the credential needs the `publish` scope. Responds with the updated package.",
+      middleware: [requireActorScope("publish")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: z.object({ name: nameParam }), body: deprecationBody },
+      responses: {
+        200: jsonSuccess(packageSchema, "The updated package"),
+        400: jsonFail("Invalid message"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not a maintainer of this package, or missing the publish scope"),
+        404: jsonFail("Package not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name } = c.req.valid("param");
+      const { message } = c.req.valid("json");
+      const data = await serviceFor(c.env).deprecatePackage(c.get("actor"), name, message);
+      return c.json({ status: "success" as const, data }, 200);
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      tags: ["Packages"],
+      method: "delete",
+      path: "/packages/{name}/deprecation",
+      summary: "Undeprecate package",
+      description:
+        "Clears the deprecation message from every version of the package. Any maintainer can do this, and the credential needs the `publish` scope. Responds with the updated package.",
+      middleware: [requireActorScope("publish")] as const,
+      security: [{ publishToken: [] }],
+      request: { params: z.object({ name: nameParam }) },
+      responses: {
+        200: jsonSuccess(packageSchema, "The updated package"),
+        401: jsonFail("Not authenticated"),
+        403: jsonFail("Not a maintainer of this package, or missing the publish scope"),
+        404: jsonFail("Package not found"),
+        500: serverError,
+      },
+    }),
+    async (c) => {
+      const { name } = c.req.valid("param");
+      const data = await serviceFor(c.env).undeprecatePackage(c.get("actor"), name);
+      return c.json({ status: "success" as const, data }, 200);
+    },
+  );
+}
+
 export function registerPackageRoutes(app: App): void {
   app.openapi(
     createRoute({
@@ -235,6 +359,7 @@ export function registerPackageRoutes(app: App): void {
   );
 
   registerMaintainerRoutes(app);
+  registerDeprecationRoutes(app);
 
   app.openapi(
     createRoute({

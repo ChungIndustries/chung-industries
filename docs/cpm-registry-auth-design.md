@@ -287,7 +287,7 @@ CREATE TABLE audit_events (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   actor_user_id TEXT,
   action        TEXT    NOT NULL, -- publish | transfer | maintainer.add | maintainer.remove |
-                                  -- token.create | token.revoke | deprecate | unpublish
+                                  -- token.create | token.revoke | deprecate | undeprecate | unpublish
   package_name  TEXT,
   detail        TEXT,             -- JSON, action-specific
   created_at    INTEGER NOT NULL
@@ -309,6 +309,10 @@ ALTER TABLE versions  ADD COLUMN published_by TEXT REFERENCES user (id);
 ALTER TABLE packages ADD COLUMN deprecated_message TEXT;
 ALTER TABLE packages ADD COLUMN unpublished_at     INTEGER;
 ```
+
+`0010_deprecation.sql` (2026-09) moved `deprecated_message` to `versions` and dropped it from
+`packages`: deprecation is per version, as in npm, because usually one release is bad and the rest
+are fine. Nothing was migrated; the package column was never written.
 
 Deliberately **not** added: any ownership column on `packages`. A single ACL table is one source of
 truth, and the partial unique index makes "the owner" well defined without a second place to disagree.
@@ -367,8 +371,21 @@ edge caches artifacts for a year as `immutable`, so an unpublish that must stop 
 immediately also needs a cache purge. Read-path behaviour implemented 2026-09-02 (the column was
 renamed from `deleted_at` in `0009_unpublish.sql`); the unpublish endpoint itself is phase 4.
 
-**Deprecation** is the soft alternative: `packages.deprecated_message` is returned in the package
-document, the client prints it on install, and nothing else changes. This should be the common path.
+**Deprecation** is the soft alternative and should be the common path. It is per version
+(`versions.deprecated_message`, moved there by `0010_deprecation.sql`), as in npm: usually one
+release is bad and the rest are fine, and a package-level deprecation is just every version
+deprecated with the same message, which is what `npm deprecate <pkg>` with no version does.
+Any maintainer can set or clear it with the `publish` scope. `PUT /packages/{name}/{version}/deprecation`
+with `{ message }` sets the message on one version and `DELETE` on the same path clears it;
+`PUT` and `DELETE /packages/{name}/deprecation` do the same for every version at once (versions
+published afterwards are not deprecated). Nothing about what is served changes: the message is
+returned as `deprecated` on the version in the package document, the version endpoint, and the
+entries `POST /resolve` returns, the search summary carries the `latest` version's message so the
+website can badge it, and the client prints each pinned version's message after resolving, before
+downloading, and continues. `latest` does not skip deprecated versions when a publish recomputes it,
+matching npm; maintainers move the tag deliberately. Every change writes an `audit_events` row
+(`deprecate` or `undeprecate`, detail `{ version, message }` with `version: null` for the
+package-level form). Shipped 2026-09.
 
 ### 8.4 How publish checks authorization
 
@@ -422,18 +439,21 @@ against the in-memory store exactly as it is today.
 
 Machine surface, JSend, part of `openapi.yaml`:
 
-| Method   | Path                                    | Auth                             | Notes                                                                        |
-| -------- | --------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------- |
-| `POST`   | `/packages`                             | bearer, `publish` scope          | now `401` / `403`                                                            |
-| `GET`    | `/me`                                   | bearer or session                | whoami: user handle, token scopes, expiry; also how CI smoke-tests its token |
-| `GET`    | `/me/packages`                          | bearer or session                | packages the actor maintains                                                 |
-| `PUT`    | `/packages/{name}/dist-tags/{tag}`      | bearer, `publish` scope          | maintainers only                                                             |
-| `POST`   | `/packages/{name}/deprecate`            | bearer, `publish` scope          | maintainers only                                                             |
-| `GET`    | `/packages/{name}/maintainers`          | public                           | owner first, then maintainers (shipped 2026-09)                              |
-| `PUT`    | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only, idempotent (shipped 2026-09)                                     |
-| `DELETE` | `/packages/{name}/maintainers/{handle}` | session, or bearer with `manage` | owner only, never the owner row (shipped 2026-09)                            |
-| `POST`   | `/packages/{name}/transfer`             | session, or bearer with `manage` | owner nominates                                                              |
-| `POST`   | `/packages/{name}/transfer/accept`      | session                          | nominee accepts                                                              |
+| Method   | Path                                     | Auth                             | Notes                                                                        |
+| -------- | ---------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------- |
+| `POST`   | `/packages`                              | bearer, `publish` scope          | now `401` / `403`                                                            |
+| `GET`    | `/me`                                    | bearer or session                | whoami: user handle, token scopes, expiry; also how CI smoke-tests its token |
+| `GET`    | `/me/packages`                           | bearer or session                | packages the actor maintains                                                 |
+| `PUT`    | `/packages/{name}/dist-tags/{tag}`       | bearer, `publish` scope          | maintainers only                                                             |
+| `PUT`    | `/packages/{name}/{version}/deprecation` | bearer, `publish` scope          | maintainers only, `{ message }` (shipped 2026-09)                            |
+| `DELETE` | `/packages/{name}/{version}/deprecation` | bearer, `publish` scope          | maintainers only (shipped 2026-09)                                           |
+| `PUT`    | `/packages/{name}/deprecation`           | bearer, `publish` scope          | maintainers only, every version at once (shipped 2026-09)                    |
+| `DELETE` | `/packages/{name}/deprecation`           | bearer, `publish` scope          | maintainers only, every version at once (shipped 2026-09)                    |
+| `GET`    | `/packages/{name}/maintainers`           | public                           | owner first, then maintainers (shipped 2026-09)                              |
+| `PUT`    | `/packages/{name}/maintainers/{handle}`  | session, or bearer with `manage` | owner only, idempotent (shipped 2026-09)                                     |
+| `DELETE` | `/packages/{name}/maintainers/{handle}`  | session, or bearer with `manage` | owner only, never the owner row (shipped 2026-09)                            |
+| `POST`   | `/packages/{name}/transfer`              | session, or bearer with `manage` | owner nominates                                                              |
+| `POST`   | `/packages/{name}/transfer/accept`       | session                          | nominee accepts                                                              |
 
 Reads stay **public and unauthenticated**: `GET /packages`, `GET /packages/{name}`, the tarball and
 bundle downloads, and also `POST /resolve` and `GET /install` (added by the client work, 2026-08).
@@ -643,11 +663,11 @@ in a URL.
 
 ### 10.3 Scopes
 
-| Scope     | Grants                                                            | Default?        |
-| --------- | ----------------------------------------------------------------- | --------------- |
-| `publish` | Create versions and set dist-tags for packages the user maintains | yes             |
-| `manage`  | Add and remove maintainers, transfer, unpublish                   | no              |
-| `admin`   | Reserved-name overrides, registry-wide operations                 | no, humans only |
+| Scope     | Grants                                                                        | Default?        |
+| --------- | ----------------------------------------------------------------------------- | --------------- |
+| `publish` | Create versions, set dist-tags, and deprecate for packages the user maintains | yes             |
+| `manage`  | Add and remove maintainers, transfer, unpublish                               | no              |
+| `admin`   | Reserved-name overrides, registry-wide operations                             | no, humans only |
 
 Reads need no scope. A publish token is publish-only unless the user deliberately widens it, so the
 blast radius of the expected leak is "someone publishes a bad version of a package you maintain",
@@ -729,8 +749,9 @@ closes the open publish endpoint.
 author-side publish tooling emerges from the client design's open question (a small TS CLI on real
 machines). No in-game work: the shipped `cpm` client does not publish.
 
-**Phase 4, the rest.** Maintainer management, transfer with accept, deprecate, unpublish, audit
-events surfaced wherever the UI ends up.
+**Phase 4, the rest.** Maintainer management (shipped 2026-09), transfer with accept, deprecate
+(shipped 2026-09, the first writer of `audit_events`), unpublish, audit events surfaced wherever the
+UI ends up.
 
 **Phase 5, device flow (parked).** RFC 8628 login from in game. Only relevant if an in-game publish
 surface ships; Better Auth's plugin makes it cheap to add then, so nothing is lost by waiting.
