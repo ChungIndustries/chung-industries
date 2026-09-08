@@ -248,7 +248,7 @@ function registerDeprecationRoutes(app: App): void {
       path: "/packages/{name}/deprecation",
       summary: "Deprecate package",
       description:
-        "Sets the same deprecation message on every version of the package, which is what `npm deprecate` without a version does. Versions published afterwards are not deprecated. Any maintainer can do this, and the credential needs the `publish` scope. Responds with the updated package.",
+        "Sets the same deprecation message on every version of the package. Versions published afterwards are not deprecated. Any maintainer can do this, and the credential needs the `publish` scope. Responds with the updated package.",
       middleware: [requireActorScope("publish")] as const,
       security: anyCredential,
       request: { params: z.object({ name: nameParam }), body: deprecationBody },
