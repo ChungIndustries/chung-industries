@@ -2,4 +2,8 @@
 cpm-registry: minor
 ---
 
-Maintainers can deprecate a version: `PUT /packages/{name}/{version}/deprecation` attaches a message to one version and `DELETE` clears it, while `PUT` and `DELETE /packages/{name}/deprecation` do the same for every version at once. Deprecation changes nothing about what is served, it only warns: the message appears as `deprecated` on the version in the package document, the version endpoint, and `POST /resolve`, and a search summary carries its `latest` version's message. Every change writes an `audit_events` row. `deprecated_message` moves from `packages` to `versions` in migration 0011.
+Maintainers can now deprecate a version. A deprecated version still installs and downloads as before; the registry only attaches a warning message to it.
+
+To deprecate one version, send `PUT /packages/{name}/{version}/deprecation` with `{ "message": "..." }`. To undo it, send `DELETE` to the same path. To deprecate or undeprecate every version of a package at once, use `PUT` or `DELETE /packages/{name}/deprecation`. Any maintainer can do this with a publish token or a website sign-in.
+
+The message is returned as a `deprecated` field on the version wherever versions appear: the package document, the version endpoint, and the result of `POST /resolve`. Search results include the message of the package's `latest` version. Each deprecation change is recorded in the audit log.
