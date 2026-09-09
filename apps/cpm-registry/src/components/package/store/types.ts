@@ -53,6 +53,40 @@ export interface VersionDeprecationChange {
 /** Like {@link VersionDeprecationChange}, applied to every version of the package. */
 export type PackageDeprecationChange = Omit<VersionDeprecationChange, "version">;
 
+/**
+ * One `audit_events` row: the append-only record of every state change
+ * (docs/cpm-registry-auth-design.md, section 8.5). Every store write that
+ * changes state appends one in the same atomic unit as the change, so the log
+ * and the tables can never disagree. The table has no foreign keys and
+ * snapshots plain strings, so a row outlives the user and package it names.
+ *
+ * `detail` is the action-specific JSON blob. A first publish writes a `claim`
+ * (the name is now the actor's) followed by its `publish`. The deprecation
+ * actions carry `version: null` for the package-level form, which covers
+ * every version.
+ */
+export type AuditEvent = { actorUserId: string; packageName: string } & (
+  | { action: "claim" | "publish"; detail: { version: string } }
+  | { action: "maintainer.add" | "maintainer.remove"; detail: { userId: string } }
+  | { action: "deprecate"; detail: { version: string | null; message: string } }
+  | { action: "undeprecate"; detail: { version: string | null } }
+);
+
+export type AuditAction = AuditEvent["action"];
+
+/** The event a deprecation change records: clearing the message is an `undeprecate`. */
+export function deprecationEvent(change: {
+  actorUserId: string;
+  name: string;
+  version: string | null;
+  message: string | null;
+}): AuditEvent {
+  const { actorUserId, name: packageName, version, message } = change;
+  return message === null
+    ? { actorUserId, packageName, action: "undeprecate", detail: { version } }
+    : { actorUserId, packageName, action: "deprecate", detail: { version, message } };
+}
+
 /** One row of "packages this user maintains", for `GET /me/packages`. */
 export interface MaintainedPackage {
   name: string;

@@ -6,6 +6,7 @@ import type {
 } from "@/components/package/schemas";
 import {
   type AddVersionInput,
+  type AuditEvent,
   type MaintainedPackage,
   type Maintainer,
   type MaintainerChange,
@@ -16,6 +17,7 @@ import {
   type SearchOptions,
   type VersionDeprecationChange,
   bundlePath,
+  deprecationEvent,
   tarballPath,
 } from "@/components/package/store/types";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/errors";
@@ -105,10 +107,9 @@ function isMaintainer(actorParam: number): string {
     WHERE m.package_name = ?1 AND m.user_id = ?${actorParam})`;
 }
 
-/** The `audit_events` action a deprecation change records. */
-function deprecationAction(message: string | null): "deprecate" | "undeprecate" {
-  return message === null ? "undeprecate" : "deprecate";
-}
+/** Whether the package bound at `?1` has a maintainer row for the user bound at `?2`. */
+const HOLDS_ROW =
+  "EXISTS (SELECT 1 FROM package_maintainers WHERE package_name = ?1 AND user_id = ?2)";
 
 /** Escapes the LIKE wildcards in a user-supplied needle so they match literally. */
 export function likePattern(needle: string): string {
@@ -185,12 +186,14 @@ export class D1RegistryStore implements RegistryStore {
     publishedBy,
   }: AddVersionInput): Promise<Package> {
     const now = Date.now();
-    // Maintainership is enforced INSIDE the transaction: statement 1 claims
-    // ownership only when the package has no maintainers yet (first publish),
-    // and statements 2+ only take effect when the publisher holds a
-    // maintainer row. A losing racer or a non-maintainer therefore inserts
-    // zero version rows, detected below and surfaced as 403; the version
-    // primary key stays the 409 backstop for duplicate versions.
+    const version = entry.version;
+    // Maintainership is enforced INSIDE the transaction: the owner claim only
+    // lands when the package has no maintainers yet (first publish), and the
+    // version, tag, and audit writes only take effect when the publisher
+    // holds a maintainer row. A losing racer or a non-maintainer therefore
+    // inserts zero version rows, detected below and surfaced as 403; the
+    // version primary key stays the 409 backstop for duplicate versions.
+    const unclaimed = "NOT EXISTS (SELECT 1 FROM package_maintainers WHERE package_name = ?1)";
     const statements: D1PreparedStatement[] = [
       // Preserve the original author on re-publish: only set it on first insert.
       this.db
@@ -198,13 +201,27 @@ export class D1RegistryStore implements RegistryStore {
           "INSERT INTO packages (name, author, created_at) VALUES (?, ?, ?) ON CONFLICT(name) DO NOTHING",
         )
         .bind(name, author ?? null, now),
+      this.audit(
+        { actorUserId: publishedBy, action: "claim", packageName: name, detail: { version } },
+        unclaimed,
+        [name],
+        now,
+      ),
       this.db
         .prepare(
           `INSERT INTO package_maintainers (package_name, user_id, role, added_at)
-           SELECT ?1, ?2, 'owner', ?3
-           WHERE NOT EXISTS (SELECT 1 FROM package_maintainers WHERE package_name = ?1)`,
+           SELECT ?1, ?2, 'owner', ?3 WHERE ${unclaimed}`,
         )
         .bind(name, publishedBy, now),
+      this.audit(
+        { actorUserId: publishedBy, action: "publish", packageName: name, detail: { version } },
+        isMaintainer(2),
+        [name, publishedBy],
+        now,
+      ),
+    ];
+    const versionIndex = statements.length;
+    statements.push(
       this.db
         .prepare(
           `INSERT INTO versions (package_name, version, description, author, dependencies, shasum, integrity, tarball_key, bundle_sha256, bundle_size, bundle_key, published_by, created_at)
@@ -214,7 +231,7 @@ export class D1RegistryStore implements RegistryStore {
         .bind(
           name,
           publishedBy,
-          entry.version,
+          version,
           entry.description ?? null,
           entry.author ?? null,
           entry.dependencies ? JSON.stringify(entry.dependencies) : null,
@@ -226,7 +243,7 @@ export class D1RegistryStore implements RegistryStore {
           bundleKey,
           now,
         ),
-    ];
+    );
     for (const [tag, version] of Object.entries(distTags)) {
       statements.push(
         this.db
@@ -248,12 +265,12 @@ export class D1RegistryStore implements RegistryStore {
     } catch (err) {
       if (isUniqueConstraintError(err)) {
         throw new ConflictError(
-          `Version ${entry.version} of "${name}" is already published and immutable`,
+          `Version ${version} of "${name}" is already published and immutable`,
         );
       }
       throw err;
     }
-    if ((results[2]?.meta.changes ?? 0) === 0) {
+    if ((results[versionIndex]?.meta.changes ?? 0) === 0) {
       throw new ForbiddenError(`You are not a maintainer of "${name}"`);
     }
 
@@ -283,15 +300,21 @@ export class D1RegistryStore implements RegistryStore {
     // The owner check rides inside the insert, like the maintainer check in
     // addVersion: a zero-change result is either the no-op of re-adding an
     // existing maintainer, or the actor not being the owner (403).
-    const result = await this.db
-      .prepare(
-        `INSERT INTO package_maintainers (package_name, user_id, role, added_at, added_by)
-         SELECT ?1, ?2, 'maintainer', ?3, ?4 WHERE ${isOwner(4)}
-         ON CONFLICT(package_name, user_id) DO NOTHING`,
-      )
-      .bind(name, userId, Date.now(), actorUserId)
-      .run();
-    if (result.meta.changes > 0) return;
+    const [, insert] = await this.db.batch([
+      this.audit(
+        { actorUserId, action: "maintainer.add", packageName: name, detail: { userId } },
+        `${isOwner(3)} AND NOT ${HOLDS_ROW}`,
+        [name, userId, actorUserId],
+      ),
+      this.db
+        .prepare(
+          `INSERT INTO package_maintainers (package_name, user_id, role, added_at, added_by)
+           SELECT ?1, ?2, 'maintainer', ?3, ?4 WHERE ${isOwner(4)}
+           ON CONFLICT(package_name, user_id) DO NOTHING`,
+        )
+        .bind(name, userId, Date.now(), actorUserId),
+    ]);
+    if ((insert?.meta.changes ?? 0) > 0) return;
     const held = await this.db
       .prepare("SELECT 1 FROM package_maintainers WHERE package_name = ?1 AND user_id = ?2")
       .bind(name, userId)
@@ -304,14 +327,23 @@ export class D1RegistryStore implements RegistryStore {
   async removeMaintainer({ name, userId, actorUserId }: MaintainerChange): Promise<boolean> {
     // `role = 'maintainer'` keeps the owner row out of reach even for a caller
     // racing past the service's checks; ownership only moves by transfer.
-    const result = await this.db
-      .prepare(
-        `DELETE FROM package_maintainers
-         WHERE package_name = ?1 AND user_id = ?2 AND role = 'maintainer' AND ${isOwner(3)}`,
-      )
-      .bind(name, userId, actorUserId)
-      .run();
-    if (result.meta.changes > 0) return true;
+    const removable = `EXISTS (
+      SELECT 1 FROM package_maintainers
+      WHERE package_name = ?1 AND user_id = ?2 AND role = 'maintainer')`;
+    const [, remove] = await this.db.batch([
+      this.audit(
+        { actorUserId, action: "maintainer.remove", packageName: name, detail: { userId } },
+        `${isOwner(3)} AND ${removable}`,
+        [name, userId, actorUserId],
+      ),
+      this.db
+        .prepare(
+          `DELETE FROM package_maintainers
+           WHERE package_name = ?1 AND user_id = ?2 AND role = 'maintainer' AND ${isOwner(3)}`,
+        )
+        .bind(name, userId, actorUserId),
+    ]);
+    if ((remove?.meta.changes ?? 0) > 0) return true;
     // Nothing removed: either the target was not a maintainer, or the actor is
     // not the owner. Only the latter is an authorization failure.
     const owner = await this.db
@@ -332,21 +364,19 @@ export class D1RegistryStore implements RegistryStore {
     message,
     actorUserId,
   }: VersionDeprecationChange): Promise<void> {
-    // The audit row is guarded by the same conditions as the update, so it is
-    // written exactly when the update lands. Both run in one D1 batch, which
-    // is a single transaction.
     const exists = "EXISTS (SELECT 1 FROM versions WHERE package_name = ?1 AND version = ?3)";
-    const [update] = await this.db.batch([
+    const [, update] = await this.db.batch([
+      this.audit(
+        deprecationEvent({ actorUserId, name, version, message }),
+        `${exists} AND ${isMaintainer(2)}`,
+        [name, actorUserId, version],
+      ),
       this.db
         .prepare(
           `UPDATE versions SET deprecated_message = ?4
            WHERE package_name = ?1 AND version = ?3 AND ${isMaintainer(2)}`,
         )
         .bind(name, actorUserId, version, message),
-      this.auditDeprecation(
-        { name, actorUserId, message, version },
-        `${exists} AND ${isMaintainer(2)}`,
-      ),
     ]);
     if ((update?.meta.changes ?? 0) > 0) return;
     // Nothing changed: either the version is unknown or the actor is not a
@@ -361,17 +391,18 @@ export class D1RegistryStore implements RegistryStore {
     actorUserId,
   }: PackageDeprecationChange): Promise<void> {
     const exists = "EXISTS (SELECT 1 FROM versions WHERE package_name = ?1)";
-    const [update] = await this.db.batch([
+    const [, update] = await this.db.batch([
+      this.audit(
+        deprecationEvent({ actorUserId, name, version: null, message }),
+        `${exists} AND ${isMaintainer(2)}`,
+        [name, actorUserId],
+      ),
       this.db
         .prepare(
           `UPDATE versions SET deprecated_message = ?3
            WHERE package_name = ?1 AND ${isMaintainer(2)}`,
         )
         .bind(name, actorUserId, message),
-      this.auditDeprecation(
-        { name, actorUserId, message, version: null },
-        `${exists} AND ${isMaintainer(2)}`,
-      ),
     ]);
     if ((update?.meta.changes ?? 0) > 0) return;
     // A package always has at least one version, so nothing changing means
@@ -381,23 +412,35 @@ export class D1RegistryStore implements RegistryStore {
   }
 
   /**
-   * The `audit_events` insert for a deprecation change. `guard` may reference
-   * `?1` (name), `?2` (actor), and `?3` (version, `null` for a package-level
-   * change) and should repeat the update's own conditions, so the row is
-   * written exactly when the update it rides with landed.
+   * The `audit_events` insert that rides in the same batch as the state
+   * change it records. It goes BEFORE that change in the batch and `guard`
+   * repeats the change's own precondition over `params` (bound as `?1`,
+   * `?2`, ... so the shared `isOwner` / `isMaintainer` guards apply), which
+   * makes the row land exactly when the change does: a change that fails its
+   * precondition writes nothing, and one that throws rolls the whole batch
+   * back. `at` is the change's own timestamp when it stamps one.
    */
-  private auditDeprecation(
-    change: Omit<VersionDeprecationChange, "version"> & { version: string | null },
+  private audit(
+    event: AuditEvent,
     guard: string,
+    params: unknown[],
+    at = Date.now(),
   ): D1PreparedStatement {
-    const { name, actorUserId, message, version } = change;
-    const detail = JSON.stringify({ version, ...(message === null ? {} : { message }) });
+    const columns = ["actor_user_id", "action", "package_name", "detail", "created_at"];
+    const values = columns.map((_, i) => `?${params.length + i + 1}`).join(", ");
     return this.db
       .prepare(
-        `INSERT INTO audit_events (actor_user_id, action, package_name, detail, created_at)
-         SELECT ?2, ?4, ?1, ?5, ?6 WHERE ${guard}`,
+        `INSERT INTO audit_events (${columns.join(", ")})
+         SELECT ${values} WHERE ${guard}`,
       )
-      .bind(name, actorUserId, version, deprecationAction(message), detail, Date.now());
+      .bind(
+        ...params,
+        event.actorUserId,
+        event.action,
+        event.packageName,
+        JSON.stringify(event.detail),
+        at,
+      );
   }
 
   /** 403 unless the actor holds a maintainer row; the "why did nothing change" check. */
