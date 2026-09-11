@@ -1,3 +1,22 @@
+## 0.0.9 (2026-09-11)
+
+### 🚀 Features
+
+- Accounts can now be admins: `user.role` from Better Auth's admin plugin (`0010_admin.sql`) grants the `admin` scope to that person's website session, which is what publishing a reserved name checks and what upcoming registry-wide reads will require. Tokens never carry it. The first admin is set by hand in D1; further ones through `/auth/admin/set-role`. ([#117](https://github.com/ChungIndustries/chung-industries/issues/117))
+- The audit log now records every change a package goes through, not only deprecations: each publish, the ownership claim a first publish makes, and every maintainer added or removed. Each entry is written together with the change itself, so a change that is rejected leaves no entry. Nothing reads the log yet. ([#115](https://github.com/ChungIndustries/chung-industries/issues/115))
+- Maintainers can now deprecate a version. A deprecated version still installs and downloads as before; the registry only attaches a warning message to it. ([#161](https://github.com/ChungIndustries/chung-industries/issues/161), [#115](https://github.com/ChungIndustries/chung-industries/issues/115), [#114](https://github.com/ChungIndustries/chung-industries/issues/114))
+
+  To deprecate one version, send `PUT /packages/{name}/{version}/deprecation` with `{ "message": "..." }`. To undo it, send `DELETE` to the same path. To deprecate or undeprecate every version of a package at once, use `PUT` or `DELETE /packages/{name}/deprecation`. Any maintainer can do this with a publish token or a website sign-in.
+
+  The message is returned as a `deprecated` field on the version wherever versions appear: the package document, the version endpoint, and the result of `POST /resolve`. Search results include the message of the package's `latest` version. Each deprecation change is recorded in the audit log.
+
+- Publish tokens now only publish. Adding or removing maintainers (and, when they ship, transfers and unpublish) needs the website sign-in; a token sent to those endpoints gets a 403 saying so. Tokens could never actually be minted with wider scopes, so no existing token changes behaviour. ([#117](https://github.com/ChungIndustries/chung-industries/issues/117))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5.1
+
 ## 0.0.8 (2026-09-07)
 
 ### 🚀 Features
