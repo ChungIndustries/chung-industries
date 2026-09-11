@@ -1,8 +1,9 @@
 # CPM Registry: authentication and package ownership
 
 Status: phases 0-2 implemented (accounts, tokens, ownership enforcement); account/token UI shipped
-in `apps/cpm-web` 2026-09-01 (see section 12, decision 2); phase 4 in progress (maintainers shipped
-2026-09; scope, admin, and expiry decisions settled 2026-09-07, see section 12, decisions 9-11)
+in `apps/cpm-web` 2026-09-01 (see section 12, decision 2); phase 4 in progress (maintainers,
+deprecation, and audit events shipped 2026-09; scope, admin, and expiry decisions settled
+2026-09-07, see section 12, decisions 9-11)
 Scope: `apps/cpm-registry`, the publish tooling that authenticates to it (CI and author terminals today, possibly an in-game client later), and the minimal browser surface accounts need
 Date: 2026-08-27
 
@@ -290,8 +291,9 @@ CREATE TABLE reserved_names (
 CREATE TABLE audit_events (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   actor_user_id TEXT,
-  action        TEXT    NOT NULL, -- publish | transfer | maintainer.add | maintainer.remove |
-                                  -- token.create | token.revoke | deprecate | undeprecate | unpublish
+  action        TEXT    NOT NULL, -- claim | publish | maintainer.add | maintainer.remove |
+                                  -- deprecate | undeprecate (shipped, see section 8.5);
+                                  -- transfer | unpublish | token.create | token.revoke (planned)
   package_name  TEXT,
   detail        TEXT,             -- JSON, action-specific
   created_at    INTEGER NOT NULL
@@ -436,6 +438,42 @@ the write.
 
 `PackageService` takes the actor as an argument and never touches headers, so it stays unit-testable
 against the in-memory store exactly as it is today.
+
+### 8.5 Audit events
+
+Every store write that changes state appends one `audit_events` row **in the same D1 batch as the
+change**, so the log and the tables can never disagree: a change that fails its precondition writes
+no row, and one that throws (a duplicate version) rolls the row back with everything else. The
+mechanism is one guarded insert, `INSERT INTO audit_events ... SELECT ... WHERE <guard>`, placed in
+the batch before the change it records, where the guard repeats that change's own precondition
+(the same `isOwner` / `isMaintainer` subqueries the change uses, plus "row exists" or "row does not
+exist yet" as appropriate). Writing it before rather than after means the guard can be evaluated on
+the pre-change state, which is the only way to tell a no-op (re-adding an existing maintainer) from
+a landed change without a second round trip. Shipped 2026-09 for these actions:
+
+| action              | written when                                  | `detail`               |
+| ------------------- | --------------------------------------------- | ---------------------- |
+| `claim`             | a first publish takes the name for its actor  | `{ version }`          |
+| `publish`           | a version lands (after `claim` on a new name) | `{ version }`          |
+| `maintainer.add`    | a maintainer row is inserted                  | `{ userId }`           |
+| `maintainer.remove` | a maintainer row is deleted                   | `{ userId }`           |
+| `deprecate`         | a message is set                              | `{ version, message }` |
+| `undeprecate`       | a message is cleared                          | `{ version }`          |
+
+`version` is `null` on the package-level deprecation forms. `actor_user_id` and `package_name` are
+plain strings with no foreign keys (section 7.2), so a row outlives the account and package it names;
+the `user` table is the lookup for handles while it lasts. `transfer` and `unpublish` get their rows
+when those endpoints ship.
+
+**API key create and revoke cannot ride in the batch.** Better Auth performs those writes itself, its
+`databaseHooks` cover only the core models (user, session, account, verification) and not the api-key
+plugin's table, and the plugin has no lifecycle hooks of its own. The only hook point is Better Auth's
+root endpoint `hooks.after`, matched on the key create and delete paths, which would append a
+best-effort row outside the transaction. Not done; if token provenance is ever wanted, that is the
+shape, and the weaker guarantee should be documented with it.
+
+The read side is not built. The cheap follow-up is an admin-only `GET /packages/{name}/audit` over
+the `audit_events_by_package` index, gated on the `admin` scope from decision 10.
 
 ## 9. API surface changes
 
@@ -772,8 +810,8 @@ author-side publish tooling emerges from the client design's open question (a sm
 machines). No in-game work: the shipped `cpm` client does not publish.
 
 **Phase 4, the rest.** Maintainer management (shipped 2026-09), transfer with accept, deprecate
-(shipped 2026-09, the first writer of `audit_events`), unpublish, audit events surfaced wherever the
-UI ends up.
+(shipped 2026-09), audit events for every shipped write (2026-09, section 8.5), unpublish, audit
+events surfaced wherever the UI ends up.
 
 **Phase 5, device flow (parked).** RFC 8628 login from in game. Only relevant if an in-game publish
 surface ships; Better Auth's plugin makes it cheap to add then, so nothing is lost by waiting.

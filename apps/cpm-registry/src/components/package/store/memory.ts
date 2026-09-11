@@ -4,36 +4,30 @@ import type {
   PackageVersion,
   SearchResults,
 } from "@/components/package/schemas";
-import type {
-  AddVersionInput,
-  BlobStore,
-  MaintainedPackage,
-  Maintainer,
-  MaintainerChange,
-  PackageDeprecationChange,
-  RegistryStore,
-  RegistryUser,
-  SearchOptions,
-  VersionDeprecationChange,
+import {
+  type AddVersionInput,
+  type AuditEvent,
+  type BlobStore,
+  type MaintainedPackage,
+  type Maintainer,
+  type MaintainerChange,
+  type PackageDeprecationChange,
+  type RegistryStore,
+  type RegistryUser,
+  type SearchOptions,
+  type VersionDeprecationChange,
+  deprecationEvent,
 } from "@/components/package/store/types";
 import { ConflictError, ForbiddenError, NotFoundError } from "@/errors";
-
-/** An `audit_events` row as the D1 store writes it, for tests to assert on. */
-export interface AuditEvent {
-  actorUserId: string;
-  action: string;
-  packageName: string;
-  detail: Record<string, unknown>;
-}
 
 /**
  * In-memory {@link RegistryStore} used by the service unit tests. It mirrors the
  * atomicity contract of the D1 store (duplicate version -> `ConflictError`,
  * non-maintainer publish -> `ForbiddenError`, first publish claims ownership,
  * original author preserved, owner-guarded maintainer writes,
- * maintainer-guarded deprecation writes with their audit rows) and its
- * unpublish visibility rules without needing a real database, so the tests
- * are fast and portable.
+ * maintainer-guarded deprecation writes, an audit row for every change that
+ * lands) and its unpublish visibility rules without needing a real database,
+ * so the tests are fast and portable.
  */
 export class InMemoryRegistryStore implements RegistryStore {
   private readonly packages = new Map<string, Package>();
@@ -43,7 +37,7 @@ export class InMemoryRegistryStore implements RegistryStore {
   /** Mirrors the `user` table's id and handle columns, keyed by user id. */
   private readonly users = new Map<string, RegistryUser>();
   private readonly unpublished = new Set<string>();
-  /** Mirrors `audit_events`, in insertion order. */
+  /** Mirrors `audit_events`, in insertion order, for tests to assert on. */
   readonly audit: AuditEvent[] = [];
 
   /** Test helper mirroring a row in `reserved_names`. */
@@ -117,13 +111,26 @@ export class InMemoryRegistryStore implements RegistryStore {
     const rows = this.requireOwner(name, actorUserId);
     if (rows.some((m) => m.userId === userId)) return;
     this.maintainers.set(name, [...rows, { userId, role: "maintainer" }]);
+    this.audit.push({
+      actorUserId,
+      action: "maintainer.add",
+      packageName: name,
+      detail: { userId },
+    });
   }
 
   async removeMaintainer({ name, userId, actorUserId }: MaintainerChange): Promise<boolean> {
     const rows = this.requireOwner(name, actorUserId);
     const kept = rows.filter((m) => !(m.userId === userId && m.role === "maintainer"));
+    if (kept.length === rows.length) return false;
     this.maintainers.set(name, kept);
-    return kept.length < rows.length;
+    this.audit.push({
+      actorUserId,
+      action: "maintainer.remove",
+      packageName: name,
+      detail: { userId },
+    });
+    return true;
   }
 
   async setVersionDeprecation({
@@ -138,7 +145,7 @@ export class InMemoryRegistryStore implements RegistryStore {
     const entry = this.packages.get(name)?.versions[version];
     if (!entry) throw new NotFoundError(`Version ${version} of "${name}" not found`);
     setDeprecated(entry, message);
-    this.recordDeprecation({ name, actorUserId, message, version });
+    this.audit.push(deprecationEvent({ actorUserId, name, version, message }));
   }
 
   async setPackageDeprecation({
@@ -150,23 +157,7 @@ export class InMemoryRegistryStore implements RegistryStore {
     const pkg = this.packages.get(name);
     if (!pkg) throw new NotFoundError("Package not found");
     for (const entry of Object.values(pkg.versions)) setDeprecated(entry, message);
-    this.recordDeprecation({ name, actorUserId, message, version: null });
-  }
-
-  /** The D1 store's `audit_events` insert riding with a deprecation update. */
-  private recordDeprecation(change: {
-    name: string;
-    actorUserId: string;
-    message: string | null;
-    version: string | null;
-  }): void {
-    const { name, actorUserId, message, version } = change;
-    this.audit.push({
-      actorUserId,
-      action: message === null ? "undeprecate" : "deprecate",
-      packageName: name,
-      detail: { version, ...(message === null ? {} : { message }) },
-    });
+    this.audit.push(deprecationEvent({ actorUserId, name, version: null, message }));
   }
 
   async userByHandle(handle: string): Promise<RegistryUser | null> {
@@ -201,7 +192,8 @@ export class InMemoryRegistryStore implements RegistryStore {
     // maintainer guard (403 outranks 409 so nothing leaks to outsiders), then
     // version immutability.
     const held = this.maintainers.get(name) ?? [];
-    if (held.length === 0) {
+    const claimed = held.length === 0;
+    if (claimed) {
       this.maintainers.set(name, [{ userId: publishedBy, role: "owner" }]);
     } else if (!held.some((m) => m.userId === publishedBy)) {
       throw new ForbiddenError(`You are not a maintainer of "${name}"`);
@@ -212,6 +204,11 @@ export class InMemoryRegistryStore implements RegistryStore {
         `Version ${entry.version} of "${name}" is already published and immutable`,
       );
     }
+    const detail = { version: entry.version };
+    if (claimed) {
+      this.audit.push({ actorUserId: publishedBy, action: "claim", packageName: name, detail });
+    }
+    this.audit.push({ actorUserId: publishedBy, action: "publish", packageName: name, detail });
     // Timestamps are stamped at insert, exactly like the D1 store's `now`.
     const now = new Date().toISOString();
     const pkg: Package = {

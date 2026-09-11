@@ -481,6 +481,40 @@ describe("PackageService", () => {
         }),
       ).rejects.toMatchObject({ status: 403 });
     });
+
+    it("audits the first publish as a claim followed by a publish, later ones as publishes", async () => {
+      await publish(lib("1.0.0"));
+      await registry.addMaintainer({
+        name: "example",
+        userId: OTHER.userId,
+        actorUserId: OWNER.userId,
+      });
+      await publish(lib("1.1.0"), OTHER);
+      // Rejected publishes leave no trace: 403 for an outsider, 409 for a
+      // duplicate version.
+      await expect(publish(lib("1.2.0"), ADMIN)).rejects.toMatchObject({ status: 403 });
+      await expect(publish(lib("1.1.0"), OTHER)).rejects.toMatchObject({ status: 409 });
+      expect(registry.audit.filter((e) => e.action !== "maintainer.add")).toEqual([
+        {
+          actorUserId: OWNER.userId,
+          action: "claim",
+          packageName: "example",
+          detail: { version: "1.0.0" },
+        },
+        {
+          actorUserId: OWNER.userId,
+          action: "publish",
+          packageName: "example",
+          detail: { version: "1.0.0" },
+        },
+        {
+          actorUserId: OTHER.userId,
+          action: "publish",
+          packageName: "example",
+          detail: { version: "1.1.0" },
+        },
+      ]);
+    });
   });
 
   describe("maintainers", () => {
@@ -581,6 +615,39 @@ describe("PackageService", () => {
         { userId: OWNER.userId, handle: "owner", role: "owner" },
       ]);
     });
+
+    it("audits every add and remove that lands, and nothing else", async () => {
+      registry.audit.length = 0;
+      await service.addMaintainer(MANAGER, "example", "other-dev");
+      // No-ops and rejections write nothing: re-adding, adding the owner,
+      // a non-owner actor, removing a non-maintainer, removing the owner.
+      await service.addMaintainer(MANAGER, "example", "OTHER-DEV");
+      await service.addMaintainer(MANAGER, "example", "owner");
+      await expect(
+        service.addMaintainer(OTHER_MANAGER, "example", THIRD.handle),
+      ).rejects.toMatchObject({ status: 403 });
+      await service.removeMaintainer(MANAGER, "example", "other-dev");
+      await expect(service.removeMaintainer(MANAGER, "example", "other-dev")).rejects.toMatchObject(
+        { status: 404 },
+      );
+      await expect(service.removeMaintainer(MANAGER, "example", "owner")).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(registry.audit).toEqual([
+        {
+          actorUserId: OWNER.userId,
+          action: "maintainer.add",
+          packageName: "example",
+          detail: { userId: OTHER.userId },
+        },
+        {
+          actorUserId: OWNER.userId,
+          action: "maintainer.remove",
+          packageName: "example",
+          detail: { userId: OTHER.userId },
+        },
+      ]);
+    });
   });
 
   describe("unpublish", () => {
@@ -650,6 +717,8 @@ describe("PackageService", () => {
           { "init.lua": "x" },
         ),
       );
+      // The publishes' own audit rows are the ownership tests' concern.
+      registry.audit.length = 0;
     });
 
     it("attaches the message to one version on every read path and leaves the rest alone", async () => {
