@@ -1,3 +1,14 @@
+## 0.0.5 (2026-09-11)
+
+### 🚀 Features
+
+- Deprecated versions are badged in the versions list and the package index, and the package page shows the deprecation message for the version being viewed. ([57e51b2](https://github.com/ChungIndustries/chung-industries/commit/57e51b2))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+- Claude Fable 5.1
+
 ## 0.0.4 (2026-09-07)
 
 ### 🚀 Features
