@@ -1,0 +1,8 @@
+{
+  "name": "cpm",
+  "root": "src",
+  "startup": "startup.lua",
+  "dependencies": {
+    "cli": "workspace:^"
+  }
+}

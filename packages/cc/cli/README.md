@@ -61,8 +61,8 @@ shell.setCompletionFunction("tool/bin/tool.lua", app:completionFunction())
 
 | Task                           | Command                                                                                                   |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| Build `dist/cli-<version>.tgz` | `nx build cli`                                                                                            |
-| Publish to the registry        | `nx publish:registry cli` (`CPM_REGISTRY_URL` is the target and required)                                 |
+| Build `dist/cli-<version>.tgz` | `nx build cli` (runs `cpm pack` from [apps/cpm-tool](../../../apps/cpm-tool); needs Go)                   |
+| Publish to the registry        | `nx publish:registry cli` (`cpm publish`; needs a login or `CPM_REGISTRY_TOKEN`, see the tool's README)   |
 | Test                           | `nx test:lua cli` (plain Lua, no CC:Tweaked runtime needed)                                               |
 | Lint                           | `nx lint:lua cli` (needs [luacheck](https://github.com/lunarmodules/luacheck))                            |
 | Format                         | `nx format:lua cli` / `nx format:lua:check cli` (needs [StyLua](https://github.com/JohnnyMorganz/StyLua)) |

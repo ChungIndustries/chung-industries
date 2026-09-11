@@ -1,0 +1,75 @@
+name: Publish Package
+
+# One parameterized publish for every Lua package in the workspace, the
+# registry counterpart of deploy-worker.yml. Release-gated: release.yml calls
+# this workflow for each package the release includes (detected via the
+# {projectName}@{version} tag). workflow_dispatch remains for re-publishing
+# current main by hand.
+#
+# The body is one command: the project's publish:registry target, which runs
+# the workspace's cpm tool (apps/cpm-tool) against the package directory. The
+# tool packs and uploads in one step and treats the registry's 409 for an
+# already-published version as success, so recovery dispatches and re-runs
+# are idempotent.
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: Workspace project of the Lua package to publish
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Workspace project of the Lua package to publish
+        required: true
+        type: choice
+        options:
+          - cli
+          - cpm-cli
+
+# Publishing talks to the registry, not GitHub; the token only needs to read the repo.
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.project }}
+    runs-on: ubuntu-latest
+    # Serialize per package; different packages may still publish in parallel.
+    concurrency:
+      group: publish-${{ inputs.project }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Always publish from main, matching the deploy workflows.
+          ref: main
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # Both are required and checked here rather than defaulted: the tool
+      # falls back to the official registry for humans at a terminal, but CI
+      # must state its target explicitly so a missing repository variable
+      # fails loudly instead of quietly publishing to the default.
+      - name: Check publish configuration
+        env:
+          CPM_REGISTRY_URL: ${{ vars.CPM_REGISTRY_URL }}
+          CPM_REGISTRY_TOKEN: ${{ secrets.CPM_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$CPM_REGISTRY_URL" ]; then
+            echo "::error::The CPM_REGISTRY_URL repository variable is not set; it is the registry to publish to."
+            exit 1
+          fi
+          if [ -z "$CPM_REGISTRY_TOKEN" ]; then
+            echo "::error::The CPM_REGISTRY_TOKEN repository secret is not set; create a publish token on the registry account page."
+            exit 1
+          fi
+
+      - name: Publish to the registry
+        env:
+          CPM_REGISTRY_URL: ${{ vars.CPM_REGISTRY_URL }}
+          CPM_REGISTRY_TOKEN: ${{ secrets.CPM_REGISTRY_TOKEN }}
+        run: pnpm exec nx run ${{ inputs.project }}:publish:registry

@@ -1,5 +1,5 @@
 name: Setup
-description: Install pnpm, Node, and dependencies (run checkout first)
+description: Install pnpm, Node, Go, and dependencies (run checkout first)
 
 runs:
   using: composite
@@ -12,6 +12,14 @@ runs:
       with:
         node-version: lts/*
         cache: "pnpm"
+
+    # The cpm tool (apps/cpm-tool) is Go; the Lua packages' build and publish
+    # targets run it from source, so every lane that may touch them needs it.
+    - name: Setup Go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: apps/cpm-tool/go.mod
+        cache-dependency-path: apps/cpm-tool/go.sum
 
     - name: Install dependencies
       shell: bash
