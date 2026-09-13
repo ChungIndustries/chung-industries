@@ -1,0 +1,13 @@
+# Generates the registry's data types from its committed OpenAPI spec, so the
+# cpm.json shape the tool writes is the one the registry validates. Run via
+# `pnpm gen-types`; CI's verify-generated target fails on drift.
+package: registry
+output: internal/registry/types.gen.go
+generate:
+  models: true
+output-options:
+  # Only the component schemas: the HTTP client is written by hand around the
+  # three endpoints the tool uses, so no per-operation body types. A tag no
+  # operation carries excludes them all; skip-prune keeps the schemas anyway.
+  include-tags: ["schemas-only"]
+  skip-prune: true

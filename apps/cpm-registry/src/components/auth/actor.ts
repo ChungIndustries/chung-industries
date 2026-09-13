@@ -7,11 +7,22 @@
 export const SCOPES = ["publish", "manage", "admin"] as const;
 export type Scope = (typeof SCOPES)[number];
 
+/** The publish token a token actor authenticated with, as shown on the account page. */
+export interface ActorToken {
+  name: string | null;
+  /** ISO 8601 UTC, or null for a token without an expiry. */
+  expiresAt: string | null;
+}
+
 export interface Actor {
   /** Better Auth `user.id`; what `package_maintainers.user_id` references. */
   userId: string;
+  /** The user's display name (seeded from GitHub at sign-up). */
+  name: string;
   scopes: readonly Scope[];
   via: "token" | "session";
+  /** Present only for token actors. */
+  token?: ActorToken;
 }
 
 /** Hono type parameter for routes that may carry an authenticated actor. */
