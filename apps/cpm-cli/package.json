@@ -1,6 +1,6 @@
 {
   "name": "cpm-cli",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "description": "The cpm package manager client for CC:Tweaked computers.",
   "type": "module",
