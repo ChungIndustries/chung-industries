@@ -1,0 +1,33 @@
+{
+  "name": "cpm-tool",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The cpm command line tool for real computers: pack and publish packages to the registry from a terminal or CI.",
+  "scripts": {
+    "build": "go build -o dist/ ./cmd/cpm",
+    "test": "go test ./...",
+    "gen-types": "go tool oapi-codegen -config oapi-codegen.yaml ../cpm-registry/openapi.yaml",
+    "verify-generated": "pnpm gen-types && git diff --ignore-space-at-eol --exit-code -- internal/registry/types.gen.go"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "cpm-registry"
+    ],
+    "tags": [
+      "lang:go",
+      "scope:cpm"
+    ],
+    "targets": {
+      "build": {
+        "dependsOn": []
+      },
+      "lint": {
+        "command": "go vet ./...",
+        "options": {
+          "cwd": "{projectRoot}",
+          "forwardAllArgs": false
+        }
+      }
+    }
+  }
+}
