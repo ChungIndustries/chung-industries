@@ -1,3 +1,13 @@
+## 0.0.6 (2026-10-30)
+
+### 🚀 Features
+
+- `cpm install` and `cpm update` now warn about deprecated versions. After resolving and before downloading anything, they print the deprecation message of every version that is about to be installed or is already installed. The install still goes ahead. ([80b3203](https://github.com/ChungIndustries/chung-industries/commit/80b3203))
+
+### ❤️ Thank You
+
+- Christian Mattsson
+
 ## 0.0.5 (2026-09-07)
 
 ### 🚀 Features
