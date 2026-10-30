@@ -3,22 +3,36 @@
   "version": "0.0.3",
   "private": true,
   "description": "A library for building command-line interfaces on CC:Tweaked.",
-  "type": "module",
+  "author": "chungindustries",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "publish:registry": "node scripts/publish.mjs",
     "lint:lua": "luacheck src tests",
     "format:lua": "stylua src tests",
     "format:lua:check": "stylua --check src tests",
     "test:lua": "lua tests/run.lua"
   },
-  "devDependencies": {
-    "tar": "^7.5.2"
-  },
   "nx": {
     "tags": [
       "lang:lua",
       "scope:cpm"
-    ]
+    ],
+    "implicitDependencies": [
+      "cpm-tool"
+    ],
+    "targets": {
+      "build": {
+        "command": "go run ./cmd/cpm pack --dir ../../{projectRoot}",
+        "options": {
+          "cwd": "apps/cpm-tool",
+          "forwardAllArgs": false
+        }
+      },
+      "publish:registry": {
+        "command": "go run ./cmd/cpm publish --dir ../../{projectRoot}",
+        "options": {
+          "cwd": "apps/cpm-tool",
+          "forwardAllArgs": false
+        }
+      }
+    }
   }
 }

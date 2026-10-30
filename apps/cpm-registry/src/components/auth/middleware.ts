@@ -1,9 +1,21 @@
 import type { MiddlewareHandler } from "hono";
 
-import { SCOPES, type Actor, type AppEnv, type Scope } from "@/components/auth/actor";
+import {
+  SCOPES,
+  type Actor,
+  type ActorToken,
+  type AppEnv,
+  type Scope,
+} from "@/components/auth/actor";
 import { authFor } from "@/components/auth/instance";
 import { isAdminRole } from "@/components/auth/role";
 import { ForbiddenError, UnauthorizedError } from "@/errors";
+
+/** A resolved identity, before `resolveActor` stamps how it was authenticated. */
+export interface AuthenticatedUser {
+  userId: string;
+  name: string;
+}
 
 /**
  * What each credential type may hold (docs/cpm-registry-auth-design.md,
@@ -22,10 +34,12 @@ const ADMIN_SESSION_SCOPES: readonly Scope[] = [...SESSION_SCOPES, "admin"];
  * only code that knows Better Auth exists.
  */
 export interface AuthGateway {
-  /** Resolves a publish token to its owner and scopes, or null if invalid. */
-  verifyToken(token: string): Promise<{ userId: string; scopes: Scope[] } | null>;
-  /** Resolves a session cookie to its user, or null if not signed in. */
-  sessionUser(headers: Headers): Promise<{ userId: string; admin: boolean } | null>;
+  /** Resolves a publish token to its owner, scopes, and the token's own details, or null if invalid. */
+  verifyToken(
+    token: string,
+  ): Promise<(AuthenticatedUser & { scopes: Scope[]; token: ActorToken }) | null>;
+  /** Resolves a session cookie to its user and whether they hold the admin role, or null if not signed in. */
+  sessionUser(headers: Headers): Promise<(AuthenticatedUser & { admin: boolean }) | null>;
 }
 
 export function betterAuthGateway(env: Env): AuthGateway {
@@ -34,11 +48,32 @@ export function betterAuthGateway(env: Env): AuthGateway {
     async verifyToken(token) {
       const result = await auth.api.verifyApiKey({ body: { key: token } });
       if (!result.valid || !result.key) return null;
-      return { userId: result.key.referenceId, scopes: parseScopes(result.key.permissions) };
+      // The API key plugin knows only its owner's id. The name comes from Better
+      // Auth's own `user` table (vendor-owned, read-only for us); a key whose
+      // user is gone does not authenticate.
+      const user = await env.DB.prepare('select "name" from "user" where "id" = ?1')
+        .bind(result.key.referenceId)
+        .first<{ name: string }>();
+      if (!user) return null;
+      const expiresAt = result.key.expiresAt;
+      return {
+        userId: result.key.referenceId,
+        name: user.name,
+        scopes: parseScopes(result.key.permissions),
+        token: {
+          name: result.key.name ?? null,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        },
+      };
     },
     async sessionUser(headers) {
       const session = await auth.api.getSession({ headers });
-      return session ? { userId: session.user.id, admin: isAdminRole(session.user.role) } : null;
+      if (!session) return null;
+      return {
+        userId: session.user.id,
+        name: session.user.name,
+        admin: isAdminRole(session.user.role),
+      };
     },
   };
 }
@@ -67,13 +102,19 @@ export async function resolveActor(headers: Headers, gateway: AuthGateway): Prom
     const verified = await gateway.verifyToken(match[1] as string);
     if (!verified) throw new UnauthorizedError("Invalid or expired token");
     const scopes = verified.scopes.filter((scope) => TOKEN_SCOPES.includes(scope));
-    return { userId: verified.userId, scopes, via: "token" };
+    return {
+      userId: verified.userId,
+      name: verified.name,
+      scopes,
+      via: "token",
+      token: verified.token,
+    };
   }
   const user = await gateway.sessionUser(headers);
   if (user) {
     // A signed-in human holds their full authority; only tokens are narrowed.
     const scopes = user.admin ? ADMIN_SESSION_SCOPES : SESSION_SCOPES;
-    return { userId: user.userId, scopes, via: "session" };
+    return { userId: user.userId, name: user.name, scopes, via: "session" };
   }
   return null;
 }
