@@ -10,7 +10,7 @@ import { TerminalScript, TerminalWindow } from "@/terminal/terminal";
  * crashed with a classic Lua error, the way a CC:Tweaked program dies.
  * Rebooting retries the route, and restarts the terminal to match.
  */
-export function ErrorBoundary({ error }: { error: Error }) {
+export function ErrorBoundary({ error }: { error: unknown }) {
   const router = useRouter();
   const [bootCount, setBootCount] = useState(0);
 
@@ -38,7 +38,11 @@ export function ErrorBoundary({ error }: { error: Error }) {
         />
       </TerminalWindow>
       <p className="text-muted-foreground mt-6 text-sm">
-        {import.meta.env.DEV ? error.message : "The registry is not answering right now."}
+        {import.meta.env.DEV
+          ? error instanceof Error
+            ? error.message
+            : String(error)
+          : "The registry is not answering right now."}
       </p>
       <div className="mt-6 flex gap-3">
         <Button variant="outline" asChild>
